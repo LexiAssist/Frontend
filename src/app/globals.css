@@ -1,0 +1,71 @@
+@import "tailwindcss/index.css";
+
+/* ==========================================
+   LEXIASSIST GLOBAL STYLES
+   Primary Green Color Palette
+   ========================================== */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :root {
+    /* Primary Green Palette */
+    --primary-50: #ecf3ee;
+    --primary-100: #c3d9c9;
+    --primary-200: #a5c6af;
+    --primary-300: #7cac8a;
+    --primary-400: #639c73;
+    --primary-500: #3c8350;
+    --primary-600: #377749;
+    --primary-700: #2b5d39;
+    --primary-800: #21482c;
+    --primary-900: #193722;
+    
+    /* Background colors */
+    --bg-primary: #3c8350;
+    --bg-primary-hover: #377749;
+    --bg-light: #ecf3ee;
+    --bg-page: #F8FAF9;
+  }
+
+  /* Improved focus styles */
+  :focus-visible {
+    outline: 2px solid var(--primary-600);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar - using primary colors */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-200);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-300);
+}
+
+/* Wave animation for landing page */
+@keyframes wave {
+  0%, 100% { transform: rotate(12deg); }
+  50% { transform: rotate(-12deg); }
+}
