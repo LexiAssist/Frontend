@@ -80,10 +80,10 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-4 sm:gap-5">
           <button className="p-1 text-[#6b7280] hover:text-[#3c8350] transition-colors">
-            <Icon name="settings" size={22} strokeWidth={1.7} />
+            <Icon name="settings" size={22} />
           </button>
           <button className="p-1 text-[#6b7280] hover:text-[#3c8350] transition-colors">
-            <Icon name="moon" size={22} strokeWidth={1.7} />
+            <Icon name="moon" size={22} />
           </button>
           <div className="flex items-center gap-1.5 cursor-pointer">
             <div className="w-10 h-10 rounded-full bg-[#b2c9b0] flex items-center justify-center overflow-hidden">

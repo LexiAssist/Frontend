@@ -150,7 +150,7 @@ export default function FlashcardsPage() {
             variant="outline"
             size="sm"
             onClick={() => setShowCreateModal(true)}
-            leftIcon={<Icon name="plus" size={16} />
+            leftIcon={<Icon name="plus" size={16} />}
           >
             Add Card
           </Button>
@@ -158,7 +158,7 @@ export default function FlashcardsPage() {
             variant="outline"
             size="sm"
             onClick={handleSaveSet}
-            leftIcon={<Icon name="save" size={16} />
+            leftIcon={<Icon name="save" size={16} />}
           >
             Save Set
           </Button>

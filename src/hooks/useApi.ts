@@ -33,9 +33,6 @@ export function useApiMutation<T, TData = unknown>(
   return useMutation<ApiResponse<T>, Error, TData>({
     mutationFn: (data) => http.post<T>(url, data),
     ...options,
-    onSuccess: (data, variables, context) => {
-      options?.onSuccess?.(data, variables, context);
-    },
   });
 }
 
@@ -80,7 +77,7 @@ export function useOptimisticMutation<T, TData = unknown>(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<ApiResponse<T>, Error, TData>({
+  return useMutation<ApiResponse<T>, Error, TData, { previousData: T | undefined }>({
     mutationFn: (data) => http.post<T>(url, data),
     onMutate: async (newData) => {
       // Cancel any outgoing refetches

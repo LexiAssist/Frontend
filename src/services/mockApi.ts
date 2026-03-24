@@ -13,7 +13,8 @@ const mockUser: User = {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const isMockMode = (): boolean => {
-  return process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+  return process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || 
+         process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
 };
 
 export const mockAuthApi = {

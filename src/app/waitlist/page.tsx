@@ -230,7 +230,7 @@ function SuccessScreen({
             transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
             className="w-20 h-20 bg-[#377749] rounded-full flex items-center justify-center relative z-10"
           >
-            <Icon name="check-circle" className="w-10 h-10 text-white" strokeWidth={2.5} />
+            <Icon name="check-circle" className="w-10 h-10 text-white" />
           </motion.div>
 
           {/* Sparkles */}

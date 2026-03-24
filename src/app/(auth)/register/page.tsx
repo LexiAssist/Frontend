@@ -24,7 +24,7 @@ function SocialLoginButton({
       type="button"
       className="flex items-center justify-center gap-3 h-12 px-4 sm:px-6 bg-white border border-[#D0D5DD] rounded-full hover:bg-gray-50 hover:border-[#377749]/30 hover:shadow-sm active:scale-[0.98] transition-all duration-200 text-sm font-medium text-[#374151]"
     >
-      <div className="relative w-5 h-5 flex-shrink-0">
+      <div className="relative w-5 h-5 shrink-0">
         <Image 
           src={iconSrc} 
           alt={`${label} icon`} 
@@ -85,7 +85,7 @@ export default function RegisterPage() {
 
       {/* Right Panel - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="w-full max-w-[480px] space-y-6 sm:space-y-8">
+        <div className="w-full max-w-120 space-y-6 sm:space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center">
             <Logo />

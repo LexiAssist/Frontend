@@ -22,7 +22,7 @@ export interface RegisterCredentials {
   name: string;
   email: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword?: string;
   school?: string;
   department?: string;
   level?: string;

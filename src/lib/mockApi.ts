@@ -73,6 +73,26 @@ export const mockQuizzes: Quiz[] = [
   },
 ];
 
+// Mock Materials
+export const mockMaterials = [
+  {
+    id: '1',
+    name: 'Introduction to Biology.pdf',
+    type: 'pdf',
+    size: 2500000,
+    uploadedAt: new Date().toISOString(),
+    subject: 'Biology',
+  },
+  {
+    id: '2',
+    name: 'World History Notes.docx',
+    type: 'docx',
+    size: 1200000,
+    uploadedAt: new Date().toISOString(),
+    subject: 'History',
+  },
+];
+
 // Mock Study Sets
 export const mockStudySets: StudySet[] = [
   {
@@ -169,6 +189,17 @@ export const mockApi = {
   // Study Sets / Flashcards
   getStudySets: () => mockStudySets,
   getStudySetById: (id: string) => mockStudySets.find(s => s.id === id),
+  
+  // Materials
+  getMaterials: () => mockMaterials,
+  uploadMaterial: (file: File) => ({
+    id: String(mockMaterials.length + 1),
+    name: file.name,
+    type: file.name.split('.').pop() || 'unknown',
+    size: file.size,
+    uploadedAt: new Date().toISOString(),
+    subject: 'General',
+  }),
   
   // AI
   generateContent: (prompt: string, type: string) => ({

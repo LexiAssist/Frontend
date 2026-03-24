@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       if (body.action === 'generate' && body.text) {
         // Generate flashcards from text
         const aiResponse = mockApi.generateContent(body.text, 'flashcards');
-        const cards = JSON.parse(aiResponse).cards;
+        const cards = JSON.parse(aiResponse.content).cards;
         return NextResponse.json({ 
           cards,
           message: 'Flashcards generated successfully'

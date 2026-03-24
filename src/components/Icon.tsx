@@ -575,14 +575,9 @@ const iconMap: Record<string, string> = {
   "calendar-minus": "/icon/style=bold-323.svg",
   "calendar-edit": "/icon/style=bold-324.svg",
   
-  // History
-  "history-linear": "/icon/style=linear-146.svg",
-  
   // Stopwatch
   stopwatch: "/icon/style=bold-328.svg",
   "stopwatch-linear": "/icon/style=linear-364.svg",
-  timer: "/icon/style=bold-328.svg",
-  "timer-linear": "/icon/style=linear-364.svg",
   hourglass: "/icon/style=linear-365.svg",
   
   // Delivery
@@ -592,7 +587,6 @@ const iconMap: Record<string, string> = {
   // Map variants
   "map-locations": "/icon/style=bold-331.svg",
   "map-paths": "/icon/style=bold-339.svg",
-  "map-linear": "/icon/style=linear-375.svg",
   
   // Diploma
   diploma: "/icon/style=bold-332.svg",
@@ -607,7 +601,6 @@ const iconMap: Record<string, string> = {
   "compass-linear": "/icon/style=linear-251.svg",
   
   // Target variants
-  "target-linear": "/icon/style=linear-373.svg",
   bullseye: "/icon/style=bold-147.svg",
   
   // Route
@@ -649,15 +642,10 @@ const iconMap: Record<string, string> = {
   "temperature-warning": "/icon/style=linear-403.svg",
   stars: "/icon/style=bold-359.svg",
   snowflake: "/icon/style=bold-360.svg",
-  "sun-linear": "/icon/style=linear-397.svg",
   "sun-rays": "/icon/style=bold-364.svg",
   "sun-cloud": "/icon/style=bold-365.svg",
   "cloud-sun": "/icon/style=linear-401.svg",
   heat: "/icon/style=bold-366.svg",
-  
-  // Star variants
-  "star-linear": "/icon/style=linear-398.svg",
-  "sparkle-linear": "/icon/style=linear-381.svg",
   
   // Filter
   "filter-funnel": "/icon/style=bold-367.svg",
@@ -669,15 +657,10 @@ const iconMap: Record<string, string> = {
   "user-x": "/icon/style=bold-372.svg",
   "user-minus": "/icon/style=bold-374.svg",
   "user-minus-linear": "/icon/style=linear-407.svg",
-  "user-check": "/icon/style=bold-375.svg",
-  "user-check-linear": "/icon/style=linear-408.svg",
   "user-heart": "/icon/style=linear-409.svg",
   "user-settings": "/icon/style=linear-410.svg",
   "users-linear": "/icon/style=linear-411.svg",
   "user-remove-linear": "/icon/style=linear-412.svg",
-  
-  // Support
-  support: "/icon/style=bold-377.svg",
   
   // Chat message
   "chat-message": "/icon/style=bold.svg",
@@ -761,8 +744,6 @@ const iconMap: Record<string, string> = {
   "battery-low-linear": "/icon/style=linear-45.svg",
   "battery-full-linear": "/icon/style=linear-46.svg",
   
-  // Wifi
-  "wifi-linear": "/icon/style=linear-64.svg",
   "wifi-off": "/icon/style=bold-65.svg",
   
   // File variants
@@ -867,11 +848,7 @@ const iconMap: Record<string, string> = {
   // List add
   "list-add": "/icon/style=bold-224.svg",
   
-  // Announcement
-  announcement: "/icon/style=bold-225.svg",
-  
-  // Music variants
-  "music-linear": "/icon/style=linear-263.svg",
+  // Mic check
   
   // Mic check
   "microphone-check": "/icon/style=bold-231.svg",
@@ -879,13 +856,11 @@ const iconMap: Record<string, string> = {
   // Pause circle
   "pause-circle": "/icon/style=bold-237.svg",
   
+  // Megaphone
+  
   // Refresh sync
   "refresh-sync": "/icon/style=bold-238.svg",
   "refresh-sync-linear": "/icon/style=linear-219.svg",
-  
-  // Scan
-  "scan-qr": "/icon/style=bold-240.svg",
-  "scan-linear": "/icon/style=linear-310.svg",
   
   // Rotate
   rotate: "/icon/style=bold-241.svg",
@@ -909,9 +884,6 @@ const iconMap: Record<string, string> = {
   "pushpin-off": "/icon/style=bold-261.svg",
   "pushpin-off-linear": "/icon/style=linear-260.svg",
   
-  // Bug
-  "bug-linear": "/icon/style=linear-300.svg",
-  
   // Code variants
   "code-brackets": "/icon/style=bold-265.svg",
   "code-brackets-linear": "/icon/style=linear-301.svg",
@@ -926,14 +898,9 @@ const iconMap: Record<string, string> = {
   "git-compare-linear": "/icon/style=linear-306.svg",
   "git-pull-request-linear": "/icon/style=linear-305.svg",
   
-  // Terminal
-  "terminal-linear": "/icon/style=linear-307.svg",
-  
   // Face
   "face-id-linear": "/icon/style=linear-310.svg",
   
-  // Key variants
-  "key-linear": "/icon/style=linear-312.svg",
   "key-square": "/icon/style=linear-379.svg",
   
   // Lock variants
@@ -946,7 +913,6 @@ const iconMap: Record<string, string> = {
   // Shield variants
   "shield-x": "/icon/style=linear-317.svg",
   "shield-x-linear": "/icon/style=bold-281.svg",
-  "shield-check-linear": "/icon/style=linear-318.svg",
   "shield-exclamation-linear": "/icon/style=linear-134.svg",
   
   // CPU
@@ -963,9 +929,6 @@ const iconMap: Record<string, string> = {
   "menu-left": "/icon/style=linear-323.svg",
   "menu-lines": "/icon/style=linear-322.svg",
   "menu-lines-right": "/icon/style=linear-324.svg",
-  
-  // Refresh
-  "refresh-linear": "/icon/style=linear-325.svg",
   
   // Filter sliders
   "filter-sliders": "/icon/style=linear-326.svg",
@@ -1004,10 +967,6 @@ const iconMap: Record<string, string> = {
   balance: "/icon/style=linear-202.svg",
   justice: "/icon/style=linear-202.svg",
   
-  // Chevron variants
-  "chevron-right": "/icon/style=bold-116.svg",
-  "chevron-up": "/icon/style=linear-203.svg",
-  
   // Code arrows
   "code-arrows": "/icon/style=linear-204.svg",
   
@@ -1044,12 +1003,7 @@ const iconMap: Record<string, string> = {
   "zoom-in-linear": "/icon/style=linear-131.svg",
   "zoom-out-linear": "/icon/style=linear-132.svg",
   
-  // Award
-  "award-linear": "/icon/style=linear-243.svg",
   trophy: "/icon/style=linear-338.svg",
-  
-  // Crop
-  "crop-linear": "/icon/style=linear-249.svg",
   
   // Corner
   "corner-radius": "/icon/style=linear-250.svg",
@@ -1066,9 +1020,6 @@ const iconMap: Record<string, string> = {
   // Frame
   frame: "/icon/style=linear-278.svg",
   
-  // Mail
-  "mail-linear": "/icon/style=linear-374.svg",
-  
   // Flower
   "flower-linear": "/icon/style=linear-294.svg",
   
@@ -1077,13 +1028,9 @@ const iconMap: Record<string, string> = {
   "lightbulb-linear": "/icon/style=linear-349.svg",
   "lamp-linear": "/icon/style=linear-295.svg",
   
-  // Tree
-  "tree-linear": "/icon/style=linear-380.svg",
   eco: "/icon/style=linear-380.svg",
   
-  // Robot
-  "robot-linear": "/icon/style=linear-297.svg",
-  ai: "/icon/style=linear-351.svg",
+  // Puzzle
   
   // Puzzle
   puzzle: "/icon/style=linear-299.svg",
@@ -1125,22 +1072,15 @@ const iconMap: Record<string, string> = {
   // Logistic
   logistics: "/icon/style=linear-367.svg",
   
-  // Monitor
-  "monitor-linear": "/icon/style=linear-368.svg",
   screen: "/icon/style=linear-368.svg",
-  display: "/icon/style=linear-368.svg",
   
-  // Paper plane
   "paper-plane": "/icon/style=linear-371.svg",
   "paper-plane-linear": "/icon/style=linear-335.svg",
-  send: "/icon/style=linear-371.svg",
   
   // Globe
   "globe-network": "/icon/style=linear-372.svg",
   network: "/icon/style=linear-372.svg",
   
-  // Warning
-  "warning-linear": "/icon/style=linear-377.svg",
   caution: "/icon/style=linear-377.svg",
   
   // Navigation
@@ -1156,9 +1096,6 @@ const iconMap: Record<string, string> = {
   
   // Bus variants
   "bus-side": "/icon/style=linear-384.svg",
-  
-  // Backpack variants
-  "backpack-linear": "/icon/style=linear-386.svg",
   
   // Sun sparkles
   "sun-bright": "/icon/style/linear-399.svg",

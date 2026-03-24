@@ -19,7 +19,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -28,7 +28,7 @@ const fadeInLeft = {
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -37,7 +37,7 @@ const fadeInRight = {
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -46,7 +46,7 @@ const fadeInDown = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -66,7 +66,7 @@ const staggerItem = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
   }
 };
 
@@ -116,7 +116,7 @@ function SectionHeader({ label, children }: { label?: string; children: React.Re
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
     >
       {label && (
         <motion.p

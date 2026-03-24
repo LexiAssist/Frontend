@@ -291,7 +291,7 @@ export default function WritingAssistantPage() {
               <div className="flex items-center justify-between py-3 px-4 hover:bg-white/50 rounded-lg transition-colors">
                 <span className="text-lg text-gray-700 font-normal">Tinted backgrounds</span>
                 <button className="w-12 h-12 rounded-full border-2 border-gray-400 flex items-center justify-center hover:border-[#3c8350] hover:bg-[#3c8350]/5 transition-all relative overflow-hidden">
-                  <Icon name="x" className="w-6 h-6 text-gray-400" strokeWidth={2.5} />
+                  <Icon name="x" className="w-6 h-6 text-gray-400" />
                 </button>
               </div>
             </div>
