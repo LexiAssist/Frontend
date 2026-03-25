@@ -2,48 +2,37 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Icon } from '@/components/Icon';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Home,
+  Mic,
+  BookOpen,
+  PenSquare,
+  MessageSquare,
+  Layers,
+  HelpCircle,
+  ChevronDown,
+  LogOut,
+  Menu,
+  X,
+  Settings,
+  Moon,
+} from 'lucide-react';
 
 interface NavItem {
   name: string;
   href: string;
-  icon: string;
+  icon: React.ReactNode;
   shortName?: string;
 }
-
-// Desktop sidebar nav items (all items)
-const mainNavItems: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: 'dashboard', shortName: 'Home' },
-];
-
-const toolsNavItems: NavItem[] = [
-  { name: 'Text to Speech', href: '/text-to-speech', icon: 'volume', shortName: 'TTS' },
-  { name: 'Reading Assistant', href: '/reading-assistant', icon: 'book', shortName: 'Reading' },
-  { name: 'Writing Assistant', href: '/writing-assistant', icon: 'pen', shortName: 'Writing' },
-];
-
-const studyNavItems: NavItem[] = [
-  { name: 'Chat Assistant', href: '/chat-assistant', icon: 'chat', shortName: 'Chat' },
-  { name: 'Flashcards', href: '/flashcards', icon: 'document', shortName: 'Cards' },
-  { name: 'Quizzes', href: '/quizzes', icon: 'question', shortName: 'Quiz' },
-];
-
-// Mobile bottom nav items (primary 4-5 items)
-const bottomNavItems: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: 'dashboard', shortName: 'Home' },
-  { name: 'Text to Speech', href: '/text-to-speech', icon: 'volume', shortName: 'TTS' },
-  { name: 'Reading Assistant', href: '/reading-assistant', icon: 'book', shortName: 'Read' },
-  { name: 'Writing Assistant', href: '/writing-assistant', icon: 'pen', shortName: 'Write' },
-  { name: 'More', href: '#', icon: 'menu', shortName: 'More' },
-];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [isStudyBuddyOpen, setIsStudyBuddyOpen] = useState(false);
   const { user, logout } = useAuthStore();
 
   useEffect(() => {
@@ -64,20 +53,47 @@ export default function Sidebar() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   // Desktop sidebar nav link
-  const NavLink = ({ item }: { item: NavItem }) => (
-    <Link
-      href={item.href}
-      onClick={() => setMobileMenuOpen(false)}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all duration-200 ${
-        isActive(item.href)
-          ? 'bg-white text-[#3D6E4E] shadow-sm'
-          : 'text-white/85 hover:bg-white/10 hover:text-white'
-      }`}
-    >
-      <Icon name={item.icon} size={18} className={isActive(item.href) ? 'text-[#3D6E4E]' : 'text-white/70'} />
-      <span className="truncate">{item.name}</span>
-    </Link>
-  );
+  const MenuItem = ({ 
+    icon, 
+    label, 
+    href, 
+    active = false, 
+    compact = false,
+    onClick 
+  }: { 
+    icon: React.ReactNode; 
+    label: string; 
+    href?: string;
+    active?: boolean; 
+    compact?: boolean;
+    onClick?: () => void;
+  }) => {
+    const content = (
+      <div
+        onClick={onClick}
+        className={`flex items-center gap-2.5 px-3 rounded-full transition-all duration-150 cursor-pointer ${
+          compact ? 'py-1.5' : 'py-2'
+        } ${
+          active
+            ? 'bg-white text-[#3D6E4E] shadow-sm'
+            : 'hover:bg-white/10 text-white/90'
+        }`}
+        style={active ? { fontWeight: 500 } : {}}
+      >
+        {icon}
+        <span className={compact ? 'text-[13px]' : 'text-sm'}>{label}</span>
+      </div>
+    );
+
+    if (href && !onClick) {
+      return (
+        <Link href={href} onClick={() => setMobileMenuOpen(false)}>
+          {content}
+        </Link>
+      );
+    }
+    return content;
+  };
 
   // Mobile bottom nav link
   const BottomNavLink = ({ item, isMore = false }: { item: NavItem; isMore?: boolean }) => {
@@ -92,7 +108,7 @@ export default function Sidebar() {
           <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
             moreMenuOpen ? 'bg-white/20' : 'hover:bg-white/10'
           }`}>
-            <Icon name="menu" size={22} className="text-white/90" />
+            <Menu size={22} className="text-white/90" />
           </div>
           <span className="text-[10px] font-medium text-white/90">More</span>
         </button>
@@ -107,7 +123,7 @@ export default function Sidebar() {
         <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
           active ? 'bg-white text-[#3D6E4E]' : 'text-white/70 hover:bg-white/10'
         }`}>
-          <Icon name={item.icon} size={22} className={active ? 'text-[#3D6E4E]' : 'text-white/90'} />
+          {item.icon}
         </div>
         <span className={`text-[10px] font-medium ${active ? 'text-white' : 'text-white/70'}`}>
           {item.shortName}
@@ -116,115 +132,177 @@ export default function Sidebar() {
     );
   };
 
-  return (
+  // Desktop sidebar content
+  const SidebarContent = () => (
     <>
-      {/* Desktop & Tablet: Left Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-screen w-[240px] bg-[#3D6E4E] z-[50] shadow-xl shadow-black/10 transform transition-transform duration-300 ease-out rounded-r-3xl hidden lg:block
-          ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-0'}
-        `}
-      >
-        <div className="flex flex-col h-full py-6">
-          {/* Logo */}
-          <div className="flex items-center gap-3 px-6 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Icon name="book" size={20} className="text-white" />
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">LexiAssist</span>
+      {/* Logo Section */}
+      <div className="px-5 py-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
+            <BookOpen className="w-5 h-5 text-[#3D6E4E]" />
           </div>
+          <span className="text-[17px] font-semibold text-white">LexiAssist</span>
+        </div>
+      </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 overflow-y-auto">
-            {/* Main */}
-            <div className="space-y-1 mb-6">
-              {mainNavItems.map((item) => (
-                <NavLink key={item.name} item={item} />
-              ))}
-            </div>
+      {/* Main Navigation */}
+      <div className="flex-1 px-3 pt-1 space-y-5 overflow-y-auto">
+        {/* Dashboard */}
+        <div className="space-y-2">
+          <MenuItem
+            icon={<Home size={18} />}
+            label="Dashboard"
+            href="/dashboard"
+            active={isActive('/dashboard')}
+          />
+          <div className="h-px bg-white/20 mx-2" />
+        </div>
 
-            {/* Tools Section */}
-            <div className="mb-6">
-              <div className="px-4 py-2 text-[11px] font-bold text-white/50 uppercase tracking-wider">
-                Tools
-              </div>
-              <div className="space-y-1">
-                {toolsNavItems.map((item) => (
-                  <NavLink key={item.name} item={item} />
-                ))}
-              </div>
-            </div>
+        {/* Tools Section */}
+        <div className="space-y-1.5">
+          <div className="px-3 text-white/60 text-[11px] tracking-wider font-medium uppercase">Tools</div>
 
-            {/* Study Section */}
-            <div>
-              <div className="px-4 py-2 text-[11px] font-bold text-white/50 uppercase tracking-wider">
-                Study
-              </div>
-              <div className="space-y-1">
-                {studyNavItems.map((item) => (
-                  <NavLink key={item.name} item={item} />
-                ))}
-              </div>
-            </div>
-          </nav>
+          <MenuItem
+            icon={<Mic size={18} />}
+            label="Text to Speech"
+            href="/text-to-speech"
+            active={isActive('/text-to-speech')}
+          />
+          <MenuItem
+            icon={<BookOpen size={18} />}
+            label="Reading Assistant"
+            href="/reading-assistant"
+            active={isActive('/reading-assistant')}
+          />
+          <MenuItem
+            icon={<PenSquare size={18} />}
+            label="Writing Assistant"
+            href="/writing-assistant"
+            active={isActive('/writing-assistant')}
+          />
 
-          {/* User Profile */}
-          <div className="px-4 pt-4 mt-4 border-t border-white/10">
-            <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-              <Avatar className="h-9 w-9 border-2 border-white/30 flex-shrink-0">
-                <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-                <AvatarFallback className="bg-white/20 text-white text-sm font-semibold">
-                  {user?.name?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <span className="block text-sm font-semibold text-white truncate">
-                  {user?.name || 'Alison Eyo'}
-                </span>
-                <span className="block text-xs text-white/50 truncate">
-                  {user?.email || 'ails@lexiassist'}
-                </span>
+          {/* StudyBuddy with Submenu */}
+          <div className="space-y-0.5">
+            <button
+              onClick={() => setIsStudyBuddyOpen(!isStudyBuddyOpen)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full hover:bg-white/10 transition-colors text-white/90"
+            >
+              <Layers size={18} />
+              <span className="flex-1 text-left text-sm">StudyBuddy</span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform duration-200 ${isStudyBuddyOpen ? 'rotate-180' : ''}`}
+                style={{ opacity: 0.7 }}
+              />
+            </button>
+
+            {isStudyBuddyOpen && (
+              <div className="pl-4 space-y-0.5">
+                <MenuItem
+                  icon={<MessageSquare size={16} />}
+                  label="Chat Assistant"
+                  href="/chat-assistant"
+                  active={isActive('/chat-assistant')}
+                  compact
+                />
+                <MenuItem
+                  icon={<Layers size={16} />}
+                  label="Flashcards"
+                  href="/flashcards"
+                  active={isActive('/flashcards')}
+                  compact
+                />
+                <MenuItem
+                  icon={<HelpCircle size={16} />}
+                  label="Quizzes"
+                  href="/quizzes"
+                  active={isActive('/quizzes')}
+                  compact
+                />
               </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors flex-shrink-0"
-                title="Logout"
-              >
-                <Icon name="logout" size={18} />
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      </aside>
+      </div>
 
-      {/* Mobile: Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white z-[45] border-b border-gray-100 shadow-sm lg:hidden">
-        <div className="flex items-center justify-between h-full px-4">
-          {/* Left: Menu or Back */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="w-11 h-11 rounded-xl bg-[#3D6E4E] text-white flex items-center justify-center active:scale-95 transition-all"
-            aria-label="Open menu"
-          >
-            <Icon name="menu" size={20} className="text-white" />
-          </button>
-
-          {/* Center: Logo/Title */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#3D6E4E]/10 flex items-center justify-center">
-              <Icon name="book" size={16} className="text-[#3D6E4E]" />
-            </div>
-            <span className="text-[#1a1a1a] font-bold text-lg">LexiAssist</span>
-          </div>
-
-          {/* Right: Profile */}
-          <Link href="/dashboard" className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#3D6E4E]/20">
-            <Avatar className="h-full w-full">
+      {/* User Profile Section */}
+      <div className="p-3 border-t border-white/15">
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors">
+          <div className="relative flex-shrink-0">
+            <Avatar className="h-10 w-10 border-2 border-white/30">
               <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-              <AvatarFallback className="bg-[#3D6E4E] text-white text-xs font-semibold">
+              <AvatarFallback className="bg-[#ffe7cc] text-[#3D6E4E] text-sm font-semibold">
                 {user?.name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
-          </Link>
+            <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#04802e] rounded-full border-2 border-[#3D6E4E]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-white truncate">{user?.name || 'Alison Eyo'}</div>
+            <div className="text-[10px] text-white/60 truncate">{user?.email || 'alis@lexiassist'}</div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 text-white/70"
+            aria-label="Sign out"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  // Bottom nav items for mobile
+  const bottomNavItems: NavItem[] = [
+    { name: 'Dashboard', href: '/dashboard', icon: <Home size={22} />, shortName: 'Home' },
+    { name: 'Text to Speech', href: '/text-to-speech', icon: <Mic size={22} />, shortName: 'TTS' },
+    { name: 'Reading Assistant', href: '/reading-assistant', icon: <BookOpen size={22} />, shortName: 'Read' },
+    { name: 'Writing Assistant', href: '/writing-assistant', icon: <PenSquare size={22} />, shortName: 'Write' },
+    { name: 'More', href: '#', icon: <Menu size={22} />, shortName: 'More' },
+  ];
+
+  return (
+    <>
+      {/* Desktop Sidebar - Rebuilt Design */}
+      <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-[210px] bg-[#3D6E4E] text-white flex-col flex-shrink-0 z-[50] shadow-xl" style={{ borderRadius: '0 22px 22px 0' }}>
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile: Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 h-16 bg-[#3D6E4E] z-[45] lg:hidden shadow-md">
+        <div className="flex items-center justify-between h-full px-4">
+          {/* Left: Menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          {/* Center: Logo */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
+              <BookOpen size={16} className="text-[#3D6E4E]" />
+            </div>
+            <span className="text-white font-bold text-lg">LexiAssist</span>
+          </div>
+
+          {/* Right: Settings & Profile */}
+          <div className="flex items-center gap-2">
+            <button className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+              <Settings size={18} />
+            </button>
+            <Link href="/dashboard" className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/30">
+              <Avatar className="h-full w-full">
+                <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
+                <AvatarFallback className="bg-[#ffe7cc] text-[#3D6E4E] text-xs font-semibold">
+                  {user?.name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -247,87 +325,126 @@ export default function Sidebar() {
 
       {/* Mobile: Slide-in Menu Drawer */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-[280px] bg-[#3D6E4E] z-[47] shadow-2xl transform transition-transform duration-300 ease-out lg:hidden
+        className={`fixed top-0 left-0 h-screen w-[280px] bg-[#3D6E4E] z-[47] shadow-2xl transform transition-transform duration-300 ease-out lg:hidden flex flex-col
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="flex flex-col h-full py-6">
-          {/* Close Button */}
-          <div className="flex items-center justify-between px-5 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <Icon name="book" size={20} className="text-white" />
-              </div>
-              <span className="text-white font-bold text-lg">LexiAssist</span>
+        {/* Close Button */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-[#3D6E4E]" />
             </div>
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center"
-            >
-              <Icon name="close" size={20} />
-            </button>
+            <span className="text-white font-bold text-lg">LexiAssist</span>
+          </div>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Navigation Content */}
+        <div className="flex-1 px-3 pt-1 space-y-5 overflow-y-auto">
+          {/* Dashboard */}
+          <div className="space-y-2">
+            <MenuItem
+              icon={<Home size={18} />}
+              label="Dashboard"
+              href="/dashboard"
+              active={isActive('/dashboard')}
+            />
+            <div className="h-px bg-white/20 mx-2" />
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 overflow-y-auto">
-            {/* Main */}
-            <div className="space-y-1 mb-6">
-              {mainNavItems.map((item) => (
-                <NavLink key={item.name} item={item} />
-              ))}
-            </div>
+          {/* Tools Section */}
+          <div className="space-y-1.5">
+            <div className="px-3 text-white/60 text-[11px] tracking-wider font-medium uppercase">Tools</div>
 
-            {/* Tools Section */}
-            <div className="mb-6">
-              <div className="px-4 py-2 text-[11px] font-bold text-white/50 uppercase tracking-wider">
-                Tools
-              </div>
-              <div className="space-y-1">
-                {toolsNavItems.map((item) => (
-                  <NavLink key={item.name} item={item} />
-                ))}
-              </div>
-            </div>
+            <MenuItem
+              icon={<Mic size={18} />}
+              label="Text to Speech"
+              href="/text-to-speech"
+              active={isActive('/text-to-speech')}
+            />
+            <MenuItem
+              icon={<BookOpen size={18} />}
+              label="Reading Assistant"
+              href="/reading-assistant"
+              active={isActive('/reading-assistant')}
+            />
+            <MenuItem
+              icon={<PenSquare size={18} />}
+              label="Writing Assistant"
+              href="/writing-assistant"
+              active={isActive('/writing-assistant')}
+            />
 
-            {/* Study Section */}
-            <div>
-              <div className="px-4 py-2 text-[11px] font-bold text-white/50 uppercase tracking-wider">
-                Study
-              </div>
-              <div className="space-y-1">
-                {studyNavItems.map((item) => (
-                  <NavLink key={item.name} item={item} />
-                ))}
-              </div>
-            </div>
-          </nav>
+            {/* StudyBuddy with Submenu */}
+            <div className="space-y-0.5">
+              <button
+                onClick={() => setIsStudyBuddyOpen(!isStudyBuddyOpen)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full hover:bg-white/10 transition-colors text-white/90"
+              >
+                <Layers size={18} />
+                <span className="flex-1 text-left text-sm">StudyBuddy</span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${isStudyBuddyOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-          {/* User Profile */}
-          <div className="px-4 pt-4 mt-4 border-t border-white/10">
-            <div className="flex items-center gap-3 p-3 rounded-xl">
-              <Avatar className="h-10 w-10 border-2 border-white/30 flex-shrink-0">
-                <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-                <AvatarFallback className="bg-white/20 text-white text-sm font-semibold">
-                  {user?.name?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <span className="block text-sm font-semibold text-white truncate">
-                  {user?.name || 'Alison Eyo'}
-                </span>
-                <span className="block text-xs text-white/50 truncate">
-                  {user?.email || 'ails@lexiassist'}
-                </span>
-              </div>
+              {isStudyBuddyOpen && (
+                <div className="pl-4 space-y-0.5">
+                  <MenuItem
+                    icon={<MessageSquare size={16} />}
+                    label="Chat Assistant"
+                    href="/chat-assistant"
+                    active={isActive('/chat-assistant')}
+                    compact
+                  />
+                  <MenuItem
+                    icon={<Layers size={16} />}
+                    label="Flashcards"
+                    href="/flashcards"
+                    active={isActive('/flashcards')}
+                    compact
+                  />
+                  <MenuItem
+                    icon={<HelpCircle size={16} />}
+                    label="Quizzes"
+                    href="/quizzes"
+                    active={isActive('/quizzes')}
+                    compact
+                  />
+                </div>
+              )}
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
-            >
-              <Icon name="logout" size={18} />
-              <span>Logout</span>
-            </button>
           </div>
+        </div>
+
+        {/* User Profile */}
+        <div className="p-3 border-t border-white/15">
+          <div className="flex items-center gap-2.5 px-3 py-2">
+            <Avatar className="h-10 w-10 border-2 border-white/30">
+              <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
+              <AvatarFallback className="bg-[#ffe7cc] text-[#3D6E4E] text-sm font-semibold">
+                {user?.name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-white truncate">{user?.name || 'Alison Eyo'}</div>
+              <div className="text-[10px] text-white/60 truncate">{user?.email || 'alis@lexiassist'}</div>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
@@ -341,7 +458,7 @@ export default function Sidebar() {
 
       {/* Mobile: More Menu Drawer (from bottom) */}
       <div
-        className={`fixed bottom-[72px] left-0 right-0 bg-white rounded-t-3xl z-[47] lg:hidden transform transition-transform duration-300 ease-out shadow-2xl ${
+        className={`fixed bottom-[72px] left-0 right-0 bg-white rounded-t-3xl z-[47] lg:hidden transform transition-transform duration-300 ease-out shadow-[0_-4px_20px_rgba(0,0,0,0.15)] ${
           moreMenuOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
@@ -352,7 +469,11 @@ export default function Sidebar() {
           <h3 className="text-lg font-bold text-[#1a1a1a] mb-4">More Tools</h3>
           
           <div className="space-y-2">
-            {studyNavItems.map((item) => (
+            {[
+              { name: 'Chat Assistant', href: '/chat-assistant', icon: <MessageSquare size={22} className="text-[#3D6E4E]" /> },
+              { name: 'Flashcards', href: '/flashcards', icon: <Layers size={22} className="text-[#3D6E4E]" /> },
+              { name: 'Quizzes', href: '/quizzes', icon: <HelpCircle size={22} className="text-[#3D6E4E]" /> },
+            ].map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
@@ -360,13 +481,12 @@ export default function Sidebar() {
                 className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 <div className="w-12 h-12 rounded-xl bg-[#3D6E4E]/10 flex items-center justify-center">
-                  <Icon name={item.icon} size={22} className="text-[#3D6E4E]" />
+                  {item.icon}
                 </div>
                 <div>
                   <p className="font-semibold text-[#1a1a1a]">{item.name}</p>
                   <p className="text-sm text-gray-500">Access {item.name.toLowerCase()}</p>
                 </div>
-                <Icon name="arrow-right" size={18} className="ml-auto text-gray-400" />
               </Link>
             ))}
           </div>
