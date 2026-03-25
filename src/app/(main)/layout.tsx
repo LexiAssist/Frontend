@@ -4,12 +4,13 @@ import Sidebar from './_components/Sidebar';
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-white">
-      {/* Sidebar */}
+      {/* Sidebar - includes mobile header and bottom nav */}
       <Sidebar />
       
       {/* Main Content */}
       <main className="min-h-screen w-full lg:pl-[240px]">
-        <div className="min-h-screen py-8 px-6 sm:px-8 lg:px-10">
+        {/* Mobile: Add padding for fixed header and bottom nav */}
+        <div className="min-h-screen pt-16 pb-[72px] lg:pt-0 lg:pb-0 py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="max-w-5xl mx-auto">
             {children}
           </div>

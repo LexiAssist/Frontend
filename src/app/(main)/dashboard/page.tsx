@@ -67,58 +67,58 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
 
   return (
-    <div className="space-y-6">
-      {/* Header / Topbar */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#2b5d39]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header / Topbar - Mobile Responsive */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#2b5d39]" style={{ fontFamily: 'Poppins, sans-serif' }}>
             Hello, {user?.name?.split(' ')[0] || 'Victoria'}!
           </h1>
           <p className="mt-1 text-sm text-[#555f6e]">
             Pick a tool to get started with
           </p>
         </div>
-        <div className="flex items-center gap-4 sm:gap-5">
-          <button className="p-1 text-[#6b7280] hover:text-[#3c8350] transition-colors">
+        <div className="flex items-center gap-2 sm:gap-4 lg:gap-5 flex-shrink-0">
+          <button className="p-2 text-[#6b7280] hover:text-[#3c8350] transition-colors hidden sm:block">
             <Icon name="settings" size={22} />
           </button>
-          <button className="p-1 text-[#6b7280] hover:text-[#3c8350] transition-colors">
+          <button className="p-2 text-[#6b7280] hover:text-[#3c8350] transition-colors hidden sm:block">
             <Icon name="moon" size={22} />
           </button>
           <div className="flex items-center gap-1.5 cursor-pointer">
-            <div className="w-10 h-10 rounded-full bg-[#b2c9b0] flex items-center justify-center overflow-hidden">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#b2c9b0] flex items-center justify-center overflow-hidden">
               <svg viewBox="0 0 38 38" className="w-full h-full">
                 <circle cx="19" cy="19" r="19" fill="#a8c5a0" />
                 <circle cx="19" cy="15" r="7" fill="#6b9c62" />
                 <ellipse cx="19" cy="32" rx="11" ry="8" fill="#6b9c62" />
               </svg>
             </div>
-            <Icon name="chevron-down" size={14} className="text-[#6b7280]" />
+            <Icon name="chevron-down" size={14} className="text-[#6b7280] hidden sm:block" />
           </div>
         </div>
       </div>
 
-      {/* Tool Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+      {/* Tool Cards Grid - Responsive: 1 col mobile, 2 cols tablet+ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
         {tools.map((tool) => (
           <Link key={tool.id} href={tool.href}>
             <Card
               className={`relative overflow-hidden cursor-pointer border-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${tool.bgColor}`}
             >
               <div className={`absolute inset-0 ${tool.patternClass} pointer-events-none`} />
-              <div className="relative z-10 flex items-end justify-between p-6 sm:p-7 min-h-[170px]">
-                <div className="flex-1">
+              <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between p-4 sm:p-6 lg:p-7 min-h-[160px] sm:min-h-[170px]">
+                <div className="flex-1 order-2 sm:order-1 mt-3 sm:mt-0">
                   <h2 
-                    className="text-base sm:text-lg font-bold text-[#1a2a2a] leading-tight whitespace-pre-line"
+                    className="text-sm sm:text-base lg:text-lg font-bold text-[#1a2a2a] leading-tight whitespace-pre-line"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                   >
                     {tool.title}
                   </h2>
-                  <p className="mt-2 text-xs sm:text-sm text-[#555f6e] leading-relaxed max-w-[220px]">
+                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-[#555f6e] leading-relaxed max-w-[220px]">
                     {tool.description}
                   </p>
                 </div>
-                <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 flex items-end justify-center ml-3">
+                <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 flex items-end justify-center sm:ml-3 order-1 sm:order-2 self-end sm:self-auto">
                   <ToolIllustration type={tool.illustration} />
                 </div>
               </div>
@@ -127,19 +127,23 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Recent Section */}
+      {/* Recent Section - Responsive */}
       <div>
         <h3 className="text-sm font-semibold text-[#555f6e] mb-3 sm:mb-4">
           Continue from where you left off
         </h3>
-        <div className="space-y-2.5 sm:space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {recentItems.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-shadow hover:shadow-md"
+              className="bg-white rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 cursor-pointer transition-shadow hover:shadow-md border border-transparent hover:border-gray-100"
             >
-              <div className="w-9 h-11 rounded-md bg-gradient-to-br from-[#5bbfd6] to-[#3a9ab5] flex items-center justify-center flex-shrink-0">
-                <svg width="18" height="22" viewBox="0 0 20 24" fill="none" className="opacity-90">
+              <div className="w-8 h-10 sm:w-9 sm:h-11 rounded-md bg-gradient-to-br from-[#5bbfd6] to-[#3a9ab5] flex items-center justify-center flex-shrink-0">
+                <svg width="16" height="20" viewBox="0 0 20 24" fill="none" className="opacity-90 sm:hidden">
+                  <path d="M3 2 H13 L18 7 V22 H3 Z" fill="white" rx="2" />
+                  <path d="M13 2 L13 7 L18 7" stroke="white" strokeWidth="1" opacity="0.6" fill="none" />
+                </svg>
+                <svg width="18" height="22" viewBox="0 0 20 24" fill="none" className="opacity-90 hidden sm:block">
                   <path d="M3 2 H13 L18 7 V22 H3 Z" fill="white" rx="2" />
                   <path d="M13 2 L13 7 L18 7" stroke="white" strokeWidth="1" opacity="0.6" fill="none" />
                 </svg>
@@ -147,18 +151,24 @@ export default function DashboardPage() {
               <span className="flex-1 text-sm font-semibold text-[#1a2a2a] truncate">
                 {item.filename}
               </span>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 <div className="flex items-center gap-1.5 text-xs text-[#555f6e]">
                   {item.typeIcon === 'quiz' ? (
-                    <Icon name="calendar" size={14} className="text-[#8a95a3]" />
+                    <Icon name="calendar" size={12} className="text-[#8a95a3] sm:hidden" />
                   ) : (
-                    <Icon name="file-text" size={14} className="text-[#8a95a3]" />
+                    <Icon name="file-text" size={12} className="text-[#8a95a3] sm:hidden" />
                   )}
-                  <span>{item.type}</span>
+                  {item.typeIcon === 'quiz' ? (
+                    <Icon name="calendar" size={14} className="text-[#8a95a3] hidden sm:block" />
+                  ) : (
+                    <Icon name="file-text" size={14} className="text-[#8a95a3] hidden sm:block" />
+                  )}
+                  <span className="hidden sm:inline">{item.type}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-[#555f6e]">
-                  <Icon name="clock" size={14} className="text-[#8a95a3]" />
-                  <span>{item.date}</span>
+                  <Icon name="clock" size={12} className="text-[#8a95a3] sm:hidden" />
+                  <Icon name="clock" size={14} className="text-[#8a95a3] hidden sm:block" />
+                  <span className="hidden sm:inline">{item.date}</span>
                 </div>
               </div>
             </div>
