@@ -5,16 +5,86 @@ import { Icon } from "@/components/Icon";
 import { toast } from 'sonner';
 
 export default function WritingAssistantPage() {
+  // Merged State from both versions
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showTools, setShowTools] = useState(false);
-  const [expandedTool, setExpandedTool] = useState<string | null>('tools');
-  const [selectedFont, setSelectedFont] = useState('Roboto');
-  const [selectedSpacing, setSelectedSpacing] = useState('Normal');
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [showTools, setShowTools] = useState(false); // For mobile tools sidebar
+  const [expandedTool, setExpandedTool] = useState<string | null>('tools'); // For sidebar accordions
 
-  // Initialize speech recognition
+  // State from new code
+  const [confidence, setConfidence] = useState<'low' | 'high'>('low');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [fontChoice, setFontChoice] = useState('System Default');
+  const [spacing, setSpacing] = useState('Normal');
+  const [tintedBg, setTintedBg] = useState(false);
+
+  // Refs
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // --- From new code: Initial text and options ---
+  useEffect(() => {
+    setText(`Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
+Early Life and Artistic Failure
+Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.`);
+  }, []);
+
+  const fontOptions = [
+    'System Default',
+    'OpenDyslexic',
+    'Arial',
+    'Times New Roman',
+    'Georgia',
+    'Verdana',
+    'Comic Sans MS'
+  ];
+
+  const spacingOptions = [
+    'Compact',
+    'Normal',
+    'Relaxed',
+    'Wide'
+  ];
+
+  // --- From new code: Style helpers ---
+  const getFontFamily = () => {
+    switch (fontChoice) {
+      case 'OpenDyslexic':
+        return 'OpenDyslexic, sans-serif';
+      case 'Arial':
+        return 'Arial, sans-serif';
+      case 'Times New Roman':
+        return 'Times New Roman, serif';
+      case 'Georgia':
+        return 'Georgia, serif';
+      case 'Verdana':
+        return 'Verdana, sans-serif';
+      case 'Comic Sans MS':
+        return 'Comic Sans MS, cursive';
+      default:
+        return 'system-ui, -apple-system, sans-serif';
+    }
+  };
+
+  const getLineHeight = () => {
+    switch (spacing) {
+      case 'Compact':
+        return '1.4';
+      case 'Normal':
+        return '1.6';
+      case 'Relaxed':
+        return '1.8';
+      case 'Wide':
+        return '2.0';
+      default:
+        return '1.6';
+    }
+  };
+
+  // --- From old code: Speech Recognition ---
   useEffect(() => {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -24,14 +94,12 @@ export default function WritingAssistantPage() {
 
       recognitionRef.current.onresult = (event) => {
         let finalTranscript = '';
-
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
           }
         }
-
         if (finalTranscript) {
           setText((prev) => prev + finalTranscript);
         }
@@ -54,10 +122,8 @@ export default function WritingAssistantPage() {
       toast.error('Voice recognition not supported in your browser');
       return;
     }
-
     if (isRecording) {
       recognitionRef.current.stop();
-      setIsRecording(false);
       toast.success('Voice recording stopped');
     } else {
       recognitionRef.current.start();
@@ -66,25 +132,68 @@ export default function WritingAssistantPage() {
     }
   };
 
-  const handleCleanAndStructure = () => {
+  // --- From new code, adapted: Core Functions ---
+  const handleCleanAndStructure = async () => {
     if (!text.trim()) {
       toast.error('Please enter some text first');
       return;
     }
-    toast.success('Text cleaned and structured!');
-  };
+    setIsProcessing(true);
+    setConfidence('low');
+    toast.info('Cleaning and structuring text...');
+    
+    try {
+      // This is a placeholder for an actual API call.
+      // In a real app, you'd have a backend endpoint to securely handle your API key.
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const improvedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, ' ').trim() + " (Improved)";
 
-  const handleCopyToClipboard = () => {
-    if (text) {
-      navigator.clipboard.writeText(text);
-      toast.success('Copied to clipboard');
+      setText(improvedText);
+      setConfidence('high');
+      toast.success('Text cleaned and structured!');
+    } catch (error) {
+      console.error("Error improving text:", error);
+      toast.error('Failed to improve text. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleExport = () => {
-    toast.success('Export options coming soon!');
+  const handleCopyToClipboard = async () => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setIsCopied(true);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast.error('Failed to copy text.');
+    }
   };
 
+  const exportToGoogleDocs = () => {
+    toast.info('Export to Google Docs coming soon!');
+  };
+
+  const downloadAsTxt = () => {
+    if (!text) {
+      toast.error("There's nothing to download.");
+      return;
+    }
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'writing-assistant-export.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Downloading as .txt file.");
+  };
+
+  // --- From old code: UI Toggles ---
   const toggleTool = (tool: string) => {
     setExpandedTool(expandedTool === tool ? null : tool);
   };
@@ -127,62 +236,82 @@ export default function WritingAssistantPage() {
 
         {/* Writing Area */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden flex flex-col">
-          <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full">
-            <div className="bg-[#f4f4f4] border border-gray-200 rounded-3xl flex flex-col flex-1 shadow-sm overflow-hidden">
-              {/* Voice Controls */}
-              <div className="flex items-center gap-4 px-6 md:px-8 pt-6 pb-4 border-b border-gray-200 bg-white/50 flex-shrink-0">
+          <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full min-h-0">
+            {/* Controls */}
+            <div className="bg-white rounded-t-2xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${confidence === 'low' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
+                <span className={`text-sm font-medium ${confidence === 'low' ? 'text-orange-500' : 'text-emerald-500'}`}>
+                  {confidence === 'low' ? 'Low confidence' : 'High confidence'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={toggleRecording}
                   className={`p-2.5 rounded-full transition-all ${
                     isRecording 
-                      ? 'bg-red-50 text-red-600 ring-2 ring-red-200' 
-                      : 'hover:bg-gray-200 text-[#3c8350]'
+                      ? 'bg-red-100 text-red-600 ring-2 ring-red-200' 
+                      : 'hover:bg-gray-100 text-[#3c8350]'
                   }`}
                   aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                 >
                   <Icon name="microphone" className="w-5 h-5" />
                 </button>
                 <button
-                  className="p-2.5 hover:bg-gray-200 rounded-full transition-colors"
+                  className="p-2.5 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Audio visualization"
                 >
                   <Icon name="audio-waveform" className="w-5 h-5 text-gray-700" />
                 </button>
-
                 <button
                   onClick={handleCleanAndStructure}
-                  disabled={!text}
-                  className="ml-auto bg-[#2b5d39] text-white px-6 md:px-8 py-2.5 md:py-3 rounded-full hover:bg-[#234a2d] transition-all font-medium text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
+                  disabled={isProcessing || !text}
+                  className="ml-auto bg-[#2b5d39] text-white px-6 py-2.5 rounded-full hover:bg-[#234a2d] transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
                 >
-                  Clean and Structure
+                  {isProcessing ? 'Processing...' : 'Clean and Structure'}
                 </button>
               </div>
+            </div>
 
-              {/* Text Area */}
-              <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Text Area */}
+            <div className="flex-1 bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 overflow-hidden flex flex-col">
+              <div 
+                className="flex-1 overflow-y-auto"
+                style={{ backgroundColor: tintedBg ? '#fef9f3' : 'transparent' }}
+              >
                 <textarea
+                  ref={textareaRef}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Start typing or use voice input to begin writing..."
-                  className="w-full flex-1 bg-transparent resize-none outline-none text-gray-900 text-base md:text-lg leading-relaxed placeholder:text-gray-400 px-6 md:px-8 py-6 overflow-y-auto"
-                  style={{ fontFamily: selectedFont }}
+                  className="w-full h-full min-h-[400px] resize-none outline-none text-gray-900 bg-transparent placeholder:text-gray-400 px-6 py-6 text-base md:text-lg"
+                  style={{ 
+                    fontFamily: getFontFamily(),
+                    lineHeight: getLineHeight()
+                  }}
                 />
               </div>
 
-              {/* Copy Button */}
-              {text && (
-                <div className="flex justify-end px-6 md:px-8 pb-6 pt-4 border-t border-gray-200 bg-white/50 flex-shrink-0">
-                  <button
-                    onClick={handleCopyToClipboard}
-                    className="bg-[#2b5d39] text-white px-6 md:px-8 py-2.5 md:py-3 rounded-full hover:bg-[#234a2d] transition-all font-medium text-sm md:text-base flex items-center gap-2 shadow-sm hover:shadow"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    Copy to clipboard
-                  </button>
-                </div>
-              )}
+              {/* Action Buttons */}
+              <div className="p-4 flex justify-end items-center gap-3 border-t border-gray-200 bg-white/50 flex-shrink-0">
+                <button
+                  onClick={handleCopyToClipboard}
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[#2b5d39] hover:bg-[#234a2d] text-white rounded-full font-medium transition-all shadow-sm hover:shadow disabled:opacity-50"
+                  disabled={!text}
+                >
+                  {isCopied ? (
+                    <>
+                      <Icon name="check" size={18} />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="copy" size={18} />
+                      <span>Copy to clipboard</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </main>
@@ -194,14 +323,14 @@ export default function WritingAssistantPage() {
           showTools ? 'translate-x-0' : 'translate-x-full'
         } md:translate-x-0 fixed md:relative right-0 top-16 md:top-0 h-[calc(100vh-4rem)] md:h-full w-80 bg-[#f4f4f4] border-l border-gray-200 rounded-tl-3xl rounded-bl-3xl shadow-2xl md:shadow-none transition-transform duration-300 z-50 overflow-y-auto flex flex-col`}
       >
-        <div className="p-6 flex-1 flex flex-col">
+        <div className="p-6 flex-1 flex flex-col min-h-0">
           {/* Close button for mobile */}
           <button
             onClick={() => setShowTools(false)}
             className="md:hidden absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-lg transition-colors"
             aria-label="Close tools"
           >
-            <Icon name="x" className="w-5 h-5" />
+            <Icon name="x" className="w-5 h-5 text-gray-600" />
           </button>
 
           {/* Tools Header - Collapsible */}
@@ -220,7 +349,7 @@ export default function WritingAssistantPage() {
           </div>
 
           {/* Collapsible Tools Section */}
-          <div className={`overflow-hidden transition-all duration-300 ${
+          <div className={`overflow-y-auto flex-1 transition-all duration-300 ${
             expandedTool === 'tools' ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
           }`}>
             {/* Font Choice Dropdown */}
@@ -236,17 +365,16 @@ export default function WritingAssistantPage() {
               </button>
               {expandedTool === 'font' && (
                 <div className="mt-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  {['Roboto', 'Arial', 'Times New Roman', 'Georgia', 'Courier New'].map((font) => (
+                  {fontOptions.map((font) => (
                     <button
                       key={font}
                       onClick={() => {
-                        setSelectedFont(font);
-                        setExpandedTool(null);
+                        setFontChoice(font);
                       }}
                       className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${
-                        selectedFont === font ? 'bg-[#3c8350]/10 text-[#3c8350] font-medium' : 'text-gray-700'
+                        fontChoice === font ? 'bg-[#3c8350]/10 text-[#3c8350] font-medium' : 'text-gray-700'
                       }`}
-                      style={{ fontFamily: font }}
+                      style={{ fontFamily: font === 'System Default' ? 'system-ui' : font }}
                     >
                       {font}
                     </button>
@@ -268,18 +396,17 @@ export default function WritingAssistantPage() {
               </button>
               {expandedTool === 'spacing' && (
                 <div className="mt-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  {['Compact', 'Normal', 'Relaxed', 'Loose'].map((spacing) => (
+                  {spacingOptions.map((space) => (
                     <button
-                      key={spacing}
+                      key={space}
                       onClick={() => {
-                        setSelectedSpacing(spacing);
-                        setExpandedTool(null);
+                        setSpacing(space);
                       }}
                       className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${
-                        selectedSpacing === spacing ? 'bg-[#3c8350]/10 text-[#3c8350] font-medium' : 'text-gray-700'
+                        spacing === space ? 'bg-[#3c8350]/10 text-[#3c8350] font-medium' : 'text-gray-700'
                       }`}
                     >
-                      {spacing}
+                      {space}
                     </button>
                   ))}
                 </div>
@@ -290,8 +417,11 @@ export default function WritingAssistantPage() {
             <div className="mb-6">
               <div className="flex items-center justify-between py-3 px-4 hover:bg-white/50 rounded-lg transition-colors">
                 <span className="text-lg text-gray-700 font-normal">Tinted backgrounds</span>
-                <button className="w-12 h-12 rounded-full border-2 border-gray-400 flex items-center justify-center hover:border-[#3c8350] hover:bg-[#3c8350]/5 transition-all relative overflow-hidden">
-                  <Icon name="x" className="w-6 h-6 text-gray-400" />
+                <button 
+                  onClick={() => setTintedBg(!tintedBg)}
+                  className={`w-12 h-7 rounded-full flex items-center transition-colors ${tintedBg ? 'bg-[#3c8350]' : 'bg-gray-300'}`}
+                >
+                  <span className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${tintedBg ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
@@ -305,14 +435,33 @@ export default function WritingAssistantPage() {
             </div>
           </div>
 
-          {/* Export Button - Always visible at bottom */}
+          {/* Export Button - Updated */}
           <div className="mt-auto pt-6 border-t border-gray-200">
+            {exportOpen && (
+              <div className="mb-4 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                <button
+                  onClick={exportToGoogleDocs}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                >
+                  <Icon name="file-text" className="w-6 h-6 text-blue-500" />
+                  <span className="text-base font-normal text-gray-900">Export to Google Docs</span>
+                </button>
+                <button
+                  onClick={downloadAsTxt}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                >
+                  <Icon name="file-text" className="w-6 h-6 text-green-700" />
+                  <span className="text-base font-normal text-gray-900">Download as .txt</span>
+                </button>
+              </div>
+            )}
             <button
-              onClick={handleExport}
+              onClick={() => setExportOpen(!exportOpen)}
               className="w-full bg-[#2b5d39] text-white px-6 py-4 rounded-full hover:bg-[#234a2d] transition-all font-medium text-lg flex items-center justify-center gap-3 shadow-sm hover:shadow"
             >
               <Icon name="download" className="w-5 h-5" />
               Export options
+              <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
         </div>
@@ -321,7 +470,7 @@ export default function WritingAssistantPage() {
       {/* Overlay for mobile */}
       {showTools && (
         <div
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="md:hidden fixed inset-0 bg-black bg-opacity-60 z-40"
           onClick={() => setShowTools(false)}
         />
       )}
