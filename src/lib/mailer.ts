@@ -98,39 +98,40 @@ export interface WaitlistEmailData {
 export async function sendWaitlistConfirmation({ name, email }: WaitlistEmailData): Promise<EmailResult> {
   const subject = 'Welcome to the LexiAssist Waitlist! 🎉';
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #377749;">Welcome to the LexiAssist Waitlist!</h1>
-      <p>Hi ${name},</p>
-      <p>Thank you for joining our waitlist! We're excited to have you on board.</p>
-      <p>You'll be among the first to know when we launch, with:</p>
-      <ul>
-        <li>✅ Early access to the platform</li>
-        <li>✅ Exclusive launch offers</li>
-        <li>✅ Special benefits for early adopters</li>
-      </ul>
-      <p>We'll keep you updated on our progress and notify you as soon as we're ready for you.</p>
-      <p>Best regards,<br>The LexiAssist Team</p>
-    </div>
-  `;
+ const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+    <h1 style="color: #377749;">Welcome to the Lexi Circle!</h1>
+    <p>Hi ${name},</p>
+    <p>Thanks for joining our waitlist — we are excited to have you on board!</p>
+    <p>
+      You have just secured early access to a smarter way of studying. Think: never stressing about writing notes in class again, getting instant summaries, and having your own AI study assistant whenever you need it.
+    </p>
+    <p>
+      As part of our waitlist, you will get early access to LexiAssist before everyone else, along with exclusive premium discounts and free credits to explore our AI features.
+    </p>
+    <p>
+      We are building something powerful, and you are getting front-row access. Stay tuned — we’ll be in touch soon.
+    </p>
+    <p>Cheers,<br>The LexiAssist Team</p>
+  </div>
+`;
 
-  const text = `
-Welcome to the LexiAssist Waitlist!
+const text = `
+Welcome to the Lexi Circle!
 
 Hi ${name},
 
-Thank you for joining our waitlist! We're excited to have you on board.
+Thanks for joining our waitlist — we are excited to have you on board!
 
-You'll be among the first to know when we launch, with:
-- Early access to the platform
-- Exclusive launch offers
-- Special benefits for early adopters
+You have just secured early access to a smarter way of studying. Think: never stressing about writing notes in class again, getting instant summaries, and having your own AI study assistant whenever you need it.
 
-We'll keep you updated on our progress and notify you as soon as we're ready for you.
+As part of our waitlist, you will get early access to LexiAssist before everyone else, along with exclusive premium discounts and free credits to explore our AI features.
 
-Best regards,
+We are building something powerful, and you are getting front-row access. Stay tuned — we’ll be in touch soon.
+
+Cheers,
 The LexiAssist Team
-  `;
+`;
 
   return sendEmail({
     to: email,
