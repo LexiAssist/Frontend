@@ -11,6 +11,7 @@ out
 # Environment files (except .env.local for build args if needed)
 .env
 .env.*.local
+.env.local
 .env.development
 .env.test
 .env.production
