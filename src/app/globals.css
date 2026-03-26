@@ -30,6 +30,30 @@
     --bg-primary-hover: #377749;
     --bg-light: #ecf3ee;
     --bg-page: #F8FAF9;
+    
+    /* shadcn/ui theme variables */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 130 35% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --input-background: 0 0% 100%;
+    --ring: 130 35% 35%;
+    --radius: 0.5rem;
+    --switch-background: 240 4.8% 95.9%;
   }
 
   /* Improved focus styles */
@@ -68,4 +92,107 @@
 @keyframes wave {
   0%, 100% { transform: rotate(12deg); }
   50% { transform: rotate(-12deg); }
+}
+
+/* Animation utilities for Radix UI */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zoom-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Radix UI Dropdown/Select animations */
+[data-state="open"] {
+  animation: fade-in 0.15s ease-out;
+}
+
+[data-state="closed"] {
+  animation: fade-out 0.15s ease-out;
+}
+
+/* Ensure dropdowns have highest z-index */
+[role="listbox"] {
+  z-index: 9999 !important;
+}
+
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* Radix UI portal content */
+[data-radix-portal] {
+  z-index: 9999 !important;
+}
+
+/* Fix for select dropdowns */
+[data-slot="select-content"] {
+  background-color: white !important;
+  z-index: 9999 !important;
+}
+
+/* Popover content solid background */
+[data-slot="popover-content"] {
+  background-color: white !important;
+  z-index: 9999 !important;
+}
+
+/* Ensure proper stacking context */
+[data-slot="select-viewport"] {
+  background-color: white !important;
 }
