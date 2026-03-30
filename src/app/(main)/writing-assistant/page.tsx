@@ -1,477 +1,545 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Icon } from "@/components/Icon";
-import { toast } from 'sonner';
+import { Icon } from '@/components/Icon';
+
+// Types
+type FontChoice = 'default' | 'opendyslexic' | 'roboto';
+type SpacingOption = 'letter' | 'word' | 'line';
+type BackgroundTint = 'none' | 'yellow' | 'cream' | 'beige' | 'tan' | 'peach' | 'sky' | 'mint' | 'lavender' | 'blue' | 'green' | 'sage' | 'pink' | 'rose' | 'warm' | 'cool';
+
+// Background tint colors
+const TINT_COLORS: { id: BackgroundTint; color: string }[] = [
+  { id: 'yellow', color: '#FFF9C4' },
+  { id: 'cream', color: '#FFF8E1' },
+  { id: 'beige', color: '#F5F5DC' },
+  { id: 'tan', color: '#D2B48C' },
+  { id: 'peach', color: '#FFDAB9' },
+  { id: 'sky', color: '#E0F7FA' },
+  { id: 'mint', color: '#F0FFF0' },
+  { id: 'lavender', color: '#E6E6FA' },
+  { id: 'blue', color: '#E3F2FD' },
+  { id: 'green', color: '#E8F5E9' },
+  { id: 'sage', color: '#E8F3E8' },
+  { id: 'pink', color: '#FCE4EC' },
+  { id: 'rose', color: '#FFF0F3' },
+  { id: 'warm', color: '#FFF8E7' },
+  { id: 'cool', color: '#F0F8FF' },
+];
+
+// Sample text content
+const SAMPLE_TEXT = `Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
+
+Early Life and Artistic Failure
+
+Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.`;
+
+// Icons
+const MicrophoneIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3Z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+    <line x1="12" x2="12" y1="19" y2="22"/>
+  </svg>
+);
+
+const WaveformIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 10v4"/>
+    <path d="M6 6v12"/>
+    <path d="M10 3v18"/>
+    <path d="M14 8v8"/>
+    <path d="M18 5v14"/>
+    <path d="M22 10v4"/>
+  </svg>
+);
+
+const BookmarkIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+  </svg>
+);
+
+const ChevronLeftIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m15 18-6-6 6-6"/>
+  </svg>
+);
+
+const ChevronRightIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m9 18 6-6-6-6"/>
+  </svg>
+);
+
+const ChevronDownIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);
+
+const InfoIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 16v-4"/>
+    <path d="M12 8h.01"/>
+  </svg>
+);
+
+const ClipboardIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+  </svg>
+);
+
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const ExportIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <line x1="12" x2="12" y1="15" y2="3"/>
+  </svg>
+);
+
+const NullIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/>
+  </svg>
+);
+
+const GoogleDriveIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <path d="M7.71 3.5L1.15 15l3.43 5.95L11.14 9.45 7.71 3.5z" fill="#0066DA"/>
+    <path d="M16.29 3.5L9.73 15l3.43 5.95 6.56-11.5L16.29 3.5z" fill="#00AC47"/>
+    <path d="M12 15l-3.43 5.95h13.72L22.85 15H12z" fill="#EA4335"/>
+    <path d="M4.58 20.95h13.72L12 15H1.15l3.43 5.95z" fill="#00832D"/>
+    <path d="M7.71 3.5l3.43 5.95h6.57L12 3.5H7.71z" fill="#2684FC"/>
+    <path d="M12 15h10.85l-3.43-5.95H8.57L12 15z" fill="#FFBA00"/>
+  </svg>
+);
+
+const WordIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none">
+    <rect x="2" y="3" width="20" height="18" rx="2" fill="#2B579A"/>
+    <path d="M7 7l3 10 3-10" stroke="white" strokeWidth="1.5" fill="none"/>
+    <text x="14" y="15" fill="white" fontSize="8" fontWeight="bold">W</text>
+  </svg>
+);
+
+const SmallChevronRight = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m9 18 6-6-6-6"/>
+  </svg>
+);
 
 export default function WritingAssistantPage() {
-  // Merged State from both versions
-  const [text, setText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showTools, setShowTools] = useState(false); // For mobile tools sidebar
-  const [expandedTool, setExpandedTool] = useState<string | null>('tools'); // For sidebar accordions
+  // State
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [fontChoice, setFontChoice] = useState<FontChoice>('roboto');
+  const [showFontDropdown, setShowFontDropdown] = useState(false);
+  const [showSpacingDropdown, setShowSpacingDropdown] = useState(false);
+  const [showTintPicker, setShowTintPicker] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [backgroundTint, setBackgroundTint] = useState<BackgroundTint>('none');
+  const [letterSpacing, setLetterSpacing] = useState(0);
+  const [wordSpacing, setWordSpacing] = useState(0);
+  const [lineHeight, setLineHeight] = useState(1.6);
+  const [showSpacingPanel, setShowSpacingPanel] = useState(false);
 
-  // State from new code
-  const [confidence, setConfidence] = useState<'low' | 'high'>('low');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [fontChoice, setFontChoice] = useState('System Default');
-  const [spacing, setSpacing] = useState('Normal');
-  const [tintedBg, setTintedBg] = useState(false);
+  // Refs for click outside handling
+  const fontDropdownRef = useRef<HTMLDivElement>(null);
+  const spacingDropdownRef = useRef<HTMLDivElement>(null);
+  const tintPickerRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  // Refs
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // --- From new code: Initial text and options ---
+  // Click outside handler
   useEffect(() => {
-    setText(`Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
-Early Life and Artistic Failure
-Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.`);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (fontDropdownRef.current && !fontDropdownRef.current.contains(e.target as Node)) {
+        setShowFontDropdown(false);
+      }
+      if (spacingDropdownRef.current && !spacingDropdownRef.current.contains(e.target as Node)) {
+        setShowSpacingDropdown(false);
+      }
+      if (tintPickerRef.current && !tintPickerRef.current.contains(e.target as Node)) {
+        setShowTintPicker(false);
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fontOptions = [
-    'System Default',
-    'OpenDyslexic',
-    'Arial',
-    'Times New Roman',
-    'Georgia',
-    'Verdana',
-    'Comic Sans MS'
-  ];
+  // Copy to clipboard handler
+  const handleCopy = () => {
+    navigator.clipboard.writeText(SAMPLE_TEXT);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  const spacingOptions = [
-    'Compact',
-    'Normal',
-    'Relaxed',
-    'Wide'
-  ];
-
-  // --- From new code: Style helpers ---
+  // Get font family
   const getFontFamily = () => {
     switch (fontChoice) {
-      case 'OpenDyslexic':
-        return 'OpenDyslexic, sans-serif';
-      case 'Arial':
-        return 'Arial, sans-serif';
-      case 'Times New Roman':
-        return 'Times New Roman, serif';
-      case 'Georgia':
-        return 'Georgia, serif';
-      case 'Verdana':
-        return 'Verdana, sans-serif';
-      case 'Comic Sans MS':
-        return 'Comic Sans MS, cursive';
-      default:
-        return 'system-ui, -apple-system, sans-serif';
+      case 'opendyslexic': return 'OpenDyslexic, sans-serif';
+      case 'roboto': return 'Roboto, sans-serif';
+      default: return 'inherit';
     }
   };
 
-  const getLineHeight = () => {
-    switch (spacing) {
-      case 'Compact':
-        return '1.4';
-      case 'Normal':
-        return '1.6';
-      case 'Relaxed':
-        return '1.8';
-      case 'Wide':
-        return '2.0';
-      default:
-        return '1.6';
-    }
+  // Get background color
+  const getBackgroundColor = () => {
+    if (backgroundTint === 'none') return '#f3f4f6';
+    return TINT_COLORS.find(t => t.id === backgroundTint)?.color || '#f3f4f6';
   };
 
-  // --- From old code: Speech Recognition ---
-  useEffect(() => {
-    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-          }
-        }
-        if (finalTranscript) {
-          setText((prev) => prev + finalTranscript);
-        }
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        setIsRecording(false);
-        toast.error('Voice recognition error. Please try again.');
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-    }
-  }, []);
-
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      toast.error('Voice recognition not supported in your browser');
-      return;
-    }
-    if (isRecording) {
-      recognitionRef.current.stop();
-      toast.success('Voice recording stopped');
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-      toast.success('Voice recording started. Speak now...');
-    }
-  };
-
-  // --- From new code, adapted: Core Functions ---
-  const handleCleanAndStructure = async () => {
-    if (!text.trim()) {
-      toast.error('Please enter some text first');
-      return;
-    }
-    setIsProcessing(true);
-    setConfidence('low');
-    toast.info('Cleaning and structuring text...');
-    
-    try {
-      // This is a placeholder for an actual API call.
-      // In a real app, you'd have a backend endpoint to securely handle your API key.
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const improvedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, ' ').trim() + " (Improved)";
-
-      setText(improvedText);
-      setConfidence('high');
-      toast.success('Text cleaned and structured!');
-    } catch (error) {
-      console.error("Error improving text:", error);
-      toast.error('Failed to improve text. Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleCopyToClipboard = async () => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      setIsCopied(true);
-      toast.success('Copied to clipboard');
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy:", error);
-      toast.error('Failed to copy text.');
-    }
-  };
-
-  const exportToGoogleDocs = () => {
-    toast.info('Export to Google Docs coming soon!');
-  };
-
-  const downloadAsTxt = () => {
-    if (!text) {
-      toast.error("There's nothing to download.");
-      return;
-    }
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'writing-assistant-export.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Downloading as .txt file.");
-  };
-
-  // --- From old code: UI Toggles ---
-  const toggleTool = (tool: string) => {
-    setExpandedTool(expandedTool === tool ? null : tool);
+  // Render text with highlight
+  const renderText = () => {
+    const parts = SAMPLE_TEXT.split('with his');
+    return (
+      <>
+        {parts[0]}
+        <span className="bg-yellow-400 px-0.5 rounded-sm">with his</span>
+        {parts[1]}
+      </>
+    );
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-[#fafafa] overflow-hidden -mx-4 -my-4 sm:-mx-6 lg:-mx-8">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="bg-[#3c8350] rounded-full p-2">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-semibold text-gray-900">Writing Assistant</h1>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setShowTools(!showTools)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="Toggle tools"
-            >
-              <Icon name="settings" className="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {isDarkMode ? <Icon name="sun" className="w-5 h-5 text-gray-600" /> : <Icon name="moon" className="w-5 h-5 text-gray-600" />}
-            </button>
-            <div className="w-10 h-10 rounded-full bg-[#3c8350] flex items-center justify-center text-white font-medium ring-2 ring-gray-200">
-              U
-            </div>
-          </div>
-        </header>
-
-        {/* Writing Area */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden flex flex-col">
-          <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full min-h-0">
-            {/* Controls */}
-            <div className="bg-white rounded-t-2xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${confidence === 'low' ? 'bg-orange-500' : 'bg-emerald-500'}`} />
-                <span className={`text-sm font-medium ${confidence === 'low' ? 'text-orange-500' : 'text-emerald-500'}`}>
-                  {confidence === 'low' ? 'Low confidence' : 'High confidence'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleRecording}
-                  className={`p-2.5 rounded-full transition-all ${
-                    isRecording 
-                      ? 'bg-red-100 text-red-600 ring-2 ring-red-200' 
-                      : 'hover:bg-gray-100 text-[#3c8350]'
-                  }`}
-                  aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-                >
-                  <Icon name="microphone" className="w-5 h-5" />
-                </button>
-                <button
-                  className="p-2.5 hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label="Audio visualization"
-                >
-                  <Icon name="audio-waveform" className="w-5 h-5 text-gray-700" />
-                </button>
-                <button
-                  onClick={handleCleanAndStructure}
-                  disabled={isProcessing || !text}
-                  className="ml-auto bg-[#2b5d39] text-white px-6 py-2.5 rounded-full hover:bg-[#234a2d] transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
-                >
-                  {isProcessing ? 'Processing...' : 'Clean and Structure'}
-                </button>
-              </div>
-            </div>
-
-            {/* Text Area */}
-            <div className="flex-1 bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 overflow-hidden flex flex-col">
-              <div 
-                className="flex-1 overflow-y-auto"
-                style={{ backgroundColor: tintedBg ? '#fef9f3' : 'transparent' }}
-              >
-                <textarea
-                  ref={textareaRef}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Start typing or use voice input to begin writing..."
-                  className="w-full h-full min-h-[400px] resize-none outline-none text-gray-900 bg-transparent placeholder:text-gray-400 px-6 py-6 text-base md:text-lg"
-                  style={{ 
-                    fontFamily: getFontFamily(),
-                    lineHeight: getLineHeight()
-                  }}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="p-4 flex justify-end items-center gap-3 border-t border-gray-200 bg-white/50 flex-shrink-0">
-                <button
-                  onClick={handleCopyToClipboard}
-                  className="flex items-center justify-center gap-2 px-6 py-2.5 bg-[#2b5d39] hover:bg-[#234a2d] text-white rounded-full font-medium transition-all shadow-sm hover:shadow disabled:opacity-50"
-                  disabled={!text}
-                >
-                  {isCopied ? (
-                    <>
-                      <Icon name="check" size={18} />
-                      <span>Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="copy" size={18} />
-                      <span>Copy to clipboard</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
+    <div className="min-h-[calc(100vh-80px)] relative">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Writing Assistant</h1>
+        <div className="flex items-center gap-3">
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb]">
+            <Icon name="settings" size={20} />
+          </button>
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb]">
+            <Icon name="moon" size={20} />
+          </button>
+        </div>
       </div>
 
-      {/* Right Sidebar - Tools Panel */}
-      <aside
-        className={`${
-          showTools ? 'translate-x-0' : 'translate-x-full'
-        } md:translate-x-0 fixed md:relative right-0 top-16 md:top-0 h-[calc(100vh-4rem)] md:h-full w-80 bg-[#f4f4f4] border-l border-gray-200 rounded-tl-3xl rounded-bl-3xl shadow-2xl md:shadow-none transition-transform duration-300 z-50 overflow-y-auto flex flex-col`}
-      >
-        <div className="p-6 flex-1 flex flex-col min-h-0">
-          {/* Close button for mobile */}
-          <button
-            onClick={() => setShowTools(false)}
-            className="md:hidden absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-lg transition-colors"
-            aria-label="Close tools"
-          >
-            <Icon name="x" className="w-5 h-5 text-gray-600" />
-          </button>
+      {/* Main Content Area with Editor Card */}
+      <div className={`transition-all duration-300 ${toolsOpen ? 'pr-72' : 'pr-0'}`}>
+        {/* Editor Card */}
+        <div 
+          className="rounded-2xl p-6 relative"
+          style={{ backgroundColor: getBackgroundColor() }}
+        >
+          {/* Top Row */}
+          <div className="flex items-center justify-between mb-6">
+            {/* Left: Low confidence indicator */}
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-400"></span>
+              <span className="text-orange-400 text-sm font-medium">Low confidence</span>
+            </div>
 
-          {/* Tools Header - Collapsible */}
-          <div className="mb-6">
-            <button
-              onClick={() => toggleTool('tools')}
-              className="w-full flex items-center justify-between group"
-            >
-              <h2 className="text-xl text-[#3c8350] font-medium tracking-tight">Tools</h2>
-              <div className={`w-10 h-10 bg-[#3c8350] rounded-full flex items-center justify-center transition-transform duration-200 ${
-                expandedTool === 'tools' ? '' : 'rotate-180'
-              }`}>
-                <Icon name="chevron-down" className="w-5 h-5 text-white" />
-              </div>
+            {/* Center: Audio icons */}
+            <div className="flex items-center gap-3 text-[#3D6E4E]">
+              <MicrophoneIcon className="w-5 h-5" />
+              <WaveformIcon className="w-5 h-5" />
+            </div>
+
+            {/* Right: Clean and Structure button */}
+            <button className="bg-[#3D6E4E] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#2d5239] transition-colors shadow-sm">
+              Clean and Structure
             </button>
           </div>
 
-          {/* Collapsible Tools Section */}
-          <div className={`overflow-y-auto flex-1 transition-all duration-300 ${
-            expandedTool === 'tools' ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-          }`}>
-            {/* Font Choice Dropdown */}
-            <div className="mb-4">
-              <button 
-                onClick={() => toggleTool('font')}
-                className="w-full flex items-center justify-between text-left py-3 px-4 text-lg text-gray-700 hover:bg-white/50 rounded-lg transition-colors"
-              >
-                <span className="font-normal">Font Choice</span>
-                <Icon name="chevron-down" className={`w-5 h-5 text-[#3c8350] transition-transform duration-200 ${
-                  expandedTool === 'font' ? 'rotate-180' : ''
-                }`} />
-              </button>
-              {expandedTool === 'font' && (
-                <div className="mt-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  {fontOptions.map((font) => (
-                    <button
-                      key={font}
-                      onClick={() => {
-                        setFontChoice(font);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${
-                        fontChoice === font ? 'bg-[#3c8350]/10 text-[#3c8350] font-medium' : 'text-gray-700'
-                      }`}
-                      style={{ fontFamily: font === 'System Default' ? 'system-ui' : font }}
-                    >
-                      {font}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* Text Content Area */}
+          <div className="relative pr-4">
+            {/* Custom Scrollbar Track */}
+            <div className="absolute right-0 top-0 bottom-0 w-2 bg-gray-300/50 rounded-full">
+              <div className="w-full h-20 bg-gray-400 rounded-full mt-8"></div>
             </div>
 
-            {/* Spacing Dropdown */}
-            <div className="mb-4">
-              <button 
-                onClick={() => toggleTool('spacing')}
-                className="w-full flex items-center justify-between text-left py-3 px-4 text-lg text-gray-700 hover:bg-white/50 rounded-lg transition-colors"
-              >
-                <span className="font-normal">Spacing</span>
-                <Icon name="chevron-down" className={`w-5 h-5 text-[#3c8350] transition-transform duration-200 ${
-                  expandedTool === 'spacing' ? 'rotate-180' : ''
-                }`} />
-              </button>
-              {expandedTool === 'spacing' && (
-                <div className="mt-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  {spacingOptions.map((space) => (
-                    <button
-                      key={space}
-                      onClick={() => {
-                        setSpacing(space);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${
-                        spacing === space ? 'bg-[#3c8350]/10 text-[#3c8350] font-medium' : 'text-gray-700'
-                      }`}
-                    >
-                      {space}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Tinted Backgrounds Toggle */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between py-3 px-4 hover:bg-white/50 rounded-lg transition-colors">
-                <span className="text-lg text-gray-700 font-normal">Tinted backgrounds</span>
-                <button 
-                  onClick={() => setTintedBg(!tintedBg)}
-                  className={`w-12 h-7 rounded-full flex items-center transition-colors ${tintedBg ? 'bg-[#3c8350]' : 'bg-gray-300'}`}
-                >
-                  <span className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${tintedBg ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-            </div>
-
-            {/* Bookmark Icon */}
-            <div className="mb-4">
-              <button className="p-3 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-2 text-gray-600 hover:text-[#3c8350]" aria-label="Bookmark">
-                <Icon name="bookmark" className="w-6 h-6" />
-                <span className="text-base font-normal">Save preferences</span>
-              </button>
+            {/* Text Content */}
+            <div 
+              className="pr-6 max-h-[400px] overflow-y-auto"
+              style={{ 
+                fontFamily: getFontFamily(),
+                letterSpacing: `${letterSpacing}px`,
+                wordSpacing: `${wordSpacing}px`,
+                lineHeight: lineHeight
+              }}
+            >
+              <h2 className="text-xl font-bold text-[#1a1a1a] mb-4">Early Life and Artistic Failure</h2>
+              <p className="text-[#1a1a1a] text-[15px] leading-relaxed whitespace-pre-line">
+                {renderText()}
+              </p>
             </div>
           </div>
 
-          {/* Export Button - Updated */}
-          <div className="mt-auto pt-6 border-t border-gray-200">
-            {exportOpen && (
-              <div className="mb-4 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                <button
-                  onClick={exportToGoogleDocs}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
-                >
-                  <Icon name="file-text" className="w-6 h-6 text-blue-500" />
-                  <span className="text-base font-normal text-gray-900">Export to Google Docs</span>
-                </button>
-                <button
-                  onClick={downloadAsTxt}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                >
-                  <Icon name="file-text" className="w-6 h-6 text-green-700" />
-                  <span className="text-base font-normal text-gray-900">Download as .txt</span>
-                </button>
-              </div>
-            )}
+          {/* Misheard Tooltip - positioned near highlighted text */}
+          <div className="absolute left-[280px] top-[200px] bg-white rounded-xl shadow-lg border border-[#e5e7eb] p-4 w-64 z-20">
+            <div className="flex flex-col items-center text-center">
+              <InfoIcon className="w-6 h-6 text-gray-900 mb-2" />
+              <p className="text-sm text-gray-600">
+                We may have misheard you. Please confirm if the highlighted words are correct
+              </p>
+            </div>
+            {/* Arrow pointer */}
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r border-b border-[#e5e7eb] rotate-45"></div>
+          </div>
+
+          {/* Bottom: Copy to Clipboard Button */}
+          <div className="flex justify-end mt-6">
             <button
-              onClick={() => setExportOpen(!exportOpen)}
-              className="w-full bg-[#2b5d39] text-white px-6 py-4 rounded-full hover:bg-[#234a2d] transition-all font-medium text-lg flex items-center justify-center gap-3 shadow-sm hover:shadow"
+              onClick={handleCopy}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm ${
+                copied 
+                  ? 'bg-[#3D6E4E] text-white' 
+                  : 'bg-[#3D6E4E] text-white hover:bg-[#2d5239]'
+              }`}
             >
-              <Icon name="download" className="w-5 h-5" />
-              Export options
-              <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
+              {copied ? (
+                <>
+                  <CheckIcon className="w-4 h-4" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <ClipboardIcon className="w-4 h-4" />
+                  <span>Copy to Clipboard</span>
+                </>
+              )}
             </button>
           </div>
         </div>
-      </aside>
+      </div>
 
-      {/* Overlay for mobile */}
-      {showTools && (
-        <div
-          className="md:hidden fixed inset-0 bg-black bg-opacity-60 z-40"
-          onClick={() => setShowTools(false)}
+      {/* Tools Drawer Toggle Button */}
+      <button
+        onClick={() => setToolsOpen(true)}
+        className={`fixed right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#3D6E4E] rounded-l-full flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] transition-all z-30 ${toolsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      >
+        <ChevronLeftIcon className="w-5 h-5" />
+      </button>
+
+      {/* Tools Slide-over Drawer */}
+      <div className={`fixed inset-y-0 right-0 w-72 bg-white shadow-2xl transform transition-transform duration-300 z-40 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="h-full flex flex-col p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-semibold text-[#3D6E4E]">Tools</h2>
+            <div className="flex items-center gap-3">
+              <BookmarkIcon className="w-5 h-5 text-gray-400" />
+              <button 
+                onClick={() => setToolsOpen(false)}
+                className="w-8 h-8 bg-[#3D6E4E] rounded-full flex items-center justify-center text-white hover:bg-[#2d5239] transition-colors"
+              >
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Menu Items */}
+          <div className="flex-1 space-y-6">
+            {/* Font Choice */}
+            <div className="relative" ref={fontDropdownRef}>
+              <button
+                onClick={() => {
+                  setShowFontDropdown(!showFontDropdown);
+                  setShowSpacingDropdown(false);
+                  setShowTintPicker(false);
+                }}
+                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] transition-colors"
+              >
+                <span className="text-base">Font Choice</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform ${showFontDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Font Choice Dropdown */}
+              {showFontDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 z-50">
+                  {(['default', 'opendyslexic', 'roboto'] as FontChoice[]).map((font) => (
+                    <button
+                      key={font}
+                      onClick={() => { setFontChoice(font); setShowFontDropdown(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                        fontChoice === font 
+                          ? 'bg-[#3D6E4E] text-white mx-2 rounded-full w-[calc(100%-16px)]' 
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {font === 'opendyslexic' ? 'OpenDyslexic' : font === 'roboto' ? 'Roboto' : 'Default'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Spacing */}
+            <div className="relative" ref={spacingDropdownRef}>
+              <button
+                onClick={() => {
+                  setShowSpacingDropdown(!showSpacingDropdown);
+                  setShowFontDropdown(false);
+                  setShowTintPicker(false);
+                }}
+                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] transition-colors"
+              >
+                <span className="text-base">Spacing</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform ${showSpacingDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Spacing Dropdown */}
+              {showSpacingDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 z-50">
+                  {(['letter', 'word', 'line'] as SpacingOption[]).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => { 
+                        setShowSpacingDropdown(false);
+                        setShowSpacingPanel(true);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="capitalize">{option}</span>
+                      <SmallChevronRight className="w-3 h-3 text-gray-400" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Spacing Panel (when option selected) */}
+              {showSpacingPanel && (
+                <div className="mt-3 space-y-4 p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs text-gray-600">Letter spacing</label>
+                      <span className="text-xs text-gray-500">{letterSpacing}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="5" 
+                      step="0.5" 
+                      value={letterSpacing}
+                      onChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3D6E4E]"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs text-gray-600">Word spacing</label>
+                      <span className="text-xs text-gray-500">{wordSpacing}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="10" 
+                      step="1" 
+                      value={wordSpacing}
+                      onChange={(e) => setWordSpacing(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3D6E4E]"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs text-gray-600">Line height</label>
+                      <span className="text-xs text-gray-500">{lineHeight.toFixed(1)}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="3" 
+                      step="0.1" 
+                      value={lineHeight}
+                      onChange={(e) => setLineHeight(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3D6E4E]"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tinted Background Colour */}
+            <div className="relative" ref={tintPickerRef}>
+              <button
+                onClick={() => {
+                  setShowTintPicker(!showTintPicker);
+                  setShowFontDropdown(false);
+                  setShowSpacingDropdown(false);
+                }}
+                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] transition-colors"
+              >
+                <span className="text-base">Tinted Background Colour</span>
+                <NullIcon className="w-5 h-5 text-gray-900" />
+              </button>
+
+              {/* Color Grid Popover */}
+              {showTintPicker && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] p-4 z-50">
+                  <div className="grid grid-cols-5 gap-2">
+                    {TINT_COLORS.map((tint) => (
+                      <button
+                        key={tint.id}
+                        onClick={() => setBackgroundTint(tint.id)}
+                        className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${
+                          backgroundTint === tint.id ? 'ring-2 ring-[#3D6E4E] ring-offset-2' : ''
+                        }`}
+                        style={{ backgroundColor: tint.color }}
+                        title={tint.id}
+                      />
+                    ))}
+                  </div>
+                  {/* No color option */}
+                  <button
+                    onClick={() => setBackgroundTint('none')}
+                    className={`mt-3 w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center transition-transform hover:scale-110 ${
+                      backgroundTint === 'none' ? 'ring-2 ring-[#3D6E4E] ring-offset-2' : ''
+                    }`}
+                  >
+                    <NullIcon className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Export Button */}
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="w-full bg-[#3D6E4E] text-white py-3 rounded-full flex items-center justify-center gap-2 font-medium hover:bg-[#2d5239] transition-colors shadow-md"
+            >
+              <ExportIcon className="w-5 h-5" />
+              <span>Export</span>
+            </button>
+
+            {/* Export Menu */}
+            {showExportMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 z-50">
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <GoogleDriveIcon className="w-5 h-5" />
+                  <span>Export to Google docx</span>
+                </button>
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <WordIcon className="w-5 h-5" />
+                  <span>Download as docx</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Backdrop when tools open */}
+      {toolsOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-30"
+          onClick={() => setToolsOpen(false)}
         />
       )}
     </div>

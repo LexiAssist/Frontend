@@ -154,14 +154,8 @@ export default function DashboardPage() {
       description: 'A smart assistant that helps you understand your notes better. Just upload!',
       bgColor: 'rgba(126, 87, 194, 0.25)', // Purple
       illustration: (
-        <div className="w-full h-full flex items-center justify-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full">
-            <circle cx="35" cy="32" r="12" fill="#7c5cbf" />
-            <ellipse cx="35" cy="75" rx="20" ry="10" fill="#7c5cbf" />
-            <circle cx="75" cy="38" r="11" fill="#9b7ed4" />
-            <ellipse cx="75" cy="78" rx="20" ry="10" fill="#9b7ed4" />
-            <ellipse cx="82" cy="20" rx="14" ry="9" fill="white" opacity="0.85" />
-          </svg>
+        <div className="w-full h-full flex items-center justify-center" aria-hidden="true">
+          {/* TODO: Insert SVG for StudyBuddy here. Link later. */}
         </div>
       ),
       href: '/chat-assistant',
@@ -171,13 +165,8 @@ export default function DashboardPage() {
       description: 'Writing made easier! Just speak and we will do the writing',
       bgColor: 'rgba(197, 63, 63, 0.25)', // Red
       illustration: (
-        <div className="w-full h-full flex items-center justify-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full">
-            <rect x="30" y="10" width="45" height="75" rx="8" fill="#c0392b" />
-            <rect x="34" y="16" width="37" height="55" rx="5" fill="#1a1a2e" />
-            <circle cx="52" cy="82" r="5" fill="#e8b4b0" />
-            <circle cx="52" cy="55" r="10" fill="#e74c3c" />
-          </svg>
+        <div className="w-full h-full flex items-center justify-center" aria-hidden="true">
+          {/* TODO: Insert SVG for Speech to Text (Writing Assistant) here. Link later. */}
         </div>
       ),
       href: '/writing-assistant',

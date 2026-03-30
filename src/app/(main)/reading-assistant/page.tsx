@@ -233,7 +233,7 @@ export default function ReadingAssistantPage() {
                 </div>
               )}
             </div>
-            <button onClick={() => setFocusMode(false)} className="p-2 rounded-xl hover:bg-black/5 text-[#5f5f5f] transition-colors"><Icon name="close" size={20} /></button>
+            <button onClick={() => setFocusMode(false)} className="p-2 rounded-full bg-gray-900 text-white hover:bg-gray-800 shadow-lg transition-colors"><Icon name="close" size={20} /></button>
           </div>
         </div>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
@@ -271,7 +271,7 @@ export default function ReadingAssistantPage() {
 
       {/* HOME - Clean Card Design */}
       {viewState === 'home' && (
-        <div className="max-w-3xl space-y-8">
+        <div className="w-full space-y-8">
           {/* Hero Card with Soft Blue Background */}
           <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
             <div className="absolute inset-0 opacity-[0.08]">
@@ -284,8 +284,8 @@ export default function ReadingAssistantPage() {
               </svg>
             </div>
             <CardContent className="relative z-10 p-8 flex items-center gap-8">
-              <div className="flex-shrink-0 w-40 h-32">
-                <ReadingAssistantIllustration className="w-full h-full" />
+              <div className="flex-shrink-0 w-40 h-32" aria-hidden="true">
+                {/* TODO: Insert specific Reading Assistant SVG here. Link later. */}
               </div>
               <div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-2">Reading Assistant</h2>
@@ -319,7 +319,7 @@ export default function ReadingAssistantPage() {
 
       {/* UPLOAD */}
       {viewState === 'upload' && uploadedFile && (
-        <div className="max-w-3xl space-y-8">
+        <div className="w-full space-y-8">
           <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
             <div className="absolute inset-0 opacity-[0.06]">
               <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
@@ -328,7 +328,9 @@ export default function ReadingAssistantPage() {
               </svg>
             </div>
             <CardContent className="relative z-10 p-6 flex items-center gap-6">
-              <div className="flex-shrink-0 w-28 h-22"><ReadingAssistantIllustration className="w-full h-full" /></div>
+              <div className="flex-shrink-0 w-28 h-22" aria-hidden="true">
+                {/* TODO: Insert specific Reading Assistant SVG here. Link later. */}
+              </div>
               <div>
                 <h2 className="text-lg font-bold text-[#1a1a1a] mb-1">Reading Assistant</h2>
                 <p className="text-sm text-[#5f5f5f]">Study with confidence</p>
