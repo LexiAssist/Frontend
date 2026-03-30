@@ -1,497 +1,331 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
+import type { ComponentType } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  Home,
-  Mic,
   BookOpen,
-  PenSquare,
-  MessageSquare,
-  Layers,
-  HelpCircle,
   ChevronDown,
-  LogOut,
+  ChevronRight,
+  DoorOpen,
+  FileText,
+  Home,
   Menu,
-  X,
-  Settings,
+  MessageSquare,
+  Mic,
   Moon,
+  PenSquare,
+  Settings,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
-interface NavItem {
-  name: string;
+type NavLink = {
+  label: string;
   href: string;
-  icon: React.ReactNode;
-  shortName?: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+const primaryGreen = 'var(--primary-500)';
+const sidebarGreen = 'var(--primary-500)';
+const studyBuddyLinks: NavLink[] = [
+  { label: 'Chat Assistant', href: '/chat-assistant', icon: MessageSquare },
+  { label: 'Flashcards', href: '/flashcards', icon: BookOpen },
+  { label: 'Quizzes', href: '/quizzes', icon: FileText },
+];
+
+const mainLinks: NavLink[] = [
+  { label: 'Text to Speech', href: '/text-to-speech', icon: Mic },
+  { label: 'Reading Assistant', href: '/reading-assistant', icon: BookOpen },
+  { label: 'Writing Assistant', href: '/writing-assistant', icon: PenSquare },
+];
+
+function LexiAssistMark({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex items-center ${className}`}>
+      <Image
+        src="/images/lexiassit_logo.jpg"
+        alt="LexiAssist"
+        width={266}
+        height={70}
+        className="h-auto w-[170px] object-contain mix-blend-screen"
+        unoptimized
+        priority
+      />
+    </div>
+  );
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const [isStudyBuddyOpen, setIsStudyBuddyOpen] = useState(false);
   const { user, logout } = useAuthStore();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [studyBuddyOpen, setStudyBuddyOpen] = useState(true);
 
   useEffect(() => {
-    setMobileMenuOpen(false);
-    setMoreMenuOpen(false);
-  }, [pathname]);
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
-  useEffect(() => {
-    document.body.style.overflow = (mobileMenuOpen || moreMenuOpen) ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [mobileMenuOpen, moreMenuOpen]);
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
   };
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const avatarName = user?.name || 'Alison Eyo';
+  const avatarEmail = user?.email || 'alis@lexiassist';
 
-  // Desktop sidebar nav link
-  const MenuItem = ({ 
-    icon, 
-    label, 
-    href, 
-    active = false, 
-    compact = false,
-    onClick 
-  }: { 
-    icon: React.ReactNode; 
-    label: string; 
-    href?: string;
-    active?: boolean; 
-    compact?: boolean;
-    onClick?: () => void;
+  const NavItem = ({
+    link,
+    active,
+    nested = false,
+    mobile = false,
+  }: {
+    link: NavLink;
+    active: boolean;
+    nested?: boolean;
+    mobile?: boolean;
   }) => {
-    const content = (
-      <div
-        onClick={onClick}
-        className={`flex items-center gap-2.5 px-3 rounded-full transition-all duration-150 cursor-pointer ${
-          compact ? 'py-1.5' : 'py-2'
-        } ${
-          active
-            ? 'bg-white text-[#3D6E4E] shadow-sm'
-            : 'hover:bg-white/10 text-white/90'
-        }`}
-        style={active ? { fontWeight: 500 } : {}}
-      >
-        {icon}
-        <span className={compact ? 'text-[13px]' : 'text-sm'}>{label}</span>
-      </div>
-    );
-
-    if (href && !onClick) {
-      return (
-        <Link href={href} onClick={() => setMobileMenuOpen(false)}>
-          {content}
-        </Link>
-      );
-    }
-    return content;
-  };
-
-  // Mobile bottom nav link
-  const BottomNavLink = ({ item, isMore = false }: { item: NavItem; isMore?: boolean }) => {
-    const active = isActive(item.href) && !isMore;
-    
-    if (isMore) {
-      return (
-        <button
-          onClick={() => setMoreMenuOpen(true)}
-          className="flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[64px]"
-        >
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-            moreMenuOpen ? 'bg-white/20' : 'hover:bg-white/10'
-          }`}>
-            <Menu size={22} className="text-white/90" />
-          </div>
-          <span className="text-[10px] font-medium text-white/90">More</span>
-        </button>
-      );
-    }
+    const Icon = link.icon;
 
     return (
       <Link
-        href={item.href}
-        className="flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[64px]"
+        href={link.href}
+        onClick={() => setMobileMenuOpen(false)}
+        className={[
+          'flex items-center gap-3 rounded-full transition-all',
+          nested ? 'mx-4 px-4 py-2 text-[13px]' : 'mx-0 px-4 py-3 text-sm',
+          active
+            ? 'bg-white text-[var(--primary-500)]'
+            : mobile
+              ? 'text-slate-800 hover:bg-slate-100'
+              : 'text-white hover:bg-white/12',
+        ].join(' ')}
       >
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-          active ? 'bg-white text-[#3D6E4E]' : 'text-white/70 hover:bg-white/10'
-        }`}>
-          {item.icon}
-        </div>
-        <span className={`text-[10px] font-medium ${active ? 'text-white' : 'text-white/70'}`}>
-          {item.shortName}
-        </span>
+        <Icon className={nested ? 'h-4 w-4' : 'h-[17px] w-[17px]'} />
+        <span className={active ? 'font-semibold' : 'font-medium'}>{link.label}</span>
       </Link>
     );
   };
 
-  // Desktop sidebar content
-  const SidebarContent = () => (
-    <>
-      {/* Logo Section */}
-      <div className="px-5 py-6">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
-            <BookOpen className="w-5 h-5 text-[#3D6E4E]" />
+  const profileBlock = (
+    <div className="w-full rounded-2xl px-4 py-3 text-white">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar className="h-10 w-10 border border-white/25">
+            <AvatarImage src={user?.avatar} alt={avatarName} />
+            <AvatarFallback className="bg-[#f3dcc2] text-[var(--primary-700)] font-semibold">
+              {avatarName
+                .split(' ')
+                .map((part) => part[0])
+                .join('')
+                .slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold leading-none">{avatarName}</p>
+            <p className="truncate pt-1 text-xs text-white/75">{avatarEmail}</p>
           </div>
-          <span className="text-[17px] font-semibold text-white">LexiAssist</span>
         </div>
+        <button
+          onClick={handleLogout}
+          className="rounded-full p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
+          aria-label="Log out"
+        >
+          <DoorOpen className="h-4 w-4" />
+        </button>
       </div>
-
-      {/* Main Navigation */}
-      <div className="flex-1 px-3 pt-1 space-y-5 overflow-y-auto">
-        {/* Dashboard */}
-        <div className="space-y-2">
-          <MenuItem
-            icon={<Home size={18} />}
-            label="Dashboard"
-            href="/dashboard"
-            active={isActive('/dashboard')}
-          />
-          <div className="h-px bg-white/20 mx-2" />
-        </div>
-
-        {/* Tools Section */}
-        <div className="space-y-1.5">
-          <div className="px-3 text-white/60 text-[11px] tracking-wider font-medium uppercase">Tools</div>
-
-          <MenuItem
-            icon={<Mic size={18} />}
-            label="Text to Speech"
-            href="/text-to-speech"
-            active={isActive('/text-to-speech')}
-          />
-          <MenuItem
-            icon={<BookOpen size={18} />}
-            label="Reading Assistant"
-            href="/reading-assistant"
-            active={isActive('/reading-assistant')}
-          />
-          <MenuItem
-            icon={<PenSquare size={18} />}
-            label="Writing Assistant"
-            href="/writing-assistant"
-            active={isActive('/writing-assistant')}
-          />
-
-          {/* StudyBuddy with Submenu */}
-          <div className="space-y-0.5">
-            <button
-              onClick={() => setIsStudyBuddyOpen(!isStudyBuddyOpen)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full hover:bg-white/10 transition-colors text-white/90"
-            >
-              <Layers size={18} />
-              <span className="flex-1 text-left text-sm">StudyBuddy</span>
-              <ChevronDown
-                size={16}
-                className={`transition-transform duration-200 ${isStudyBuddyOpen ? 'rotate-180' : ''}`}
-                style={{ opacity: 0.7 }}
-              />
-            </button>
-
-            {isStudyBuddyOpen && (
-              <div className="pl-4 space-y-0.5">
-                <MenuItem
-                  icon={<MessageSquare size={16} />}
-                  label="Chat Assistant"
-                  href="/chat-assistant"
-                  active={isActive('/chat-assistant')}
-                  compact
-                />
-                <MenuItem
-                  icon={<Layers size={16} />}
-                  label="Flashcards"
-                  href="/flashcards"
-                  active={isActive('/flashcards')}
-                  compact
-                />
-                <MenuItem
-                  icon={<HelpCircle size={16} />}
-                  label="Quizzes"
-                  href="/quizzes"
-                  active={isActive('/quizzes')}
-                  compact
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* User Profile Section */}
-      <div className="p-3 border-t border-white/15">
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors">
-          <div className="relative flex-shrink-0">
-            <Avatar className="h-10 w-10 border-2 border-white/30">
-              <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-              <AvatarFallback className="bg-[#ffe7cc] text-[#3D6E4E] text-sm font-semibold">
-                {user?.name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#04802e] rounded-full border-2 border-[#3D6E4E]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-white truncate">{user?.name || 'Alison Eyo'}</div>
-            <div className="text-[10px] text-white/60 truncate">{user?.email || 'alis@lexiassist'}</div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 text-white/70"
-            aria-label="Sign out"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
-      </div>
-    </>
+    </div>
   );
 
-  // Bottom nav items for mobile
-  const bottomNavItems: NavItem[] = [
-    { name: 'Dashboard', href: '/dashboard', icon: <Home size={22} />, shortName: 'Home' },
-    { name: 'Text to Speech', href: '/text-to-speech', icon: <Mic size={22} />, shortName: 'TTS' },
-    { name: 'Reading Assistant', href: '/reading-assistant', icon: <BookOpen size={22} />, shortName: 'Read' },
-    { name: 'Writing Assistant', href: '/writing-assistant', icon: <PenSquare size={22} />, shortName: 'Write' },
-    { name: 'More', href: '#', icon: <Menu size={22} />, shortName: 'More' },
-  ];
+  const desktopSidebar = (
+    <aside
+      className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-72 flex-col px-4 py-6 text-white"
+      style={{ backgroundColor: sidebarGreen }}
+    >
+      <div className="px-2 pb-6">
+        <div className="text-white">
+          <LexiAssistMark />
+        </div>
+      </div>
 
-  return (
-    <>
-      {/* Desktop Sidebar - Rebuilt Design */}
-      <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-[210px] bg-[#3D6E4E] text-white flex-col flex-shrink-0 z-[50] shadow-xl" style={{ borderRadius: '0 22px 22px 0' }}>
-        <SidebarContent />
-      </aside>
-
-      {/* Mobile: Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-[#3D6E4E] z-[45] lg:hidden shadow-md">
-        <div className="flex items-center justify-between h-full px-4">
-          {/* Left: Menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-
-          {/* Center: Logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
-              <BookOpen size={16} className="text-[#3D6E4E]" />
-            </div>
-            <span className="text-white font-bold text-lg">LexiAssist</span>
+      <div className="flex-1 overflow-y-auto px-2">
+        <nav className="space-y-4">
+          <div className="space-y-3">
+            <Link
+              href="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className={[
+                'flex items-center gap-3 rounded-full px-4 py-3 text-sm font-medium transition-all',
+                isActive('/dashboard') ? 'bg-white text-[var(--primary-500)]' : 'text-white hover:bg-white/12',
+              ].join(' ')}
+            >
+              <Home className="h-[17px] w-[17px]" />
+              <span>Dashboard</span>
+            </Link>
+            <div className="mx-2 h-px bg-white/20" />
           </div>
 
-          {/* Right: Settings & Profile */}
-          <div className="flex items-center gap-2">
-            <button className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
-              <Settings size={18} />
+          <div className="space-y-2">
+            <p className="px-4 text-[11px] font-medium text-white/55">Section Title</p>
+            {mainLinks.map((link) => (
+              <NavItem key={link.href} link={link} active={isActive(link.href)} />
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setStudyBuddyOpen((open) => !open)}
+              className="flex w-full items-center gap-3 rounded-full px-4 py-3 text-sm font-medium text-white transition hover:bg-white/12"
+            >
+              <Sparkles className="h-[17px] w-[17px]" />
+              <span className="flex-1 text-left">StudyBuddy</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${studyBuddyOpen ? 'rotate-180' : ''}`} />
             </button>
-            <Link href="/dashboard" className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/30">
-              <Avatar className="h-full w-full">
-                <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-                <AvatarFallback className="bg-[#ffe7cc] text-[#3D6E4E] text-xs font-semibold">
-                  {user?.name?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
+            {studyBuddyOpen ? (
+              <div className="space-y-1 pl-2">
+                {studyBuddyLinks.map((link) => (
+                  <NavItem
+                    key={link.href}
+                    link={link}
+                    active={isActive(link.href)}
+                    nested
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </nav>
+      </div>
+
+      <div className="mt-auto px-2 pt-6">
+        {profileBlock}
+      </div>
+    </aside>
+  );
+
+  const mobileDrawer = (
+    <>
+      <header className="fixed left-0 right-0 top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden">
+        <div className="flex h-16 items-center justify-between px-4">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700"
+            aria-label="Open navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="text-[var(--primary-500)]">
+            <LexiAssistMark />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" className="rounded-full p-2 text-slate-700">
+              <Moon className="h-4 w-4" />
+            </button>
+            <button type="button" className="rounded-full p-2 text-slate-700">
+              <Settings className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile: Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 h-[72px] bg-[#3D6E4E] z-[45] lg:hidden pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center justify-around h-full px-2">
-          {bottomNavItems.map((item, index) => (
-            <BottomNavLink key={item.name} item={item} isMore={index === bottomNavItems.length - 1} />
-          ))}
-        </div>
-      </nav>
-
-      {/* Mobile: Slide-in Menu Overlay */}
       <div
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[46] lg:hidden transition-opacity duration-300 ${
-          mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 z-40 bg-black/35 transition ${mobileMenuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         onClick={() => setMobileMenuOpen(false)}
       />
 
-      {/* Mobile: Slide-in Menu Drawer */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-[280px] bg-[#3D6E4E] z-[47] shadow-2xl transform transition-transform duration-300 ease-out lg:hidden flex flex-col
-          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-white shadow-xl transition-transform lg:hidden ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        {/* Close Button */}
-        <div className="flex items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-[#3D6E4E]" />
-            </div>
-            <span className="text-white font-bold text-lg">LexiAssist</span>
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+          <div className="text-[var(--primary-500)]">
+            <LexiAssistMark />
           </div>
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-700"
+            aria-label="Close navigation"
           >
-            <X size={20} />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Navigation Content */}
-        <div className="flex-1 px-3 pt-1 space-y-5 overflow-y-auto">
-          {/* Dashboard */}
-          <div className="space-y-2">
-            <MenuItem
-              icon={<Home size={18} />}
-              label="Dashboard"
-              href="/dashboard"
-              active={isActive('/dashboard')}
-            />
-            <div className="h-px bg-white/20 mx-2" />
-          </div>
-
-          {/* Tools Section */}
-          <div className="space-y-1.5">
-            <div className="px-3 text-white/60 text-[11px] tracking-wider font-medium uppercase">Tools</div>
-
-            <MenuItem
-              icon={<Mic size={18} />}
-              label="Text to Speech"
-              href="/text-to-speech"
-              active={isActive('/text-to-speech')}
-            />
-            <MenuItem
-              icon={<BookOpen size={18} />}
-              label="Reading Assistant"
-              href="/reading-assistant"
-              active={isActive('/reading-assistant')}
-            />
-            <MenuItem
-              icon={<PenSquare size={18} />}
-              label="Writing Assistant"
-              href="/writing-assistant"
-              active={isActive('/writing-assistant')}
-            />
-
-            {/* StudyBuddy with Submenu */}
-            <div className="space-y-0.5">
-              <button
-                onClick={() => setIsStudyBuddyOpen(!isStudyBuddyOpen)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-full hover:bg-white/10 transition-colors text-white/90"
+        <div className="flex-1 overflow-y-auto px-4 py-5">
+          <nav className="space-y-5">
+            <div className="space-y-3">
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={[
+                  'flex items-center gap-3 rounded-full px-3 py-2.5 text-sm font-medium transition-all',
+                  isActive('/dashboard') ? 'bg-[var(--primary-500)] text-white' : 'text-slate-800 hover:bg-slate-100',
+                ].join(' ')}
               >
-                <Layers size={18} />
-                <span className="flex-1 text-left text-sm">StudyBuddy</span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${isStudyBuddyOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {isStudyBuddyOpen && (
-                <div className="pl-4 space-y-0.5">
-                  <MenuItem
-                    icon={<MessageSquare size={16} />}
-                    label="Chat Assistant"
-                    href="/chat-assistant"
-                    active={isActive('/chat-assistant')}
-                    compact
-                  />
-                  <MenuItem
-                    icon={<Layers size={16} />}
-                    label="Flashcards"
-                    href="/flashcards"
-                    active={isActive('/flashcards')}
-                    compact
-                  />
-                  <MenuItem
-                    icon={<HelpCircle size={16} />}
-                    label="Quizzes"
-                    href="/quizzes"
-                    active={isActive('/quizzes')}
-                    compact
-                  />
-                </div>
-              )}
+                <Home className="h-[17px] w-[17px]" />
+                <span>Dashboard</span>
+              </Link>
+              <div className="h-px bg-slate-200" />
             </div>
-          </div>
+
+            <div className="space-y-2">
+              <p className="px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">Section Title</p>
+              {mainLinks.map((link) => (
+                <NavItem key={link.href} link={link} active={isActive(link.href)} mobile />
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setStudyBuddyOpen((open) => !open)}
+                className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-100"
+              >
+                <Sparkles className="h-[17px] w-[17px]" />
+                <span className="flex-1 text-left">StudyBuddy</span>
+                {studyBuddyOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+              {studyBuddyOpen ? (
+                <div className="space-y-1 pl-2">
+                  {studyBuddyLinks.map((link) => (
+                    <NavItem
+                      key={link.href}
+                      link={link}
+                      active={isActive(link.href)}
+                      nested
+                      mobile
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </nav>
         </div>
 
-        {/* User Profile */}
-        <div className="p-3 border-t border-white/15">
-          <div className="flex items-center gap-2.5 px-3 py-2">
-            <Avatar className="h-10 w-10 border-2 border-white/30">
-              <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-              <AvatarFallback className="bg-[#ffe7cc] text-[#3D6E4E] text-sm font-semibold">
-                {user?.name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-white truncate">{user?.name || 'Alison Eyo'}</div>
-              <div className="text-[10px] text-white/60 truncate">{user?.email || 'alis@lexiassist'}</div>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
+        <div
+          className="mx-4 mb-4 rounded-3xl px-1 py-2 text-white"
+          style={{ backgroundColor: primaryGreen }}
+        >
+          {profileBlock}
         </div>
       </aside>
+    </>
+  );
 
-      {/* Mobile: More Menu Overlay */}
-      <div
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[46] lg:hidden transition-opacity duration-300 ${
-          moreMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setMoreMenuOpen(false)}
-      />
-
-      {/* Mobile: More Menu Drawer (from bottom) */}
-      <div
-        className={`fixed bottom-[72px] left-0 right-0 bg-white rounded-t-3xl z-[47] lg:hidden transform transition-transform duration-300 ease-out shadow-[0_-4px_20px_rgba(0,0,0,0.15)] ${
-          moreMenuOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
-      >
-        <div className="p-6">
-          {/* Handle bar */}
-          <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6" />
-          
-          <h3 className="text-lg font-bold text-[#1a1a1a] mb-4">More Tools</h3>
-          
-          <div className="space-y-2">
-            {[
-              { name: 'Chat Assistant', href: '/chat-assistant', icon: <MessageSquare size={22} className="text-[#3D6E4E]" /> },
-              { name: 'Flashcards', href: '/flashcards', icon: <Layers size={22} className="text-[#3D6E4E]" /> },
-              { name: 'Quizzes', href: '/quizzes', icon: <HelpCircle size={22} className="text-[#3D6E4E]" /> },
-            ].map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setMoreMenuOpen(false)}
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
-              >
-                <div className="w-12 h-12 rounded-xl bg-[#3D6E4E]/10 flex items-center justify-center">
-                  {item.icon}
-                </div>
-                <div>
-                  <p className="font-semibold text-[#1a1a1a]">{item.name}</p>
-                  <p className="text-sm text-gray-500">Access {item.name.toLowerCase()}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+  return (
+    <>
+      {desktopSidebar}
+      {mobileDrawer}
     </>
   );
 }

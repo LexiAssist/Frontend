@@ -1,307 +1,213 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
-import { useState, useRef, useEffect } from 'react';
-import { Icon } from '@/components/Icon';
-import { toast } from 'sonner';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ArrowUp,
+  BookOpenText,
+  ChevronDown,
+  LockKeyhole,
+  Moon,
+  Paperclip,
+  PenLine,
+  Pin,
+  Settings,
+  Sprout,
+} from 'lucide-react';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  updatedAt: Date;
-}
-
-const suggestedPrompts = [
-  'Explain quantum physics in simple terms',
-  'Help me understand photosynthesis',
-  'What are the key events of World War II?',
-  'Solve this math problem: 2x + 5 = 15',
-  'Summarize the theory of evolution',
+const starterCards = [
+  {
+    title: 'Summarize this into key points',
+    icon: BookOpenText,
+  },
+  {
+    title: 'Give me the most important ideas from this topic.',
+    icon: Pin,
+  },
+  {
+    title: 'Explain empiricism in philosophy in simple terms.',
+    icon: PenLine,
+  },
 ];
 
+const starterPrompt = 'Explain empiricism in philosophy in simple terms.';
+
+function LexiAssistSymbol() {
+  return (
+    <div className="relative flex h-14 w-14 items-center justify-center text-[var(--primary-500)]">
+      <BookOpenText className="h-10 w-10" strokeWidth={1.8} />
+      <Sprout className="absolute top-0 h-5 w-5" strokeWidth={2.2} />
+    </div>
+  );
+}
+
 export default function ChatAssistantPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [prompt, setPrompt] = useState(starterPrompt);
+  const [attachedItems, setAttachedItems] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    if (folderInputRef.current) {
+      folderInputRef.current.setAttribute('webkitdirectory', '');
+      folderInputRef.current.setAttribute('directory', '');
     }
-  }, [input]);
+  }, []);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    setTimeout(() => {
-      const responses = [
-        `I'd be happy to help you with that! Let me break it down:\n\n${userMessage.content}\n\nThis is a great question. Here's what I understand about this topic:\n\n1. Key concept explanation\n2. Important details to remember\n3. Practical applications\n\nWould you like me to elaborate on any specific part?`,
-        `Great question! Based on my knowledge:\n\n${userMessage.content}\n\nHere are the main points:\n• First important point\n• Second crucial detail\n• Third relevant information\n\nIs there anything specific you'd like me to clarify?`,
-        `I can help with that! Regarding "${userMessage.content.slice(0, 30)}...":\n\nThis topic involves several key concepts. Let me explain it step by step:\n\nStep 1: Understanding the basics\nStep 2: Exploring deeper concepts\nStep 3: Practical applications\n\nFeel free to ask follow-up questions!`,
-      ];
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: responses[Math.floor(Math.random() * responses.length)],
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1500);
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const openFolderPicker = () => {
+    folderInputRef.current?.click();
   };
 
-  const handleNewChat = () => {
-    if (messages.length > 0) {
-      const newConversation: Conversation = {
-        id: Date.now().toString(),
-        title: messages[0].content.slice(0, 50) + '...',
-        messages,
-        updatedAt: new Date(),
-      };
-      setConversations((prev) => [newConversation, ...prev].slice(0, 10));
-    }
-    setMessages([]);
-    toast.success('New chat started');
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    setAttachedItems(files.map((file) => file.name));
+    event.target.value = '';
   };
 
-  const handleClear = () => {
-    setMessages([]);
-    toast.success('Chat cleared');
-  };
+  const handleFolderSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
 
-  const handlePromptClick = (prompt: string) => {
-    setInput(prompt);
+    const folderName =
+      files[0].webkitRelativePath.split('/')[0] || `${files.length} items selected`;
+
+    setAttachedItems([`${folderName} (${files.length} files)`]);
+    event.target.value = '';
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Chat Assistant</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Ask questions and get AI-powered academic help
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col lg:min-h-screen">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleFileSelection}
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleFolderSelection}
+      />
+
+      <div className="flex justify-end gap-2 pb-8 pt-2 lg:pb-10 lg:pt-4">
+        <button
+          type="button"
+          className="rounded-full p-2 text-slate-900 transition hover:bg-slate-100"
+          aria-label="Toggle dark mode"
+        >
+          <Moon className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          className="rounded-full p-2 text-slate-900 transition hover:bg-slate-100"
+          aria-label="Open settings"
+        >
+          <Settings className="h-5 w-5" />
+        </button>
+      </div>
+
+      <section className="flex flex-1 flex-col items-center">
+        <div className="flex w-full max-w-[860px] flex-col items-center">
+          <LexiAssistSymbol />
+          <h1 className="pt-4 text-center text-[2rem] font-bold tracking-tight text-slate-950 sm:text-[2.35rem]">
+            Good Afternoon, Victoria
+          </h1>
+          <p className="pt-2 text-center text-[2rem] font-bold tracking-tight text-slate-950 sm:text-[2.35rem]">
+            What&apos;s on <span className="text-[var(--primary-500)]">your mind?</span>
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClear}
-            leftIcon={<Icon name="trash" size={16} />}
-            disabled={messages.length === 0}
-          >
-            Clear
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNewChat}
-          >
-            New Chat
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        <Card className="lg:col-span-1 hidden lg:flex flex-col">
-          <CardContent className="p-4 flex flex-col h-[500px]">
-            <div className="flex items-center gap-2 mb-4">
-              <Icon name="clock" size={16} className="text-slate-500" />
-              <span className="text-sm font-medium text-slate-700">Recent</span>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {conversations.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">
-                  No recent conversations
-                </p>
-              ) : (
-                conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    className="p-3 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
+          <div className="mt-8 w-full rounded-xl border border-slate-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              className="min-h-[220px] w-full resize-none rounded-t-xl border-0 bg-transparent px-5 py-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:min-h-[180px]"
+              placeholder={starterPrompt}
+            />
+
+            <div className="flex items-center justify-between gap-3 px-3 pb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center overflow-hidden rounded-full bg-[var(--primary-500)] text-white">
+                  <button
+                    type="button"
+                    onClick={openFilePicker}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition hover:bg-[var(--primary-600)]"
                   >
-                    <p className="text-sm font-medium text-slate-700 line-clamp-1">
-                      {conv.title}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {new Date(conv.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <CardContent className="p-0 flex flex-col h-[500px] lg:h-[600px]">
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
-              {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-[#3c8350]/10 flex items-center justify-center mb-4">
-                    <Icon name="brain" className="h-8 w-8 text-[#3c8350]" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2 text-center">
-                    How can I help you today?
-                  </h3>
-                  <p className="text-sm text-slate-500 mb-6 text-center max-w-md px-4">
-                    Ask me anything about your studies. I'm here to help explain concepts,
-                    solve problems, and guide your learning.
-                  </p>
-                  <div className="flex flex-wrap gap-2 justify-center max-w-lg px-4">
-                    {suggestedPrompts.map((prompt) => (
-                      <button
-                        key={prompt}
-                        onClick={() => handlePromptClick(prompt)}
-                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-600 transition-colors text-left"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${
-                      message.role === 'user' ? 'flex-row-reverse' : ''
-                    }`}
+                    <Paperclip className="h-4 w-4" />
+                    <span>Attach</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openFolderPicker}
+                    className="border-l border-white/20 px-2.5 py-2 transition hover:bg-[var(--primary-600)]"
+                    aria-label="Choose folder"
+                    title="Choose folder"
                   >
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                      {message.role === 'user' ? (
-                        <AvatarFallback className="bg-slate-200 text-slate-700">
-                          <Icon name="user" size={14} />
-                        </AvatarFallback>
-                      ) : (
-                        <AvatarFallback className="bg-[#3c8350] text-white">
-                          <Icon name="robot" size={14} />
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div
-                      className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 ${
-                        message.role === 'user'
-                          ? 'bg-[#3c8350] text-white'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
-                      </div>
-                      <span
-                        className={`text-xs mt-2 block ${
-                          message.role === 'user' ? 'text-white/70' : 'text-slate-400'
-                        }`}
-                      >
-                        {new Date(message.timestamp).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-              {isLoading && (
-                <div className="flex gap-3">
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback className="bg-[#3c8350] text-white">
-                      <Icon name="robot" size={14} />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-slate-100 rounded-2xl px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
-                      <div
-                        className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
-                        style={{ animationDelay: '0.1s' }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
-                        style={{ animationDelay: '0.2s' }}
-                      />
-                    </div>
-                  </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="border-t border-slate-100 p-3 sm:p-4">
-              <div className="flex items-end gap-2">
                 <button
-                  className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
-                  title="Attach file (coming soon)"
+                  type="button"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary-500)]/12 text-[var(--primary-500)] transition hover:bg-[var(--primary-500)]/18"
+                  aria-label="Private mode"
                 >
-                  <Icon name="paperclip" size={20} />
+                  <LockKeyhole className="h-4 w-4" />
                 </button>
-                <div className="flex-1 relative">
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask anything about your studies..."
-                    className="w-full px-4 py-3 pr-12 text-sm text-slate-700 bg-slate-50 rounded-xl border border-slate-200 focus:border-[#3c8350] focus:ring-2 focus:ring-[#3c8350]/20 focus:outline-none resize-none min-h-[48px] max-h-[120px]"
-                    rows={1}
-                  />
-                </div>
-                <Button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                  leftIcon={<Icon name="send" size={18} />}
-                  className="flex-shrink-0"
-                >
-                  Send
-                </Button>
               </div>
-              <p className="text-xs text-slate-400 mt-2 text-center">
-                AI responses are generated for educational purposes. Always verify important information.
-              </p>
+
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)]"
+                aria-label="Submit prompt"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            {attachedItems.length > 0 ? (
+              <div className="flex flex-wrap gap-2 px-3 pb-4">
+                {attachedItems.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-[var(--primary-50)] px-3 py-1 text-xs font-medium text-[var(--primary-700)]"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="w-full pt-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Get started with an example below
+            </p>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {starterCards.map((card) => {
+                const Icon = card.icon;
+
+                return (
+                  <button
+                    key={card.title}
+                    type="button"
+                    onClick={() => setPrompt(card.title)}
+                    className="flex min-h-[104px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
+                  >
+                    <p className="max-w-[180px] text-sm leading-5 text-slate-900">{card.title}</p>
+                    <Icon className="h-4 w-4 text-slate-900" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
