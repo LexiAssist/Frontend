@@ -9,10 +9,9 @@ import {
   CloudUpload,
   FileText,
   HelpCircle,
-  Moon,
-  Settings,
   X,
 } from "lucide-react";
+import { FeatureHeader } from '@/components/FeatureHeader';
 
 type ViewState = "upload" | "ready" | "generated";
 
@@ -55,22 +54,7 @@ function PageHeader({ title }: { title: string }) {
       <h1 className="text-[28px] font-semibold leading-[1.2] tracking-[-0.02em] text-[#272A28]">
         {title}
       </h1>
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          className="rounded-full p-1.5 text-black transition hover:bg-slate-100"
-          aria-label="Open settings"
-        >
-          <Settings className="h-7 w-7" />
-        </button>
-        <button
-          type="button"
-          className="rounded-full p-1.5 text-black transition hover:bg-slate-100"
-          aria-label="Toggle dark mode"
-        >
-          <Moon className="h-7 w-7" />
-        </button>
-      </div>
+      <FeatureHeader />
     </div>
   );
 }
