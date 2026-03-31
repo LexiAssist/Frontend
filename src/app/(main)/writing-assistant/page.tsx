@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Icon } from '@/components/Icon';
+import { FeatureHeader } from '@/components/FeatureHeader';
 
 // Types
 type FontChoice = 'default' | 'opendyslexic' | 'roboto';
@@ -215,57 +217,55 @@ export default function WritingAssistantPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] relative">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-[calc(100vh-80px)] relative antialiased"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-10 pt-8">
         <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Writing Assistant</h1>
-        <div className="flex items-center gap-3">
-          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb]">
-            <Icon name="settings" size={20} />
-          </button>
-          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb]">
-            <Icon name="moon" size={20} />
-          </button>
-        </div>
+        <FeatureHeader />
       </div>
 
       {/* Main Content Area with Editor Card */}
-      <div className={`transition-all duration-300 ${toolsOpen ? 'pr-72' : 'pr-0'}`}>
+      <div className={`transition-all duration-500 ease-out ${toolsOpen ? 'lg:pr-80' : 'pr-0'}`}>
         {/* Editor Card */}
         <div 
-          className="rounded-2xl p-6 relative"
+          className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative shadow-sm border border-gray-200/30"
           style={{ backgroundColor: getBackgroundColor() }}
         >
           {/* Top Row */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8 px-1">
             {/* Left: Low confidence indicator */}
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-orange-400"></span>
-              <span className="text-orange-400 text-sm font-medium">Low confidence</span>
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm"></span>
+              <span className="text-orange-400 text-sm font-medium tracking-wide">Low confidence</span>
             </div>
 
             {/* Center: Audio icons */}
-            <div className="flex items-center gap-3 text-[#3D6E4E]">
+            <div className="flex items-center gap-4 text-[#3D6E4E]">
               <MicrophoneIcon className="w-5 h-5" />
               <WaveformIcon className="w-5 h-5" />
             </div>
 
             {/* Right: Clean and Structure button */}
-            <button className="bg-[#3D6E4E] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#2d5239] transition-colors shadow-sm">
+            <button className="bg-[#3D6E4E] text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-[#2d5239]/90 active:scale-[0.96] transition-all duration-300 ease-out shadow-md hover:shadow-lg">
               Clean and Structure
             </button>
           </div>
 
           {/* Text Content Area */}
-          <div className="relative pr-4">
+          <div className="relative pr-5">
             {/* Custom Scrollbar Track */}
-            <div className="absolute right-0 top-0 bottom-0 w-2 bg-gray-300/50 rounded-full">
-              <div className="w-full h-20 bg-gray-400 rounded-full mt-8"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-gray-300/40 rounded-full">
+              <div className="w-full h-20 bg-gray-400/70 rounded-full mt-10"></div>
             </div>
 
             {/* Text Content */}
             <div 
-              className="pr-6 max-h-[400px] overflow-y-auto"
+              className="pr-8 max-h-[400px] overflow-y-auto"
               style={{ 
                 fontFamily: getFontFamily(),
                 letterSpacing: `${letterSpacing}px`,
@@ -273,7 +273,7 @@ export default function WritingAssistantPage() {
                 lineHeight: lineHeight
               }}
             >
-              <h2 className="text-xl font-bold text-[#1a1a1a] mb-4">Early Life and Artistic Failure</h2>
+              <h2 className="text-xl font-bold text-[#1a1a1a] mb-5">Early Life and Artistic Failure</h2>
               <p className="text-[#1a1a1a] text-[15px] leading-relaxed whitespace-pre-line">
                 {renderText()}
               </p>
@@ -281,25 +281,25 @@ export default function WritingAssistantPage() {
           </div>
 
           {/* Misheard Tooltip - positioned near highlighted text */}
-          <div className="absolute left-[280px] top-[200px] bg-white rounded-xl shadow-lg border border-[#e5e7eb] p-4 w-64 z-20">
+          <div className="absolute left-[280px] top-[200px] bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 p-5 w-64 z-20">
             <div className="flex flex-col items-center text-center">
-              <InfoIcon className="w-6 h-6 text-gray-900 mb-2" />
-              <p className="text-sm text-gray-600">
+              <InfoIcon className="w-6 h-6 text-gray-900 mb-3" />
+              <p className="text-sm text-gray-600 leading-relaxed">
                 We may have misheard you. Please confirm if the highlighted words are correct
               </p>
             </div>
             {/* Arrow pointer */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r border-b border-[#e5e7eb] rotate-45"></div>
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/95 border-r border-b border-gray-100/50 rotate-45"></div>
           </div>
 
           {/* Bottom: Copy to Clipboard Button */}
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-end mt-8">
             <button
               onClick={handleCopy}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm ${
+              className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ease-out shadow-md hover:shadow-lg active:scale-[0.96] ${
                 copied 
                   ? 'bg-[#3D6E4E] text-white' 
-                  : 'bg-[#3D6E4E] text-white hover:bg-[#2d5239]'
+                  : 'bg-[#3D6E4E] text-white hover:bg-[#2d5239]/90'
               }`}
             >
               {copied ? (
@@ -321,22 +321,22 @@ export default function WritingAssistantPage() {
       {/* Tools Drawer Toggle Button */}
       <button
         onClick={() => setToolsOpen(true)}
-        className={`fixed right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#3D6E4E] rounded-l-full flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] transition-all z-30 ${toolsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        className={`fixed right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-[#3D6E4E] rounded-l-2xl flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] active:scale-[0.96] transition-all duration-300 ease-out z-30 ${toolsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
       >
         <ChevronLeftIcon className="w-5 h-5" />
       </button>
 
       {/* Tools Slide-over Drawer */}
-      <div className={`fixed inset-y-0 right-0 w-72 bg-white shadow-2xl transform transition-transform duration-300 z-40 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="h-full flex flex-col p-6">
+      <div className={`fixed inset-y-0 right-0 w-72 bg-white/95 backdrop-blur-xl shadow-2xl border-l border-gray-100/50 transform transition-transform duration-500 ease-out z-40 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="h-full flex flex-col p-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-10">
             <h2 className="text-2xl font-semibold text-[#3D6E4E]">Tools</h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <BookmarkIcon className="w-5 h-5 text-gray-400" />
               <button 
                 onClick={() => setToolsOpen(false)}
-                className="w-8 h-8 bg-[#3D6E4E] rounded-full flex items-center justify-center text-white hover:bg-[#2d5239] transition-colors"
+                className="w-9 h-9 bg-[#3D6E4E] rounded-full flex items-center justify-center text-white hover:bg-[#2d5239] active:scale-[0.96] transition-all duration-300 ease-out shadow-md"
               >
                 <ChevronRightIcon className="w-4 h-4" />
               </button>
@@ -344,7 +344,7 @@ export default function WritingAssistantPage() {
           </div>
 
           {/* Menu Items */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-8">
             {/* Font Choice */}
             <div className="relative" ref={fontDropdownRef}>
               <button
@@ -353,23 +353,23 @@ export default function WritingAssistantPage() {
                   setShowSpacingDropdown(false);
                   setShowTintPicker(false);
                 }}
-                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] transition-colors"
+                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] active:scale-[0.98] transition-all duration-300 ease-out py-1"
               >
-                <span className="text-base">Font Choice</span>
-                <ChevronDownIcon className={`w-4 h-4 transition-transform ${showFontDropdown ? 'rotate-180' : ''}`} />
+                <span className="text-base font-medium">Font Choice</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ease-out ${showFontDropdown ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Font Choice Dropdown */}
               {showFontDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 z-50">
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 py-3 z-50">
                   {(['default', 'opendyslexic', 'roboto'] as FontChoice[]).map((font) => (
                     <button
                       key={font}
                       onClick={() => { setFontChoice(font); setShowFontDropdown(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                      className={`w-full text-left px-5 py-3 text-sm transition-all duration-300 ease-out active:scale-[0.98] ${
                         fontChoice === font 
-                          ? 'bg-[#3D6E4E] text-white mx-2 rounded-full w-[calc(100%-16px)]' 
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'bg-[#3D6E4E] text-white mx-2 rounded-full w-[calc(100%-16px)] shadow-md' 
+                          : 'text-gray-700 hover:bg-gray-50/80 rounded-xl mx-2 w-[calc(100%-16px)]'
                       }`}
                     >
                       {font === 'opendyslexic' ? 'OpenDyslexic' : font === 'roboto' ? 'Roboto' : 'Default'}
@@ -387,15 +387,15 @@ export default function WritingAssistantPage() {
                   setShowFontDropdown(false);
                   setShowTintPicker(false);
                 }}
-                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] transition-colors"
+                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] active:scale-[0.98] transition-all duration-300 ease-out py-1"
               >
-                <span className="text-base">Spacing</span>
-                <ChevronDownIcon className={`w-4 h-4 transition-transform ${showSpacingDropdown ? 'rotate-180' : ''}`} />
+                <span className="text-base font-medium">Spacing</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ease-out ${showSpacingDropdown ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Spacing Dropdown */}
               {showSpacingDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 z-50">
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 py-3 z-50">
                   {(['letter', 'word', 'line'] as SpacingOption[]).map((option) => (
                     <button
                       key={option}
@@ -403,9 +403,9 @@ export default function WritingAssistantPage() {
                         setShowSpacingDropdown(false);
                         setShowSpacingPanel(true);
                       }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-5 py-3 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]"
                     >
-                      <span className="capitalize">{option}</span>
+                      <span className="capitalize font-medium">{option}</span>
                       <SmallChevronRight className="w-3 h-3 text-gray-400" />
                     </button>
                   ))}
@@ -414,10 +414,10 @@ export default function WritingAssistantPage() {
 
               {/* Spacing Panel (when option selected) */}
               {showSpacingPanel && (
-                <div className="mt-3 space-y-4 p-4 bg-gray-50 rounded-xl">
+                <div className="mt-4 space-y-5 p-5 bg-gray-50/80 backdrop-blur-sm rounded-2xl border border-gray-100/50">
                   <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-xs text-gray-600">Letter spacing</label>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-xs text-gray-600 font-medium">Letter spacing</label>
                       <span className="text-xs text-gray-500">{letterSpacing}px</span>
                     </div>
                     <input 
@@ -427,12 +427,12 @@ export default function WritingAssistantPage() {
                       step="0.5" 
                       value={letterSpacing}
                       onChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
-                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3D6E4E]"
+                      className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#3D6E4E]"
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-xs text-gray-600">Word spacing</label>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-xs text-gray-600 font-medium">Word spacing</label>
                       <span className="text-xs text-gray-500">{wordSpacing}px</span>
                     </div>
                     <input 
@@ -442,12 +442,12 @@ export default function WritingAssistantPage() {
                       step="1" 
                       value={wordSpacing}
                       onChange={(e) => setWordSpacing(parseFloat(e.target.value))}
-                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3D6E4E]"
+                      className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#3D6E4E]"
                     />
                   </div>
                   <div>
-                    <div className="flex justify-between mb-1">
-                      <label className="text-xs text-gray-600">Line height</label>
+                    <div className="flex justify-between mb-2">
+                      <label className="text-xs text-gray-600 font-medium">Line height</label>
                       <span className="text-xs text-gray-500">{lineHeight.toFixed(1)}</span>
                     </div>
                     <input 
@@ -457,7 +457,7 @@ export default function WritingAssistantPage() {
                       step="0.1" 
                       value={lineHeight}
                       onChange={(e) => setLineHeight(parseFloat(e.target.value))}
-                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#3D6E4E]"
+                      className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#3D6E4E]"
                     />
                   </div>
                 </div>
@@ -472,22 +472,22 @@ export default function WritingAssistantPage() {
                   setShowFontDropdown(false);
                   setShowSpacingDropdown(false);
                 }}
-                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] transition-colors"
+                className="flex items-center justify-between w-full text-gray-700 hover:text-[#3D6E4E] active:scale-[0.98] transition-all duration-300 ease-out py-1"
               >
-                <span className="text-base">Tinted Background Colour</span>
+                <span className="text-base font-medium">Tinted Background Colour</span>
                 <NullIcon className="w-5 h-5 text-gray-900" />
               </button>
 
               {/* Color Grid Popover */}
               {showTintPicker && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] p-4 z-50">
-                  <div className="grid grid-cols-5 gap-2">
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 p-5 z-50">
+                  <div className="grid grid-cols-5 gap-3">
                     {TINT_COLORS.map((tint) => (
                       <button
                         key={tint.id}
                         onClick={() => setBackgroundTint(tint.id)}
-                        className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${
-                          backgroundTint === tint.id ? 'ring-2 ring-[#3D6E4E] ring-offset-2' : ''
+                        className={`w-9 h-9 rounded-full transition-all duration-300 ease-out hover:scale-110 active:scale-95 shadow-sm ${
+                          backgroundTint === tint.id ? 'ring-2 ring-[#3D6E4E] ring-offset-2 scale-110' : ''
                         }`}
                         style={{ backgroundColor: tint.color }}
                         title={tint.id}
@@ -497,7 +497,7 @@ export default function WritingAssistantPage() {
                   {/* No color option */}
                   <button
                     onClick={() => setBackgroundTint('none')}
-                    className={`mt-3 w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center transition-transform hover:scale-110 ${
+                    className={`mt-4 w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 shadow-sm ${
                       backgroundTint === 'none' ? 'ring-2 ring-[#3D6E4E] ring-offset-2' : ''
                     }`}
                   >
@@ -509,10 +509,10 @@ export default function WritingAssistantPage() {
           </div>
 
           {/* Export Button */}
-          <div className="relative" ref={exportMenuRef}>
+          <div className="relative mt-8" ref={exportMenuRef}>
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="w-full bg-[#3D6E4E] text-white py-3 rounded-full flex items-center justify-center gap-2 font-medium hover:bg-[#2d5239] transition-colors shadow-md"
+              className="w-full bg-[#3D6E4E] text-white py-4 rounded-full flex items-center justify-center gap-3 font-medium hover:bg-[#2d5239]/90 active:scale-[0.96] transition-all duration-300 ease-out shadow-lg hover:shadow-xl"
             >
               <ExportIcon className="w-5 h-5" />
               <span>Export</span>
@@ -520,14 +520,14 @@ export default function WritingAssistantPage() {
 
             {/* Export Menu */}
             {showExportMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 z-50">
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+              <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 py-3 z-50">
+                <button className="w-full flex items-center gap-4 px-5 py-3.5 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]">
                   <GoogleDriveIcon className="w-5 h-5" />
-                  <span>Export to Google docx</span>
+                  <span className="font-medium">Export to Google docx</span>
                 </button>
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <button className="w-full flex items-center gap-4 px-5 py-3.5 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]">
                   <WordIcon className="w-5 h-5" />
-                  <span>Download as docx</span>
+                  <span className="font-medium">Download as docx</span>
                 </button>
               </div>
             )}
@@ -538,10 +538,10 @@ export default function WritingAssistantPage() {
       {/* Backdrop when tools open */}
       {toolsOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 z-30"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 transition-opacity duration-300"
           onClick={() => setToolsOpen(false)}
         />
       )}
-    </div>
+    </motion.div>
   );
 }

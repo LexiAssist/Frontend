@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ToastContainer } from "@/components/ui/Toast";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -11,6 +12,14 @@ export const metadata: Metadata = {
   description: "AI-powered learning assistant designed to make reading, studying, and writing easier for students who learn differently.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#3c8350",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,11 +27,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
-        <QueryProvider>
-          {children}
-          <ToastContainer />
-        </QueryProvider>
+      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
+        <ThemeProvider defaultTheme="light" enableSystem>
+          <QueryProvider>
+            {children}
+            <ToastContainer />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

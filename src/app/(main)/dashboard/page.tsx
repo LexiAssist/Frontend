@@ -1,11 +1,12 @@
 'use client';
 
 import { useAuthStore } from '@/store/authStore';
-import { Settings, Moon, Sun, Clock, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { Clock, FileText } from 'lucide-react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import ReadingALetterRafiki from '@/components/illustrations/ReadingALetterRafiki';
 import BookLoverCuate from '@/components/illustrations/BookLoverCuate';
+import { FeatureHeader } from '@/components/FeatureHeader';
 
 // Puzzle piece pattern for card background
 function PuzzlePattern({ className = '' }: { className?: string }) {
@@ -47,9 +48,11 @@ interface ToolCardProps {
 
 function ToolCard({ title, description, bgColor, illustration, href }: ToolCardProps) {
   return (
-    <Link href={href} className="block">
-      <div
-        className="relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl h-[180px] sm:h-[200px] lg:h-[220px]"
+    <Link href={href} className="block group">
+      <motion.div
+        whileHover={{ y: -4 }}
+        whileTap={{ scale: 0.98 }}
+        className="relative overflow-hidden rounded-2xl cursor-pointer transition-shadow duration-200 hover:shadow-xl h-[160px] sm:h-[200px] lg:h-[220px]"
         style={{ backgroundColor: bgColor }}
       >
         {/* Puzzle pattern background */}
@@ -71,7 +74,7 @@ function ToolCard({ title, description, bgColor, illustration, href }: ToolCardP
             {illustration}
           </div>
         </div>
-      </div>
+      </motion.div>
     </Link>
   );
 }
@@ -132,7 +135,6 @@ function HistoryItem({ fileName, type, typeIcon, time }: HistoryItemProps) {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
-  const [darkMode, setDarkMode] = useState(false);
 
   const tools = [
     {
@@ -176,41 +178,51 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header - Matching rebuilt design */}
-      <div className="flex items-center justify-between mb-8 sm:mb-10">
-        <div>
+      <div className="flex items-center justify-between mb-8 sm:mb-10 pt-8">
+        <div className="flex flex-col gap-2">
           <h1 className="text-[#272a28] text-2xl sm:text-3xl tracking-tight font-bold">
             Hello, {user?.name?.split(' ')[0] || 'Victoria'}!
           </h1>
-          <p className="text-[#555c56] text-sm sm:text-base mt-1">
+          <p className="text-[#555c56] text-sm sm:text-base">
             Pick a tool to get started with
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors">
-            <Settings size={24} className="text-[#272a28]" />
-          </button>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2.5 hover:bg-gray-100 rounded-xl transition-colors"
-          >
-            {darkMode ? <Sun size={24} className="text-[#272a28]" /> : <Moon size={24} className="text-[#272a28]" />}
-          </button>
-        </div>
+        <FeatureHeader />
       </div>
 
       {/* Tool Cards - 2x2 Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1,
+            },
+          },
+        }}
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 lg:gap-6"
+      >
         {tools.map((tool, index) => (
-          <ToolCard
+          <motion.div
             key={index}
-            title={tool.title}
-            description={tool.description}
-            bgColor={tool.bgColor}
-            illustration={tool.illustration}
-            href={tool.href}
-          />
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } },
+            }}
+          >
+            <ToolCard
+              title={tool.title}
+              description={tool.description}
+              bgColor={tool.bgColor}
+              illustration={tool.illustration}
+              href={tool.href}
+            />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Continue from where you left off */}
       <div className="mt-10 sm:mt-12 pb-6">

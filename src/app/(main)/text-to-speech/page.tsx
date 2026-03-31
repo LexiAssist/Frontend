@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@/components/Icon';
 import { toast } from 'sonner';
 import {
@@ -13,6 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuthStore } from '@/store/authStore';
+import { FeatureHeader } from '@/components/FeatureHeader';
 
 // Voice options type
 interface VoiceOption {
@@ -336,44 +338,42 @@ export default function TextToSpeechPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex items-center justify-between mb-6 pt-8">
+        <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold text-[#1a1a1a]">
             {currentStep === 'upload' ? `Hello, ${user?.name?.split(' ')[0] || 'Victoria'}!` : 'Text to speech Learning Hub'}
           </h1>
           {currentStep === 'upload' && (
-            <p className="text-[#5f5f5f] mt-1">Pick a tool to get started with</p>
+            <p className="text-[#5f5f5f]">Pick a tool to get started with</p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb]">
-            <Icon name="settings" size={20} />
-          </button>
-          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb]">
-            <Icon name="moon" size={20} />
-          </button>
-        </div>
+        <FeatureHeader />
       </div>
 
       {/* Step 1: Upload */}
       {currentStep === 'upload' && (
-        <div className="space-y-6 w-full">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="space-y-6 w-full"
+        >
           {/* Hero Banner Card - Full Width */}
           <div className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-sm w-full">
             <HexPattern />
-            <div className="relative z-10 p-6 lg:p-8 flex items-center gap-6">
-              <div className="flex-shrink-0 w-32 h-28 lg:w-40 lg:h-32">
+            <div className="relative z-10 p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+              <div className="flex-shrink-0 w-24 h-20 sm:w-32 sm:h-28 lg:w-40 lg:h-32">
                 <img
                   src="/images/reading assitant svg (lady and envelope).svg"
                   alt="Text to Speech Illustration"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-2">
+              <div className="text-center sm:text-left">
+                <h2 className="text-lg sm:text-xl font-bold text-[#1a1a1a] mb-2">
                   Text to speech Learning Hub
                 </h2>
-                <p className="text-[15px] text-[#5f5f5f] leading-relaxed max-w-md">
+                <p className="text-sm sm:text-[15px] text-[#5f5f5f] leading-relaxed max-w-md">
                   Turn text into sound. Sit back, listen & watch the words light up as you learn.
                 </p>
               </div>
@@ -381,8 +381,9 @@ export default function TextToSpeechPage() {
           </div>
 
           {/* Upload Zone - Full Width */}
-          <div
-            className={`rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-16 px-6 gap-5 w-full ${
+          <motion.div
+            whileTap={{ scale: 0.99 }}
+            className={`rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6 gap-4 sm:gap-5 w-full ${
               dragging
                 ? 'border-[#3D6E4E] bg-[#E8F3EA] scale-[1.01]'
                 : 'border-[#D4E8D7] bg-[#F0F7F1] hover:border-[#3D6E4E]'
@@ -402,26 +403,30 @@ export default function TextToSpeechPage() {
                 if (file) handleFileUpload(file);
               }}
             />
-            <div className="w-16 h-16 rounded-full bg-[#3D6E4E] flex items-center justify-center text-white shadow-lg">
-              <Icon name="upload" size={32} />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#3D6E4E] flex items-center justify-center text-white shadow-lg transition-transform duration-200 active:scale-95">
+              <Icon name="upload" size={28} className="sm:w-8 sm:h-8" />
             </div>
             <div className="text-center">
-              <p className="text-[#3D6E4E] font-semibold text-base">
+              <p className="text-[#3D6E4E] font-semibold text-sm sm:text-base">
                 <span className="font-bold">Click to upload</span> or drag and drop
               </p>
-              <p className="text-[#5f5f5f] text-sm mt-2">
-                PDF, DOC, TXT, image (Size maximum)
+              <p className="text-[#5f5f5f] text-xs sm:text-sm mt-2">
+                PDF, DOC, TXT, image (max 25MB)
               </p>
             </div>
-          </div>
+          </motion.div>
 
           {/* File Preview and Submit - Full Width */}
           {uploadedFile && (
-            <div className="space-y-4 w-full">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4 w-full"
+            >
               <p className="text-[#5f5f5f] text-sm font-medium">Document uploaded</p>
-              <div className="flex items-center gap-4 bg-white rounded-xl p-4 shadow-sm border border-[#e5e7eb] w-full max-w-none">
-                <div className="w-12 h-12 rounded-lg bg-[#E8F3EA] flex items-center justify-center">
-                  <Icon name="document" size={24} className="text-[#3D6E4E]" />
+              <div className="flex items-center gap-3 sm:gap-4 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#e5e7eb] w-full max-w-none">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#E8F3EA] flex items-center justify-center flex-shrink-0">
+                  <Icon name="document" size={20} className="text-[#3D6E4E] sm:w-6 sm:h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[#1a1a1a] truncate">
@@ -431,30 +436,37 @@ export default function TextToSpeechPage() {
                     {uploadedFile.name.split('.').pop()?.toUpperCase() || 'FILE'}
                   </p>
                 </div>
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFile();
                   }}
-                  className="p-2 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-2.5 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors touch-target"
                 >
                   <Icon name="close" size={18} />
-                </button>
+                </motion.button>
               </div>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
-                className="w-full bg-[#3D6E4E] text-white font-semibold py-3 px-6 rounded-full hover:bg-[#2d5a3d] transition-colors shadow-lg shadow-[#3D6E4E]/20"
+                className="w-full bg-[#3D6E4E] text-white font-semibold py-3.5 sm:py-3 px-6 rounded-full hover:bg-[#2d5a3d] transition-colors shadow-lg shadow-[#3D6E4E]/20 active:scale-[0.98] touch-target"
               >
                 Submit
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Step 2: Reading Interface */}
       {currentStep === 'reading' && (
-        <div className="flex flex-col lg:flex-row gap-6 relative">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col lg:flex-row gap-4 sm:gap-6 relative"
+        >
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
             <div
@@ -709,7 +721,7 @@ export default function TextToSpeechPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

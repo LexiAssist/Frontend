@@ -6,13 +6,12 @@ import {
   BookOpenText,
   ChevronDown,
   LockKeyhole,
-  Moon,
   Paperclip,
   PenLine,
   Pin,
-  Settings,
   Sprout,
 } from 'lucide-react';
+import { FeatureHeader } from '@/components/FeatureHeader';
 
 const starterCards = [
   {
@@ -95,21 +94,8 @@ export default function ChatAssistantPage() {
         onChange={handleFolderSelection}
       />
 
-      <div className="flex justify-end gap-2 pb-8 pt-2 lg:pb-10 lg:pt-4">
-        <button
-          type="button"
-          className="rounded-full p-2 text-slate-900 transition hover:bg-slate-100"
-          aria-label="Toggle dark mode"
-        >
-          <Moon className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          className="rounded-full p-2 text-slate-900 transition hover:bg-slate-100"
-          aria-label="Open settings"
-        >
-          <Settings className="h-5 w-5" />
-        </button>
+      <div className="flex justify-end pb-8 pt-2 lg:pb-10 lg:pt-4">
+        <FeatureHeader />
       </div>
 
       <section className="flex flex-1 flex-col items-center">

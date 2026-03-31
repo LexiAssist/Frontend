@@ -3,8 +3,10 @@
 import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@/components/Icon';
 import { toast } from 'sonner';
+import { FeatureHeader } from '@/components/FeatureHeader';
 
 type ViewState = 'home' | 'upload' | 'reading';
 type TextMode = 'original' | 'simplified' | 'summarized';
@@ -247,7 +249,7 @@ export default function ReadingAssistantPage() {
   return (
     <div className="min-h-[calc(100vh-80px)]">
       {/* Header - Clean Design */}
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex items-center justify-between mb-10 pt-8">
         <div className="flex items-center gap-4">
           <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Reading Assistant</h1>
           <div className="w-10 h-10 rounded-full bg-[#3D6E4E] flex items-center justify-center shadow-md">
@@ -263,15 +265,18 @@ export default function ReadingAssistantPage() {
               <Icon name="settings" size={20} />
             </button>
           )}
-          <button className="w-11 h-11 flex items-center justify-center rounded-xl bg-white text-[#5f5f5f] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all border border-[#e5e7eb]">
-            <Icon name="moon" size={20} />
-          </button>
+          <FeatureHeader />
         </div>
       </div>
 
       {/* HOME - Clean Card Design */}
       {viewState === 'home' && (
-        <div className="w-full space-y-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="w-full space-y-6 sm:space-y-8"
+        >
           {/* Hero Card with Soft Blue Background */}
           <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
             <div className="absolute inset-0 opacity-[0.08]">
@@ -295,26 +300,27 @@ export default function ReadingAssistantPage() {
           </Card>
 
           {/* Upload Zone - Clean Sage Green */}
-          <div 
-            className="rounded-2xl border-2 border-dashed border-[#D4E8D7] bg-[#F0F7F1] transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-16 px-6 gap-5 hover:border-[#3D6E4E] hover:bg-[#E8F3EA]"
+          <motion.div 
+            whileTap={{ scale: 0.99 }}
+            className="rounded-2xl border-2 border-dashed border-[#D4E8D7] bg-[#F0F7F1] transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6 gap-4 sm:gap-5 hover:border-[#3D6E4E] hover:bg-[#E8F3EA]"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f); }}
             onClick={() => fileRef.current?.click()}
           >
             <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
-            <div className="w-16 h-16 rounded-full bg-[#3D6E4E] flex items-center justify-center text-white shadow-lg shadow-[#3D6E4E]/20">
-              <Icon name="upload" size={28} />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#3D6E4E] flex items-center justify-center text-white shadow-lg shadow-[#3D6E4E]/20 transition-transform duration-200 active:scale-95">
+              <Icon name="upload" size={24} className="sm:w-7 sm:h-7" />
             </div>
             <div className="text-center">
-              <p className="text-[#3D6E4E] font-semibold text-base">
+              <p className="text-[#3D6E4E] font-semibold text-sm sm:text-base">
                 <span className="font-bold">Click to upload</span> or drag and drop
               </p>
-              <p className="text-[#5f5f5f] text-sm mt-2">
+              <p className="text-[#5f5f5f] text-xs sm:text-sm mt-2">
                 PDF, DOC, TXT, or Image files (max 25MB)
               </p>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* UPLOAD */}
