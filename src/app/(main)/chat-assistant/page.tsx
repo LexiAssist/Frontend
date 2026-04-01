@@ -112,7 +112,7 @@ export default function ChatAssistantPage() {
             <textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              className="min-h-[220px] w-full resize-none rounded-t-xl border-0 bg-transparent px-5 py-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:min-h-[180px]"
+              className="min-h-[220px] w-full resize-none rounded-t-xl border-0 bg-transparent px-5 py-4 text-base text-slate-900 outline-none placeholder:text-slate-400 sm:min-h-[180px] md:text-sm"
               placeholder={starterPrompt}
             />
 

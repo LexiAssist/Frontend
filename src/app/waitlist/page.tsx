@@ -110,7 +110,7 @@ export default function WaitlistPage() {
                         placeholder="Name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full h-12 px-4 rounded-full border border-[#cdcfcd] text-[#040404] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#377749] focus:border-transparent transition-all"
+                        className="w-full h-12 px-4 rounded-full border border-[#cdcfcd] text-base text-[#040404] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#377749] focus:border-transparent transition-all md:text-sm"
                         required
                       />
                     </div>
@@ -122,7 +122,7 @@ export default function WaitlistPage() {
                         placeholder="Email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-12 px-4 rounded-full border border-[#cdcfcd] text-[#040404] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#377749] focus:border-transparent transition-all"
+                        className="w-full h-12 px-4 rounded-full border border-[#cdcfcd] text-base text-[#040404] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#377749] focus:border-transparent transition-all md:text-sm"
                         required
                       />
                     </div>

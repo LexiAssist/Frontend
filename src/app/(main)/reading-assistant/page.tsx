@@ -8,6 +8,13 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Icon } from '@/components/Icon';
 import { toast } from 'sonner';
 import { FeatureHeader } from '@/components/FeatureHeader';
+import dynamic from 'next/dynamic';
+
+// Lazy load the illustration to improve initial page load performance
+const BookLoverCuate = dynamic(() => import('@/components/illustrations/BookLoverCuate'), {
+  loading: () => <div className="w-40 h-32 bg-gray-200/50 rounded-xl animate-pulse" />,
+  ssr: false
+});
 
 
 type ViewState = 'home' | 'upload' | 'reading';
@@ -294,7 +301,7 @@ export default function ReadingAssistantPage() {
             </div>
             <CardContent className="relative z-10 p-8 flex items-center gap-8">
               <div className="flex-shrink-0 w-40 h-32" aria-hidden="true">
-                {/* TODO: Insert specific Reading Assistant SVG here. Link later. */}
+                <BookLoverCuate />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-2">Reading Assistant</h2>
