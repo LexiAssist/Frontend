@@ -1,136 +1,87 @@
-'use client';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { http } from '@/services/http';
-import { mockAuthApi, isMockMode } from '@/services/mockApi';
+import { authApi } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
-import { toast } from '@/components/ui/Toast';
-import type { LoginCredentials, RegisterCredentials, User, AuthResponse } from '@/types';
+import { toast } from 'sonner';
 
-const AUTH_KEYS = {
-  user: ['auth', 'user'] as const,
+// Keys for query caching
+export const authKeys = {
+  all: ['auth'] as const,
+  user: () => [...authKeys.all, 'user'] as const,
 };
 
-// Fetch current user - uses real API or mock based on env
-async function fetchCurrentUser(): Promise<User> {
-  if (isMockMode()) {
-    const response = await mockAuthApi.getCurrentUser();
-    return response.data;
-  }
-  const response = await http.get<User>('/api/auth/me');
-  return response.data;
-}
-
-// Login
-async function loginUser(credentials: LoginCredentials): Promise<AuthResponse> {
-  if (isMockMode()) {
-    const response = await mockAuthApi.login(credentials);
-    return response.data;
-  }
-  const response = await http.post<AuthResponse>('/api/auth/login', credentials);
-  return response.data;
-}
-
-// Register
-async function registerUser(credentials: RegisterCredentials): Promise<AuthResponse> {
-  if (isMockMode()) {
-    const response = await mockAuthApi.register(credentials);
-    return response.data;
-  }
-  const response = await http.post<AuthResponse>('/api/auth/register', credentials);
-  return response.data;
-}
-
-// Logout
-async function logoutUser(): Promise<void> {
-  if (isMockMode()) {
-    await mockAuthApi.logout();
-    return;
-  }
-  await http.post('/api/auth/logout');
-}
-
-export function useAuth() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const { login: setAuthUser, logout: clearAuth, setLoading } = useAuthStore();
-
-  // Query to fetch current user on mount
-  const userQuery = useQuery({
-    queryKey: AUTH_KEYS.user,
-    queryFn: fetchCurrentUser,
+// Hook to get current user
+export function useUser() {
+  return useQuery({
+    queryKey: authKeys.user(),
+    queryFn: () => authApi.getMe(),
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
+}
 
-  // Login mutation
-  const loginMutation = useMutation<AuthResponse, Error, LoginCredentials>({
-    mutationFn: loginUser,
-    onSuccess: (data: AuthResponse) => {
-      setAuthUser(data.user);
-      queryClient.setQueryData(AUTH_KEYS.user, data.user);
+// Hook for login
+export function useLogin() {
+  const router = useRouter();
+  const { login } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      authApi.login(email, password),
+    onSuccess: (data) => {
+      // Update auth store with tokens
+      login(data.user, {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: data.expires_at,
+      });
+      
+      // Update React Query cache
+      queryClient.setQueryData(authKeys.user(), data.user);
+      
       toast.success('Welcome back!');
       router.push('/dashboard');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Login failed. Please try again.');
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Login failed');
     },
   });
+}
 
-  // Register mutation
-  const registerMutation = useMutation<AuthResponse, Error, RegisterCredentials>({
-    mutationFn: registerUser,
-    onSuccess: (data: AuthResponse) => {
-      setAuthUser(data.user);
-      queryClient.setQueryData(AUTH_KEYS.user, data.user);
-      toast.success('Account created successfully!');
-      router.push('/dashboard');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Registration failed. Please try again.');
-    },
-  });
+// Hook for registration
+export function useRegister() {
+  const router = useRouter();
 
-  // Logout mutation
-  const logoutMutation = useMutation({
-    mutationFn: logoutUser,
+  return useMutation({
+    mutationFn: authApi.register,
     onSuccess: () => {
-      clearAuth();
+      toast.success('Account created! Please log in.');
+      router.push('/login');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Registration failed');
+    },
+  });
+}
+
+// Hook for logout
+export function useLogout() {
+  const router = useRouter();
+  const { logout } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      // Clear all queries from cache
       queryClient.clear();
       toast.success('Logged out successfully');
       router.push('/login');
     },
     onError: () => {
-      // Still clear local state even if server logout fails
-      clearAuth();
+      // Even if logout fails, clear local state
       queryClient.clear();
       router.push('/login');
     },
   });
-
-  return {
-    // State
-    user: userQuery.data,
-    isLoading: userQuery.isLoading || loginMutation.isPending || registerMutation.isPending,
-    isError: userQuery.isError,
-    
-    // Actions
-    login: loginMutation.mutate,
-    register: registerMutation.mutate,
-    logout: logoutMutation.mutate,
-    refetch: userQuery.refetch,
-  };
-}
-
-// Hook to check if user is authenticated (for protected routes)
-export function useRequireAuth() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
-
-  if (!isLoading && !user) {
-    router.push('/login');
-  }
-
-  return { user, isLoading };
 }
