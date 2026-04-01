@@ -318,13 +318,16 @@ export default function WritingAssistantPage() {
         </div>
       </div>
 
-      {/* Tools Drawer Toggle Button */}
-      <button
-        onClick={() => setToolsOpen(true)}
-        className={`fixed right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-[#3D6E4E] rounded-l-2xl flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] active:scale-[0.96] transition-all duration-300 ease-out z-30 ${toolsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-      >
-        <ChevronLeftIcon className="w-5 h-5" />
-      </button>
+      {/* Tools Drawer Toggle Button - small arrow at right edge */}
+      {!toolsOpen && (
+        <button
+          onClick={() => setToolsOpen(true)}
+          className="fixed right-0 top-1/2 -translate-y-1/2 w-10 h-14 bg-[#3D6E4E] rounded-l-xl flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] hover:w-12 active:scale-[0.96] transition-all duration-300 ease-out z-30"
+          aria-label="Open tools"
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Tools Slide-over Drawer */}
       <div className={`fixed inset-y-0 right-0 w-72 bg-white/95 backdrop-blur-xl shadow-2xl border-l border-gray-100/50 transform transition-transform duration-500 ease-out z-40 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>

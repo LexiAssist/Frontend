@@ -1,17 +1,48 @@
-'use client';
+"use client";
 
-import { useAuthStore } from '@/store/authStore';
-import { Clock, FileText } from 'lucide-react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import ReadingALetterRafiki from '@/components/illustrations/ReadingALetterRafiki';
-import BookLoverCuate from '@/components/illustrations/BookLoverCuate';
-import StudyBuddy from '@/components/illustrations/StudyBuddy';
-import WritingAssistant from '@/components/illustrations/WritingAssistant';
-import { FeatureHeader } from '@/components/FeatureHeader';
+import { useAuthStore } from "@/store/authStore";
+import { Clock, FileText } from "lucide-react";
+import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { FeatureHeader } from "@/components/FeatureHeader";
+
+// Lazy load illustrations for better performance
+const ReadingALetterRafiki = dynamic(
+  () => import("@/components/illustrations/ReadingALetterRafiki"),
+  {
+    loading: () => (
+      <div className="w-full h-full bg-gray-100 animate-pulse rounded-lg" />
+    ),
+  },
+);
+const BookLoverCuate = dynamic(
+  () => import("@/components/illustrations/BookLoverCuate"),
+  {
+    loading: () => (
+      <div className="w-full h-full bg-gray-100 animate-pulse rounded-lg" />
+    ),
+  },
+);
+const StudyBuddy = dynamic(
+  () => import("@/components/illustrations/StudyBuddy"),
+  {
+    loading: () => (
+      <div className="w-full h-full bg-gray-100 animate-pulse rounded-lg" />
+    ),
+  },
+);
+const WritingAssistant = dynamic(
+  () => import("@/components/illustrations/WritingAssistant"),
+  {
+    loading: () => (
+      <div className="w-full h-full bg-gray-100 animate-pulse rounded-lg" />
+    ),
+  },
+);
 
 // Puzzle piece pattern for card background
-function PuzzlePattern({ className = '' }: { className?: string }) {
+function PuzzlePattern({ className = "" }: { className?: string }) {
   return (
     <svg
       className={`absolute inset-0 w-full h-full opacity-40 ${className}`}
@@ -48,7 +79,13 @@ interface ToolCardProps {
   href: string;
 }
 
-function ToolCard({ title, description, bgColor, illustration, href }: ToolCardProps) {
+function ToolCard({
+  title,
+  description,
+  bgColor,
+  illustration,
+  href,
+}: ToolCardProps) {
   return (
     <Link href={href} className="block group">
       <motion.div
@@ -59,7 +96,7 @@ function ToolCard({ title, description, bgColor, illustration, href }: ToolCardP
       >
         {/* Puzzle pattern background */}
         <PuzzlePattern />
-        
+
         <div className="relative z-10 h-full flex items-center justify-between px-6 sm:px-8 py-6">
           {/* Text Content - Left aligned */}
           <div className="flex flex-col gap-3 max-w-[55%]">
@@ -70,7 +107,7 @@ function ToolCard({ title, description, bgColor, illustration, href }: ToolCardP
               {description}
             </p>
           </div>
-          
+
           {/* Illustration - Right side */}
           <div className="w-[130px] h-[130px] sm:w-[150px] sm:h-[150px] lg:w-[170px] lg:h-[160px] flex-shrink-0 flex items-center justify-center">
             {illustration}
@@ -86,9 +123,24 @@ function QuizIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M2 3H14V13H2V3Z" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M2 6H14" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.2" />
-      <path d="M4.5 7H6.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
-      <path d="M4.5 10H6.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
+      <path
+        d="M2 6H14"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.2"
+      />
+      <path
+        d="M4.5 7H6.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.2"
+      />
+      <path
+        d="M4.5 10H6.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.2"
+      />
     </svg>
   );
 }
@@ -97,7 +149,10 @@ function QuizIcon() {
 function FlashcardIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-      <path d="M2 4C2 2.89543 2.89543 2 4 2H16C17.1046 2 18 2.89543 18 4V16C18 17.1046 17.1046 18 16 18H4C2.89543 18 2 17.1046 2 16V4Z" fill="currentColor" />
+      <path
+        d="M2 4C2 2.89543 2.89543 2 4 2H16C17.1046 2 18 2.89543 18 4V16C18 17.1046 17.1046 18 16 18H4C2.89543 18 2 17.1046 2 16V4Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -140,32 +195,34 @@ export default function DashboardPage() {
 
   const tools = [
     {
-      title: 'Text to speech\nLearning Hub',
-      description: 'Turn text into sound. Sit back, listen & watch the words light up as you learn.',
-      bgColor: 'rgba(60, 131, 80, 0.25)', // Green tint from sidebar
+      title: "Text to speech\nLearning Hub",
+      description:
+        "Turn text into sound. Sit back, listen & watch the words light up as you learn.",
+      bgColor: "rgba(60, 131, 80, 0.25)", // Green tint from sidebar
       illustration: <ReadingALetterRafiki />,
-      href: '/text-to-speech',
+      href: "/text-to-speech",
     },
     {
-      title: 'Reading Assistant',
-      description: 'Study with confidence as words are simplified into bits',
-      bgColor: 'rgba(137, 207, 240, 0.35)', // Light blue
+      title: "Reading Assistant",
+      description: "Study with confidence as words are simplified into bits",
+      bgColor: "rgba(137, 207, 240, 0.35)", // Light blue
       illustration: <BookLoverCuate />,
-      href: '/reading-assistant',
+      href: "/reading-assistant",
     },
     {
-      title: 'StudyBuddy',
-      description: 'A smart assistant that helps you understand your notes better. Just upload!',
-      bgColor: 'rgba(126, 87, 194, 0.25)', // Purple
+      title: "StudyBuddy",
+      description:
+        "A smart assistant that helps you understand your notes better. Just upload!",
+      bgColor: "rgba(126, 87, 194, 0.25)", // Purple
       illustration: <StudyBuddy />,
-      href: '/chat-assistant',
+      href: "/chat-assistant",
     },
     {
-      title: 'Speech to Text\n(Writing Assistant)',
-      description: 'Writing made easier! Just speak and we will do the writing',
-      bgColor: 'rgba(197, 63, 63, 0.25)', // Red
+      title: "Speech to Text\n(Writing Assistant)",
+      description: "Writing made easier! Just speak and we will do the writing",
+      bgColor: "rgba(197, 63, 63, 0.25)", // Red
       illustration: <WritingAssistant />,
-      href: '/writing-assistant',
+      href: "/writing-assistant",
     },
   ];
 
@@ -175,7 +232,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8 sm:mb-10 pt-8">
         <div className="flex flex-col gap-2">
           <h1 className="text-[#272a28] text-2xl sm:text-3xl tracking-tight font-bold">
-            Hello, {user?.name?.split(' ')[0] || 'Victoria'}!
+            Hello, {user?.name?.split(" ")[0] || "Victoria"}!
           </h1>
           <p className="text-[#555c56] text-sm sm:text-base">
             Pick a tool to get started with
@@ -185,7 +242,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tool Cards - 2x2 Grid */}
-      <motion.div 
+      <motion.div
         initial="hidden"
         animate="visible"
         variants={{
@@ -204,7 +261,11 @@ export default function DashboardPage() {
             key={index}
             variants={{
               hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } },
+              visible: {
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+              },
             }}
           >
             <ToolCard
