@@ -303,12 +303,15 @@ export default function Sidebar() {
           <div className="text-[var(--primary-500)]">
             <LexiAssistMark />
           </div>
+          {/* Profile Avatar - replaces duplicate settings button since FeatureHeader has settings */}
           <Link 
             href="/settings"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition-colors active:bg-slate-100 touch-target"
-            aria-label="Settings"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary-100)] text-[var(--primary-600)] transition-colors active:bg-[var(--primary-200)] touch-target overflow-hidden"
+            aria-label="Profile"
           >
-            <Settings className="h-5 w-5" />
+            <span className="text-sm font-semibold">
+              {user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2) || 'AE'}
+            </span>
           </Link>
         </div>
       </header>

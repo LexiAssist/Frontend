@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import ReadingALetterRafiki from '@/components/illustrations/ReadingALetterRafiki';
 import BookLoverCuate from '@/components/illustrations/BookLoverCuate';
+import StudyBuddy from '@/components/illustrations/StudyBuddy';
+import WritingAssistant from '@/components/illustrations/WritingAssistant';
 import { FeatureHeader } from '@/components/FeatureHeader';
 
 // Puzzle piece pattern for card background
@@ -155,22 +157,14 @@ export default function DashboardPage() {
       title: 'StudyBuddy',
       description: 'A smart assistant that helps you understand your notes better. Just upload!',
       bgColor: 'rgba(126, 87, 194, 0.25)', // Purple
-      illustration: (
-        <div className="w-full h-full flex items-center justify-center" aria-hidden="true">
-          {/* TODO: Insert SVG for StudyBuddy here. Link later. */}
-        </div>
-      ),
+      illustration: <StudyBuddy />,
       href: '/chat-assistant',
     },
     {
       title: 'Speech to Text\n(Writing Assistant)',
       description: 'Writing made easier! Just speak and we will do the writing',
       bgColor: 'rgba(197, 63, 63, 0.25)', // Red
-      illustration: (
-        <div className="w-full h-full flex items-center justify-center" aria-hidden="true">
-          {/* TODO: Insert SVG for Speech to Text (Writing Assistant) here. Link later. */}
-        </div>
-      ),
+      illustration: <WritingAssistant />,
       href: '/writing-assistant',
     },
   ];
