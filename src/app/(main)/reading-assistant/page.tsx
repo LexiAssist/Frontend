@@ -4,9 +4,11 @@ import { Card, CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SlidersHorizontal } from 'lucide-react';
 import { Icon } from '@/components/Icon';
 import { toast } from 'sonner';
 import { FeatureHeader } from '@/components/FeatureHeader';
+
 
 type ViewState = 'home' | 'upload' | 'reading';
 type TextMode = 'original' | 'simplified' | 'summarized';
@@ -258,12 +260,14 @@ export default function ReadingAssistantPage() {
         </div>
         <div className="flex items-center gap-3">
           {viewState === 'reading' && (
-            <button 
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowMobileTools(!showMobileTools)} 
-              className="lg:hidden w-11 h-11 flex items-center justify-center rounded-xl bg-white text-[#3D6E4E] shadow-sm hover:shadow-md hover:scale-[1.02] transition-all border border-[#e5e7eb]"
+              className="lg:hidden w-11 h-11 flex items-center justify-center rounded-xl bg-white text-[#3D6E4E] shadow-sm hover:shadow-md transition-all border border-[#e5e7eb] touch-target"
+              aria-label="Reading Tools"
             >
-              <Icon name="settings" size={20} />
-            </button>
+              <SlidersHorizontal className="h-5 w-5" />
+            </motion.button>
           )}
           <FeatureHeader />
         </div>
