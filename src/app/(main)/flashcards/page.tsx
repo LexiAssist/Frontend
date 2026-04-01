@@ -15,16 +15,23 @@ import { FeatureHeader } from '@/components/FeatureHeader';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/LoadingState';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/authStore';
+import { useGenerateFlashcards } from '@/hooks/useFlashcards';
+import { flashcardApi } from '@/services/api';
 
-type ViewState = "upload" | "ready" | "generated";
+type ViewState = "upload" | "ready" | "generated" | "list";
 
 type SelectedDocument = {
   name: string;
   extension: string;
+  content?: string;
 };
 
-const flashcardQuestion =
-  "What was the name of the failed coup attempt by Hitler and the Nazi Party in 1923?";
+type GeneratedFlashcard = {
+  id: string;
+  front: string;
+  back: string;
+};
 
 const transitionProps = { duration: 0.22, ease: "easeOut" as const };
 
@@ -74,7 +81,7 @@ function Banner() {
             Flashcards
           </h2>
           <p className="pt-3 sm:pt-5 lg:pt-7 text-[16px] sm:text-[18px] lg:text-[20px] leading-[1.3] sm:leading-[1.2] tracking-[-0.02em] text-[#555C56]">
-            Learn more effectively with generated flashcards
+            Learn more effectively with AI-generated flashcards. Upload a document or enter text to get started.
           </p>
         </div>
       </div>
@@ -82,27 +89,94 @@ function Banner() {
   );
 }
 
-function UploadDropzone({ onChooseFile }: { onChooseFile: () => void }) {
+function UploadDropzone({ onChooseFile, onTextInput }: { onChooseFile: () => void; onTextInput: () => void }) {
   return (
-    <motion.button
-      type="button"
-      onClick={onChooseFile}
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={transitionProps}
-      className="flex min-h-[220px] sm:min-h-[260px] lg:min-h-[286px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-[var(--primary-500)] bg-[rgba(60,131,80,0.18)] px-4 sm:px-8 text-center touch-target"
+      className="space-y-4"
     >
-      <div className="flex h-[56px] w-[56px] sm:h-[68px] sm:w-[68px] lg:h-[78px] lg:w-[78px] items-center justify-center rounded-full bg-[var(--primary-500)]">
-        <CloudUpload className="h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10 text-[var(--primary-50)]" />
+      <button
+        type="button"
+        onClick={onChooseFile}
+        className="flex min-h-[220px] sm:min-h-[260px] lg:min-h-[286px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-[var(--primary-500)] bg-[rgba(60,131,80,0.18)] px-4 sm:px-8 text-center touch-target hover:bg-[rgba(60,131,80,0.25)] transition-colors"
+      >
+        <div className="flex h-[56px] w-[56px] sm:h-[68px] sm:w-[68px] lg:h-[78px] lg:w-[78px] items-center justify-center rounded-full bg-[var(--primary-500)]">
+          <CloudUpload className="h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10 text-[var(--primary-50)]" />
+        </div>
+        <p className="pt-3 sm:pt-4 text-[18px] sm:text-[20px] lg:text-[24px] font-semibold leading-[1.2] tracking-[-0.02em] text-[var(--primary-500)]">
+          Click to upload or drag and drop
+        </p>
+        <p className="pt-2 text-[14px] sm:text-[16px] lg:text-[18px] leading-[1.45] text-black/60">
+          PDF, DOC, TXT (max 25MB)
+        </p>
+      </button>
+      
+      <div className="text-center">
+        <span className="text-sm text-gray-500">or</span>
       </div>
-      <p className="pt-3 sm:pt-4 text-[18px] sm:text-[20px] lg:text-[24px] font-semibold leading-[1.2] tracking-[-0.02em] text-[var(--primary-500)]">
-        Click to upload or drag and drop
+      
+      <button
+        type="button"
+        onClick={onTextInput}
+        className="w-full py-4 px-6 rounded-lg border border-[var(--primary-500)] text-[var(--primary-500)] font-medium hover:bg-[var(--primary-50)] transition-colors"
+      >
+        Type or paste your content
+      </button>
+    </motion.div>
+  );
+}
+
+function TextInputState({ 
+  onSubmit, 
+  onCancel, 
+  isLoading 
+}: { 
+  onSubmit: (text: string) => void; 
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [text, setText] = useState('');
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={transitionProps}
+      className="w-full"
+    >
+      <p className="text-[16px] sm:text-[20px] font-medium leading-[1.2] tracking-[-0.02em] text-[#6b6f6c] mb-4">
+        Enter your content
       </p>
-      <p className="pt-2 text-[14px] sm:text-[16px] lg:text-[18px] leading-[1.45] text-black/60">
-        PDF, DOC, TXT, image (max 25MB)
-      </p>
-    </motion.button>
+      
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Paste your study material here..."
+        className="w-full min-h-[200px] p-4 rounded-lg border border-gray-200 focus:border-[var(--primary-500)] focus:ring-1 focus:ring-[var(--primary-500)] outline-none resize-none"
+      />
+      
+      <div className="flex gap-3 mt-4">
+        <Button
+          onClick={onCancel}
+          variant="outline"
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => onSubmit(text)}
+          isLoading={isLoading}
+          disabled={!text.trim()}
+          className="flex-1"
+        >
+          Generate Flashcards
+        </Button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -160,7 +234,7 @@ function ReadyState({
         isLoading={isLoading}
         className="mt-5 sm:mt-6 w-full max-w-[380px] h-[48px] sm:h-[52px] rounded-full text-[14px] sm:text-[16px] font-semibold"
       >
-        Submit
+        Generate Flashcards
       </Button>
     </motion.div>
   );
@@ -185,7 +259,23 @@ function SideCard({ side }: { side: "left" | "right" }) {
   );
 }
 
-function GeneratedState() {
+function GeneratedState({ 
+  flashcards, 
+  currentIndex, 
+  onNext, 
+  onPrev, 
+  onFlip, 
+  isFlipped 
+}: { 
+  flashcards: GeneratedFlashcard[];
+  currentIndex: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onFlip: () => void;
+  isFlipped: boolean;
+}) {
+  const currentCard = flashcards[currentIndex];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -197,23 +287,23 @@ function GeneratedState() {
       <div className="mx-auto flex max-w-[760px] items-center justify-center gap-4 sm:gap-[32px] lg:gap-[46px] px-4 sm:px-0">
         <SideCard side="left" />
 
-        <div className="relative h-[280px] w-[210px] sm:h-[321px] sm:w-[241px] lg:h-[360px] lg:w-[290px] overflow-hidden rounded-md bg-[var(--primary-500)] px-4 sm:px-6 py-5 sm:py-7 text-white shadow-sm">
+        <div 
+          onClick={onFlip}
+          className="relative h-[280px] w-[210px] sm:h-[321px] sm:w-[241px] lg:h-[360px] lg:w-[290px] overflow-hidden rounded-md bg-[var(--primary-500)] px-4 sm:px-6 py-5 sm:py-7 text-white shadow-sm cursor-pointer transition-transform hover:scale-[1.02]"
+        >
           <div className="relative z-10 flex h-full flex-col items-center text-center">
             <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full border-[3px] border-white">
               <HelpCircle className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
-            <p className="pt-2 text-[16px] sm:text-[18px] font-semibold">1/50</p>
+            <p className="pt-2 text-[16px] sm:text-[18px] font-semibold">{currentIndex + 1}/{flashcards.length}</p>
             <p className="max-w-[180px] sm:max-w-[205px] pt-5 sm:pt-7 text-[16px] sm:text-[18px] lg:text-[20px] font-semibold leading-[1.35]">
-              {flashcardQuestion}
+              {isFlipped ? currentCard.back : currentCard.front}
             </p>
 
             <div className="mt-auto pb-2 sm:pb-3">
-              <button
-                type="button"
-                className="rounded-full bg-white px-6 sm:px-8 py-2.5 sm:py-3 text-[14px] sm:text-[15px] font-semibold text-[var(--primary-500)] active:scale-[0.98] transition-transform touch-target"
-              >
-                Answer
-              </button>
+              <span className="text-sm text-white/70">
+                {isFlipped ? 'Click to see question' : 'Click to reveal answer'}
+              </span>
             </div>
           </div>
 
@@ -227,14 +317,18 @@ function GeneratedState() {
       <div className="flex items-center justify-center gap-6 sm:gap-10 pt-8 sm:pt-14">
         <button
           type="button"
-          className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)] touch-target"
+          onClick={onPrev}
+          disabled={currentIndex === 0}
+          className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)] touch-target disabled:opacity-50"
           aria-label="Previous flashcard"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <button
           type="button"
-          className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)] touch-target"
+          onClick={onNext}
+          disabled={currentIndex === flashcards.length - 1}
+          className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)] touch-target disabled:opacity-50"
           aria-label="Next flashcard"
         >
           <ArrowRight className="h-5 w-5" />
@@ -246,10 +340,15 @@ function GeneratedState() {
 
 export default function FlashcardsPage() {
   const [viewState, setViewState] = useState<ViewState>("upload");
-  const [selectedDocument, setSelectedDocument] =
-    useState<SelectedDocument | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<SelectedDocument | null>(null);
+  const [inputText, setInputText] = useState('');
+  const [generatedFlashcards, setGeneratedFlashcards] = useState<GeneratedFlashcard[]>([]);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { user } = useAuthStore();
+  const generateMutation = useGenerateFlashcards();
 
   const handleOpenPicker = () => {
     fileInputRef.current?.click();
@@ -259,45 +358,94 @@ export default function FlashcardsPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setSelectedDocument({
-      name: getDisplayName(file.name),
-      extension: getExtension(file.name),
-    });
-    setViewState("ready");
+    // Read file content
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setSelectedDocument({
+        name: getDisplayName(file.name),
+        extension: getExtension(file.name),
+        content: content,
+      });
+      setViewState("ready");
+    };
+    
+    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      reader.readAsText(file);
+    } else {
+      // For other file types, just store metadata
+      setSelectedDocument({
+        name: getDisplayName(file.name),
+        extension: getExtension(file.name),
+        content: `Generate flashcards from the document: ${file.name}`,
+      });
+      setViewState("ready");
+    }
+    
     event.target.value = "";
   };
 
   const resetUpload = () => {
     setSelectedDocument(null);
+    setInputText('');
     setViewState("upload");
   };
 
-  const handleSubmit = useCallback(async () => {
-    setIsGenerating(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock API endpoint
-      const response = await fetch('/api/flashcards/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document: selectedDocument }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate flashcards');
-      }
-      
-      setViewState("generated");
-      toast.success('Flashcards generated successfully!');
-    } catch (error) {
-      toast.error('Failed to generate flashcards. Please try again.');
-    } finally {
-      setIsGenerating(false);
+  const handleGenerate = useCallback(async (content: string) => {
+    if (!user?.id) {
+      toast.error('Please log in to generate flashcards');
+      return;
     }
-  }, [selectedDocument]);
+
+    try {
+      const result = await generateMutation.mutateAsync({
+        content,
+        userId: user.id,
+      });
+
+      // Parse the generated flashcards
+      // The AI returns them as text, we need to parse into structured format
+      const parsedFlashcards = parseFlashcardsFromAI(result.flashcards);
+      
+      setGeneratedFlashcards(parsedFlashcards);
+      setCurrentCardIndex(0);
+      setIsFlipped(false);
+      setViewState("generated");
+      
+      toast.success(`Generated ${parsedFlashcards.length} flashcards!`);
+    } catch (error) {
+      console.error('Generation error:', error);
+    }
+  }, [user, generateMutation]);
+
+  const handleTextSubmit = (text: string) => {
+    setInputText(text);
+    handleGenerate(text);
+  };
+
+  const handleDocumentSubmit = () => {
+    if (selectedDocument?.content) {
+      handleGenerate(selectedDocument.content);
+    }
+  };
+
+  const handleNextCard = () => {
+    if (currentCardIndex < generatedFlashcards.length - 1) {
+      setCurrentCardIndex(prev => prev + 1);
+      setIsFlipped(false);
+    }
+  };
+
+  const handlePrevCard = () => {
+    if (currentCardIndex > 0) {
+      setCurrentCardIndex(prev => prev - 1);
+      setIsFlipped(false);
+    }
+  };
+
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+  };
 
   const headerTitle =
     viewState === "generated" && selectedDocument
@@ -310,7 +458,7 @@ export default function FlashcardsPage() {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+        accept=".pdf,.doc,.docx,.txt"
         onChange={handleFileChange}
       />
 
@@ -325,7 +473,14 @@ export default function FlashcardsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <GeneratedState />
+              <GeneratedState 
+                flashcards={generatedFlashcards}
+                currentIndex={currentCardIndex}
+                onNext={handleNextCard}
+                onPrev={handlePrevCard}
+                onFlip={handleFlip}
+                isFlipped={isFlipped}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -338,13 +493,22 @@ export default function FlashcardsPage() {
               <Banner />
 
               {viewState === "upload" ? (
-                <UploadDropzone onChooseFile={handleOpenPicker} />
+                <UploadDropzone 
+                  onChooseFile={handleOpenPicker} 
+                  onTextInput={() => setViewState('textInput')}
+                />
+              ) : viewState === "textInput" ? (
+                <TextInputState
+                  onSubmit={handleTextSubmit}
+                  onCancel={() => setViewState('upload')}
+                  isLoading={generateMutation.isPending}
+                />
               ) : selectedDocument ? (
                 <ReadyState
                   document={selectedDocument}
                   onCancel={resetUpload}
-                  onSubmit={handleSubmit}
-                  isLoading={isGenerating}
+                  onSubmit={handleDocumentSubmit}
+                  isLoading={generateMutation.isPending}
                 />
               ) : null}
             </motion.div>
@@ -353,4 +517,82 @@ export default function FlashcardsPage() {
       </div>
     </div>
   );
+}
+
+// Helper function to parse AI-generated flashcards
+function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
+  const flashcards: GeneratedFlashcard[] = [];
+  
+  // Try to parse common formats:
+  // Format 1: Q: ... A: ...
+  // Format 2: Front: ... Back: ...
+  // Format 3: Numbered lists
+  
+  const lines = aiResponse.split('\n').filter(line => line.trim());
+  let currentFront = '';
+  let currentBack = '';
+  let isQuestion = true;
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Check for Q: or Question: prefix
+    if (trimmed.match(/^Q\d*[:.)]/i) || trimmed.match(/^Question[:)]/i)) {
+      if (currentFront && currentBack) {
+        flashcards.push({
+          id: `card-${flashcards.length}`,
+          front: currentFront,
+          back: currentBack,
+        });
+      }
+      currentFront = trimmed.replace(/^Q\d*[:.)]\s*/i, '').replace(/^Question[:)]\s*/i, '');
+      currentBack = '';
+      isQuestion = false;
+    }
+    // Check for A: or Answer: prefix
+    else if (trimmed.match(/^A\d*[:.)]/i) || trimmed.match(/^Answer[:)]/i)) {
+      currentBack = trimmed.replace(/^A\d*[:.)]\s*/i, '').replace(/^Answer[:)]\s*/i, '');
+      isQuestion = true;
+    }
+    // Check for Front: prefix
+    else if (trimmed.match(/^Front[:)]/i)) {
+      if (currentFront && currentBack) {
+        flashcards.push({
+          id: `card-${flashcards.length}`,
+          front: currentFront,
+          back: currentBack,
+        });
+      }
+      currentFront = trimmed.replace(/^Front[:)]\s*/i, '');
+      currentBack = '';
+    }
+    // Check for Back: prefix
+    else if (trimmed.match(/^Back[:)]/i)) {
+      currentBack = trimmed.replace(/^Back[:)]\s*/i, '');
+    }
+    // Accumulate content
+    else if (!isQuestion && currentFront && !currentBack) {
+      currentBack = trimmed;
+    }
+  }
+  
+  // Don't forget the last card
+  if (currentFront && currentBack) {
+    flashcards.push({
+      id: `card-${flashcards.length}`,
+      front: currentFront,
+      back: currentBack,
+    });
+  }
+  
+  // If no flashcards were parsed, create a fallback
+  if (flashcards.length === 0) {
+    flashcards.push({
+      id: 'card-0',
+      front: 'Generated Content',
+      back: aiResponse,
+    });
+  }
+  
+  return flashcards;
 }

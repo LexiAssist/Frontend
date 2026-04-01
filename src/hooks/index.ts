@@ -1,11 +1,10 @@
-export { useAuth, useRequireAuth } from './useAuth';
-export {
-  useApiQuery,
-  useApiMutation,
-  useApiPut,
-  useApiDelete,
-  useAiMutation,
-  useOptimisticMutation,
-} from './useApi';
-export { useMockMode } from './useMockMode';
-export { useSettings } from './useSettings';
+// Export all hooks
+export * from './useAuth';
+export * from './useCourses';
+export * from './useFlashcards';
+export * from './useQuizzes';
+export * from './useAI';
+export * from './useAnalytics';
+export * from './useApi';
+export * from './useSettings';
+export * from './useMockMode';

@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { env } from '@/env';
+import { useAuthStore } from '@/store/authStore';
 
 // Types for API responses
 export interface ApiResponse<T> {
@@ -24,11 +25,52 @@ const httpClient: AxiosInstance = axios.create({
   withCredentials: true, // Important for session cookies
 });
 
+// Flag to prevent multiple refresh requests
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+// Subscribe to token refresh
+function subscribeTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+// Notify all subscribers with new token
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
 // Request interceptor
 httpClient.interceptors.request.use(
-  (config) => {
-    // You can add auth headers here if needed
-    // Currently using HTTP-only cookies for session
+  async (config) => {
+    // Get token from store
+    const { accessToken, isTokenExpired, refreshAccessToken } = useAuthStore.getState();
+    
+    // If token is expired, try to refresh it
+    if (accessToken && isTokenExpired()) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const refreshed = await refreshAccessToken();
+        isRefreshing = false;
+        
+        if (refreshed) {
+          const { accessToken: newToken } = useAuthStore.getState();
+          onTokenRefreshed(newToken!);
+          config.headers.Authorization = `Bearer ${newToken}`;
+        }
+      } else {
+        // Wait for token refresh
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token: string) => {
+            config.headers.Authorization = `Bearer ${token}`;
+            resolve(config);
+          });
+        });
+      }
+    } else if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    
     return config;
   },
   (error) => {
@@ -41,15 +83,40 @@ httpClient.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  (error: AxiosError<ApiError>) => {
-    // Handle specific error cases
+  async (error: AxiosError<ApiError>) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    
     if (error.response) {
       const { status } = error.response;
 
-      // Handle 401 Unauthorized - redirect to login
-      if (status === 401) {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      // Handle 401 Unauthorized - try to refresh token
+      if (status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        
+        const { refreshAccessToken, logout } = useAuthStore.getState();
+        
+        try {
+          const refreshed = await refreshAccessToken();
+          
+          if (refreshed) {
+            const { accessToken } = useAuthStore.getState();
+            originalRequest.headers = {
+              ...originalRequest.headers,
+              Authorization: `Bearer ${accessToken}`,
+            };
+            return httpClient(originalRequest);
+          } else {
+            // Refresh failed, logout
+            await logout();
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+            }
+          }
+        } catch (refreshError) {
+          await logout();
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+          }
         }
       }
 
@@ -95,6 +162,43 @@ export const aiClient: AxiosInstance = axios.create({
   },
   withCredentials: true,
 });
+
+// Apply same interceptors to AI client
+aiClient.interceptors.request.use(
+  async (config) => {
+    const { accessToken, isTokenExpired, refreshAccessToken } = useAuthStore.getState();
+    
+    if (accessToken && isTokenExpired()) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        await refreshAccessToken();
+        isRefreshing = false;
+      }
+    }
+    
+    const { accessToken: currentToken } = useAuthStore.getState();
+    if (currentToken) {
+      config.headers.Authorization = `Bearer ${currentToken}`;
+    }
+    
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+aiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      const { logout } = useAuthStore.getState();
+      await logout();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // AI HTTP methods
 export const aiHttp = {
