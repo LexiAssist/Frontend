@@ -49,11 +49,8 @@ interface RegisterData {
   academic_level?: string;
 }
 
-// Registration response (no tokens, just user data) - backend returns { message, data: User }
-interface RegisterResponse {
-  message: string;
-  data: User;
-}
+// Registration response - http.post unwraps ApiResponse.data, so this is the User directly
+type RegisterResponse = User;
 
 // Login/Refresh response (includes tokens) - backend returns { data: {...} }
 // but http wrapper unwraps ApiResponse, so this is the inner data

@@ -56,8 +56,7 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: (response, variables) => {
-      const user = response.data;
+    onSuccess: (user, variables) => {
       
       // If email is already verified (bypass mode), auto-login
       if (user.email_verified) {
