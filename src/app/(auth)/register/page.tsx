@@ -16,8 +16,8 @@ function SocialLoginButton({
   label: string;
 }) {
   const iconSrc = provider === "google" 
-    ? "/images/social/google.png" 
-    : "/images/social/linkedin.png";
+    ? "/images/google-icon-logo-svgrepo-com.svg" 
+    : "/images/linkedin-svgrepo-com.svg";
 
   return (
     <button
@@ -28,7 +28,8 @@ function SocialLoginButton({
         <Image 
           src={iconSrc} 
           alt={`${label} icon`} 
-          fill 
+          width={20}
+          height={20}
           className="object-contain"
         />
       </div>
@@ -39,7 +40,8 @@ function SocialLoginButton({
 }
 
 export default function RegisterPage() {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +56,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register({ name, email, password });
+      await register({ first_name: firstName, last_name: lastName, email, password });
     } catch (err) {
       setError("Registration failed. Please try again.");
     } finally {
@@ -103,20 +105,39 @@ export default function RegisterPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name Input */}
+            {/* First Name Input */}
             <div className="space-y-2">
               <label 
-                htmlFor="name" 
+                htmlFor="firstName" 
                 className="block text-sm font-medium text-[#101928]"
               >
-                Name
+                First Name
               </label>
               <input
-                id="name"
+                id="firstName"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your full name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Enter your first name"
+                className="w-full h-12 px-4 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
+                required
+              />
+            </div>
+
+            {/* Last Name Input */}
+            <div className="space-y-2">
+              <label 
+                htmlFor="lastName" 
+                className="block text-sm font-medium text-[#101928]"
+              >
+                Last Name
+              </label>
+              <input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Enter your last name"
                 className="w-full h-12 px-4 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
                 required
               />

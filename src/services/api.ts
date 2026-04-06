@@ -3,7 +3,7 @@
  * Typed functions for calling backend APIs through Next.js API routes
  */
 
-import { http, aiHttp } from './http';
+import { http, aiHttp, httpClient } from './http';
 import type { 
   User, 
   Quiz, 
@@ -18,10 +18,10 @@ import type {
 // Auth Services
 export const authApi = {
   login: (email: string, password: string) =>
-    http.post<AuthResponse>('/api/v1/auth/login', { email, password }),
+    http.post<LoginResponse>('/api/v1/auth/login', { email, password }),
   
   register: (data: RegisterData) =>
-    http.post<AuthResponse>('/api/v1/auth/register', data),
+    http.post<RegisterResponse>('/api/v1/auth/register', data),
   
   logout: () =>
     http.post<void>('/api/v1/auth/logout', {}),
@@ -30,7 +30,13 @@ export const authApi = {
     http.get<User>('/api/v1/users/me'),
   
   refreshToken: (refreshToken: string) =>
-    http.post<AuthResponse>('/api/v1/auth/refresh', { refresh_token: refreshToken }),
+    http.post<LoginResponse>('/api/v1/auth/refresh', { refresh_token: refreshToken }),
+  
+  verifyEmail: (userId: string, code: string) =>
+    http.post<void>(`/api/v1/auth/verify-email?user_id=${userId}`, { code }),
+  
+  resendVerification: () =>
+    http.post<void>('/api/v1/auth/resend-verification', {}),
 };
 
 interface RegisterData {
@@ -43,7 +49,15 @@ interface RegisterData {
   academic_level?: string;
 }
 
-interface AuthResponse {
+// Registration response (no tokens, just user data) - backend returns { message, data: User }
+interface RegisterResponse {
+  message: string;
+  data: User;
+}
+
+// Login/Refresh response (includes tokens) - backend returns { data: {...} }
+// but http wrapper unwraps ApiResponse, so this is the inner data
+interface LoginResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
@@ -252,6 +266,44 @@ interface SummaryOptions {
 interface SummaryResponse {
   summary: string;
   type: 'summary';
+}
+
+// Audio Services (Text-to-Speech, Speech-to-Text)
+export const audioApi = {
+  textToSpeech: async (text: string, language: string = 'en', slow: boolean = false): Promise<Blob> => {
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('language', language);
+    formData.append('slow', slow ? 'true' : 'false');
+    
+    // Let Axios set Content-Type automatically with proper boundary
+    const response = await httpClient.post<Blob>('/api/v1/ai/text-to-speech', formData, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+  
+  speechToText: (audioFile: File, language: string = 'en-US') => {
+    const formData = new FormData();
+    formData.append('audio', audioFile);
+    formData.append('language', language);
+    
+    return http.post<SpeechToTextResponse>('/api/v1/ai/speech-to-text', formData);
+  },
+  
+  getLanguages: () =>
+    http.get<LanguagesResponse>('/api/v1/ai/languages'),
+};
+
+interface SpeechToTextResponse {
+  text: string;
+  confidence: number;
+  language: string;
+  original_format: string;
+}
+
+interface LanguagesResponse {
+  supported_languages: Record<string, string>;
 }
 
 interface RetrieveResponse {

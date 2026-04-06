@@ -29,12 +29,16 @@ const TINT_COLORS: { id: BackgroundTint; color: string }[] = [
   { id: 'cool', color: '#F0F8FF' },
 ];
 
-// Sample text content
-const SAMPLE_TEXT = `Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
+// Sample text content (educational example)
+const SAMPLE_TEXT = `Machine Learning: A Comprehensive Introduction
 
-Early Life and Artistic Failure
+Machine learning is a subset of artificial intelligence that enables computer systems to automatically learn and improve from experience without being explicitly programmed. The field has seen tremendous growth in recent years, transforming industries from healthcare to finance.
 
-Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.`;
+Key Concepts and Applications
+
+At its core, machine learning involves algorithms that can identify patterns in data and make predictions or decisions based on those patterns. Supervised learning uses labeled training data to teach models, while unsupervised learning discovers hidden patterns in unlabeled data. Reinforcement learning, inspired by behavioral psychology, allows agents to learn optimal behaviors through trial and error.
+
+Applications are widespread and growing daily. Recommendation systems power platforms like Netflix and Spotify. Computer vision enables self-driving cars and medical image analysis. Natural language processing drives virtual assistants and translation services. As computational power increases and datasets grow, machine learning continues to push the boundaries of what computers can accomplish.`;
 
 // Icons
 const MicrophoneIcon = ({ className }: { className?: string }) => (

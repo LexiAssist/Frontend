@@ -51,17 +51,74 @@ export function useLogin() {
 // Hook for registration
 export function useRegister() {
   const router = useRouter();
+  const { login } = useAuthStore();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: () => {
-      toast.success('Account created! Please log in.');
-      router.push('/login');
+    onSuccess: (response, variables) => {
+      const user = response.data;
+      
+      // If email is already verified (bypass mode), auto-login
+      if (user.email_verified) {
+        toast.success('Account created! Logging you in...');
+        // Auto-login since email is already verified
+        authApi.login(variables.email, variables.password)
+          .then((loginData) => {
+            login(loginData.user, {
+              accessToken: loginData.access_token,
+              refreshToken: loginData.refresh_token,
+              expiresAt: loginData.expires_at,
+            });
+            queryClient.setQueryData(authKeys.user(), loginData.user);
+            toast.success('Welcome to LexiAssist!');
+            router.push('/dashboard');
+          })
+          .catch(() => {
+            toast.error('Auto-login failed. Please log in manually.');
+            router.push('/login');
+          });
+      } else {
+        // Normal flow - redirect to verification
+        toast.success('Account created! Please check your email for verification code.');
+        router.push(`/verify-email?userId=${user.id}`);
+      }
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Registration failed');
     },
   });
+}
+
+// Hook for email verification
+export function useVerifyEmail() {
+  const router = useRouter();
+  
+  return useMutation({
+    mutationFn: ({ userId, code }: { userId: string; code: string }) =>
+      authApi.verifyEmail(userId, code),
+    onSuccess: () => {
+      toast.success('Email verified! Please log in.');
+      router.push('/login');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Verification failed');
+    },
+  });
+}
+
+// Unified auth hook for components
+export function useAuth() {
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const logoutMutation = useLogout();
+
+  return {
+    login: loginMutation.mutateAsync,
+    register: registerMutation.mutateAsync,
+    logout: logoutMutation.mutateAsync,
+    isLoading: loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending,
+  };
 }
 
 // Hook for logout

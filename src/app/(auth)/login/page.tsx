@@ -17,8 +17,8 @@ function SocialLoginButton({
   label: string;
 }) {
   const iconSrc = provider === "google"
-    ? "/images/social/google.png"
-    : "/images/social/linkedin.png";
+    ? "/images/google-icon-logo-svgrepo-com.svg"
+    : "/images/linkedin-svgrepo-com.svg";
 
   return (
     <button
@@ -29,7 +29,8 @@ function SocialLoginButton({
         <Image
           src={iconSrc}
           alt={`${label} icon`}
-          fill
+          width={20}
+          height={20}
           className="object-contain"
         />
       </div>

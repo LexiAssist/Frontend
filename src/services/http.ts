@@ -16,7 +16,7 @@ export interface ApiError {
 }
 
 // Create axios instance
-const httpClient: AxiosInstance = axios.create({
+export const httpClient: AxiosInstance = axios.create({
   baseURL: env.NEXT_PUBLIC_API_GATEWAY_URL,
   timeout: 30000,
   headers: {
@@ -84,38 +84,58 @@ httpClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiError>) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean; _skipLogout?: boolean };
     
     if (error.response) {
       const { status } = error.response;
 
+      // Skip auth retry for auth endpoints to prevent infinite loops
+      // Also skip for AI endpoints to prevent logout on AI service errors
+      const url = originalRequest.url || '';
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/logout') || url.includes('/auth/register') || url.includes('/auth/refresh');
+      const isAIEndpoint = url.includes('/ai/');
+
       // Handle 401 Unauthorized - try to refresh token
-      if (status === 401 && !originalRequest._retry) {
+      // Skip AI endpoints - they'll show their own error without logging out
+      if (status === 401 && !originalRequest._retry && !isAuthEndpoint && !isAIEndpoint) {
         originalRequest._retry = true;
         
-        const { refreshAccessToken, logout } = useAuthStore.getState();
+        const { refreshAccessToken, logout, accessToken } = useAuthStore.getState();
+        
+        // If no access token, user is not logged in - don't try to refresh
+        if (!accessToken) {
+          return Promise.reject(error);
+        }
         
         try {
           const refreshed = await refreshAccessToken();
           
           if (refreshed) {
-            const { accessToken } = useAuthStore.getState();
+            const { accessToken: newToken } = useAuthStore.getState();
             originalRequest.headers = {
               ...originalRequest.headers,
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${newToken}`,
             };
             return httpClient(originalRequest);
           } else {
-            // Refresh failed, logout
-            await logout();
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+            // Refresh failed - mark as logged out but don't redirect aggressively
+            console.error('Token refresh failed, logging out');
+            logout();
+            // Only redirect if we're on a protected page (not login/register)
+            if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+              // Use a small delay to let the logout complete
+              setTimeout(() => {
+                window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+              }, 100);
             }
           }
         } catch (refreshError) {
-          await logout();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+          console.error('Token refresh error:', refreshError);
+          logout();
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            setTimeout(() => {
+              window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+            }, 100);
           }
         }
       }
@@ -135,22 +155,22 @@ httpClient.interceptors.response.use(
   }
 );
 
-// Typed HTTP methods
+// Typed HTTP methods - unwraps ApiResponse wrapper to return raw data
 export const http = {
   get: <T>(url: string, config?: AxiosRequestConfig) =>
-    httpClient.get<ApiResponse<T>>(url, config).then((res) => res.data),
+    httpClient.get<ApiResponse<T>>(url, config).then((res) => res.data.data),
 
   post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    httpClient.post<ApiResponse<T>>(url, data, config).then((res) => res.data),
+    httpClient.post<ApiResponse<T>>(url, data, config).then((res) => res.data.data),
 
   put: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    httpClient.put<ApiResponse<T>>(url, data, config).then((res) => res.data),
+    httpClient.put<ApiResponse<T>>(url, data, config).then((res) => res.data.data),
 
   patch: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    httpClient.patch<ApiResponse<T>>(url, data, config).then((res) => res.data),
+    httpClient.patch<ApiResponse<T>>(url, data, config).then((res) => res.data.data),
 
   delete: <T>(url: string, config?: AxiosRequestConfig) =>
-    httpClient.delete<ApiResponse<T>>(url, config).then((res) => res.data),
+    httpClient.delete<ApiResponse<T>>(url, config).then((res) => res.data.data),
 };
 
 // AI Proxy specific client (for Python AI Orchestrator)
@@ -191,7 +211,8 @@ aiClient.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       const { logout } = useAuthStore.getState();
-      await logout();
+      // Don't await logout to avoid recursion
+      logout();
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }

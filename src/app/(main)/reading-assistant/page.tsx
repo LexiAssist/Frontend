@@ -29,32 +29,36 @@ interface VocabWord {
   synonyms: string[];
 }
 
-const MOCK_ORIGINAL_TEXT = `Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
+const MOCK_ORIGINAL_TEXT = `Introduction to Machine Learning: Fundamentals and Applications
 
-Early Life and Artistic Failure
+Machine learning represents one of the most transformative technologies of the 21st century, enabling computers to learn from data and improve their performance without explicit programming.
 
-Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.
+Core Concepts and Methodologies
 
-His rejection from art school devastated him, and he struggled to make ends meet, painting postcards and drifting between homeless shelters. This period of his life would prove formative, as he immersed himself in political literature and began developing the radical views that would eventually lead to World War II and the Holocaust.`;
+Machine learning algorithms build mathematical models from training data to make predictions or decisions. The field encompasses three main paradigms: supervised learning, where models learn from labeled examples; unsupervised learning, which discovers hidden patterns in unlabeled data; and reinforcement learning, where agents learn through environmental feedback.
 
-const MOCK_SIMPLIFIED_TEXT = `Adolf Hitler's life is one of the most studied times in history. He went from being a failed artist to causing a global disaster.
+Deep learning, a subset of machine learning using artificial neural networks, has achieved remarkable success in image recognition, natural language processing, and game playing. These systems can automatically learn hierarchical representations of data, extracting increasingly complex features at each layer.`;
 
-Early Life and Artistic Failure
+const MOCK_SIMPLIFIED_TEXT = `Introduction to Machine Learning: Simple Explanation
 
-Adolf Hitler was born on April 20, 1889, in a small Austrian town. He had a difficult relationship with his strict father but loved his mother very much. In 1907, he moved to Vienna to become an artist. But the art school rejected him twice. During his poor years in Vienna, he started to believe in extreme nationalist and antisemitic ideas.
+Machine learning is a type of computer technology that helps computers learn from information and get better at tasks without being directly programmed.
 
-Being rejected from art school hurt him deeply. He struggled to survive by painting postcards and staying in shelters. This difficult time shaped his thinking. He read political books and developed extreme views that later led to World War II and the Holocaust.`;
+Basic Ideas and Methods
 
-const MOCK_SUMMARIZED_TEXT = `• Early Childhood: Adolf Hitler was born in 1889 in Braunau am Inn, Austria, where he experienced a strained relationship with his father and a close bond with his mother.
+Machine learning uses special math programs that learn from example data to make predictions. There are three main types: supervised learning uses labeled examples, unsupervised learning finds patterns on its own, and reinforcement learning learns through trial and error.
 
-• Artistic Ambitions: He moved to Vienna in 1907 to pursue a career in art but was ultimately rejected twice by the Academy of Fine Arts.
+Deep learning uses computer systems inspired by the human brain. It has achieved great success in recognizing images, understanding language, and playing complex games. These systems learn by finding patterns in data, discovering more complex ideas at each stage.`;
 
-• Ideological Formation: His period of poverty in Vienna served as the catalyst for his adoption of extreme nationalist and antisemitic beliefs.
+const MOCK_SUMMARIZED_TEXT = `• Definition: Machine learning enables computers to learn from data and improve performance without explicit programming.
 
-• Historical Significance: These early personal failures and radicalized views eventually led to his role as the architect of a global catastrophe.`;
+• Main Types: Supervised learning uses labeled data, unsupervised learning finds hidden patterns, and reinforcement learning learns through environmental feedback.
+
+• Deep Learning: A subset using neural networks that has achieved success in image recognition, language processing, and game playing.
+
+• Key Advantage: Systems automatically learn hierarchical data representations, extracting complex features at each processing layer.`;
 
 const MOCK_VOCAB_LIST: VocabWord[] = [
-  { word: 'Scrutinized', definition: 'To inspect with great care and attention to detail', synonyms: ['Inspect', 'examine', 'probe', 'audit'] },
+  { word: 'Algorithm', definition: 'A step-by-step procedure or formula for solving a problem', synonyms: ['Procedure', 'method', 'process', 'technique'] },
   { word: 'Antisemitic', definition: 'Hostile to or prejudiced against Jewish people', synonyms: ['Prejudiced', 'discriminatory', 'bigoted'] },
   { word: 'Nationalist', definition: 'A person who advocates political independence for their country', synonyms: ['Patriot', 'loyalist', 'chauvinist'] },
 ];
@@ -226,7 +230,7 @@ export default function ReadingAssistantPage() {
         <div className="sticky top-0 backdrop-blur-sm border-b border-[#e5e7eb] px-4 sm:px-6 py-3 flex items-center justify-between" style={{ backgroundColor: `${BACKGROUND_TINTS[backgroundTint]}f0` }}>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-[#e5e7eb] text-sm shadow-sm">
             <Icon name="file" size={14} className="text-[#3D6E4E]" />
-            <span className="text-[#1a1a1a] font-medium hidden sm:inline">History of Hitler.pdf</span>
+            <span className="text-[#1a1a1a] font-medium hidden sm:inline">ML_Introduction.pdf</span>
             <span className="text-[#1a1a1a] font-medium sm:hidden">Document</span>
           </div>
           <div className="flex items-center gap-2">
@@ -391,7 +395,7 @@ export default function ReadingAssistantPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#e5e7eb]" style={{ backgroundColor: `${BACKGROUND_TINTS[backgroundTint]}f0` }}>
                 <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white rounded-full border border-[#e5e7eb] text-sm shadow-sm">
                   <Icon name="file" size={16} className="text-[#3D6E4E]" />
-                  <span className="text-[#1a1a1a] font-medium truncate max-w-[140px]">History of Hitler.pdf</span>
+                  <span className="text-[#1a1a1a] font-medium truncate max-w-[140px]">ML_Introduction.pdf</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 

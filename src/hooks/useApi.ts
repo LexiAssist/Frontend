@@ -8,15 +8,15 @@ import {
   type UseMutationOptions,
 } from '@tanstack/react-query';
 import { http, aiHttp } from '@/services/http';
-import type { ApiResponse } from '@/types';
+
 
 // Generic hook for GET requests
 export function useApiQuery<T>(
   key: string[],
   url: string,
-  options?: Omit<UseQueryOptions<ApiResponse<T>, Error>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<T, Error>, 'queryKey' | 'queryFn'>
 ) {
-  return useQuery<ApiResponse<T>, Error>({
+  return useQuery<T, Error>({
     queryKey: key,
     queryFn: () => http.get<T>(url),
     ...options,
@@ -26,11 +26,11 @@ export function useApiQuery<T>(
 // Generic hook for POST requests
 export function useApiMutation<T, TData = unknown>(
   url: string,
-  options?: Omit<UseMutationOptions<ApiResponse<T>, Error, TData>, 'mutationFn'>
+  options?: Omit<UseMutationOptions<T, Error, TData>, 'mutationFn'>
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<ApiResponse<T>, Error, TData>({
+  return useMutation<T, Error, TData>({
     mutationFn: (data) => http.post<T>(url, data),
     ...options,
   });
@@ -39,9 +39,9 @@ export function useApiMutation<T, TData = unknown>(
 // Generic hook for PUT requests
 export function useApiPut<T, TData = unknown>(
   url: string,
-  options?: Omit<UseMutationOptions<ApiResponse<T>, Error, TData>, 'mutationFn'>
+  options?: Omit<UseMutationOptions<T, Error, TData>, 'mutationFn'>
 ) {
-  return useMutation<ApiResponse<T>, Error, TData>({
+  return useMutation<T, Error, TData>({
     mutationFn: (data) => http.put<T>(url, data),
     ...options,
   });
@@ -50,9 +50,9 @@ export function useApiPut<T, TData = unknown>(
 // Generic hook for DELETE requests
 export function useApiDelete<T>(
   url: string,
-  options?: Omit<UseMutationOptions<ApiResponse<T>, Error, string>, 'mutationFn'>
+  options?: Omit<UseMutationOptions<T, Error, string>, 'mutationFn'>
 ) {
-  return useMutation<ApiResponse<T>, Error, string>({
+  return useMutation<T, Error, string>({
     mutationFn: (id) => http.delete<T>(`${url}/${id}`),
     ...options,
   });
@@ -77,7 +77,7 @@ export function useOptimisticMutation<T, TData = unknown>(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<ApiResponse<T>, Error, TData, { previousData: T | undefined }>({
+  return useMutation<T, Error, TData, { previousData: T | undefined }>({
     mutationFn: (data) => http.post<T>(url, data),
     onMutate: async (newData) => {
       // Cancel any outgoing refetches
