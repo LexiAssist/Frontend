@@ -4,25 +4,22 @@ import { mockApi } from '@/lib/mockApi';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || !env.NEXT_PUBLIC_API_GATEWAY_URL;
 
-/**
- * Course Materials API Routes
- */
-
 // GET /api/materials - List all materials
 export async function GET(request: NextRequest) {
   try {
-    // Use mock API if enabled
+    const authHeader = request.headers.get('authorization');
+    
     if (USE_MOCK) {
       console.log('[MOCK] Get materials');
       return NextResponse.json({ materials: mockApi.getMaterials() });
     }
     
-    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/materials`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': request.headers.get('cookie') || '',
-      },
-    });
+    const headers: HeadersInit = {};
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
+    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/materials`, { headers });
 
     if (!response.ok) {
       return NextResponse.json(
@@ -35,48 +32,44 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Materials fetch error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // POST /api/materials - Upload new material
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const authHeader = request.headers.get('authorization');
     
-    if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
-    }
-    
-    // Use mock API if enabled
     if (USE_MOCK) {
-      console.log('[MOCK] Upload material:', file.name);
+      // Parse form data for mock
+      const formData = await request.formData();
+      const file = formData.get('file') as File;
+      console.log('[MOCK] Upload material:', file?.name);
       const material = mockApi.uploadMaterial(file);
-      return NextResponse.json({ 
-        material,
-        message: 'File uploaded successfully'
-      });
+      return NextResponse.json({ material, message: 'File uploaded successfully' });
     }
     
-    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/materials`, {
+    // Forward the request to backend
+    // Get the form data from the request
+    const formData = await request.formData();
+    
+    const headers: HeadersInit = {};
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
+    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/materials`, {
       method: 'POST',
-      headers: {
-        'Cookie': request.headers.get('cookie') || '',
-      },
+      headers,
       body: formData,
     });
 
     if (!response.ok) {
-      const error = await response.text();
+      const errorText = await response.text();
+      console.error('Backend upload error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to upload material', details: error },
+        { error: 'Failed to upload material', details: errorText },
         { status: response.status }
       );
     }
@@ -85,10 +78,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Materials POST error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -97,34 +87,31 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const authHeader = request.headers.get('authorization');
     
     if (!id) {
-      return NextResponse.json(
-        { error: 'No material ID provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No material ID provided' }, { status: 400 });
     }
     
-    // Use mock API if enabled
     if (USE_MOCK) {
       console.log('[MOCK] Delete material:', id);
-      return NextResponse.json({ 
-        success: true,
-        message: 'Material deleted'
-      });
+      return NextResponse.json({ success: true, message: 'Material deleted' });
     }
     
-    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/materials?id=${id}`, {
+    const headers: HeadersInit = {};
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
+    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/materials?id=${id}`, {
       method: 'DELETE',
-      headers: {
-        'Cookie': request.headers.get('cookie') || '',
-      },
+      headers,
     });
 
     if (!response.ok) {
-      const error = await response.text();
+      const errorText = await response.text();
       return NextResponse.json(
-        { error: 'Failed to delete material', details: error },
+        { error: 'Failed to delete material', details: errorText },
         { status: response.status }
       );
     }
@@ -133,9 +120,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Materials DELETE error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

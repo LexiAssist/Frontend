@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/Icon';
 import { FeatureHeader } from '@/components/FeatureHeader';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/store/authStore';
+import { writingApi } from '@/services/api';
 
 // Types
 type FontChoice = 'default' | 'opendyslexic' | 'roboto';
@@ -160,6 +163,18 @@ export default function WritingAssistantPage() {
   const [lineHeight, setLineHeight] = useState(1.6);
   const [showSpacingPanel, setShowSpacingPanel] = useState(false);
 
+  // AI Backend Integration State
+  const { user } = useAuthStore();
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const isRecordingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Refs for click outside handling
   const fontDropdownRef = useRef<HTMLDivElement>(null);
   const spacingDropdownRef = useRef<HTMLDivElement>(null);
@@ -188,7 +203,7 @@ export default function WritingAssistantPage() {
 
   // Copy to clipboard handler
   const handleCopy = () => {
-    navigator.clipboard.writeText(SAMPLE_TEXT);
+    navigator.clipboard.writeText(transcript || SAMPLE_TEXT);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -208,8 +223,113 @@ export default function WritingAssistantPage() {
     return TINT_COLORS.find(t => t.id === backgroundTint)?.color || '#f3f4f6';
   };
 
+  const sendChunk = async (blob: Blob) => {
+    try {
+      const res = await writingApi.transcribe(blob, 'en', sessionId);
+      const reader = res.body?.getReader();
+      if (!reader) return;
+
+      const decoder = new TextDecoder();
+      let done = false;
+      let newSid = sessionId;
+      
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          const chunkString = decoder.decode(value, { stream: true });
+          const messages = chunkString.split('\n\n');
+          for (const msg of messages) {
+             if (msg.includes('session_id:')) {
+                const match = msg.match(/session_id:\s*(.+)/);
+                if (match && !newSid) {
+                  newSid = match[1].trim();
+                  setSessionId(newSid);
+                }
+             } else if (msg.startsWith('data: ') && !msg.includes('[DONE]')) {
+                const text = msg.substring(6);
+                if (text.trim()) {
+                   setTranscript(prev => prev + text);
+                }
+             }
+          }
+        }
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  const recordNextChunk = () => {
+     if (!isRecordingRef.current || !streamRef.current) return;
+     
+     const mr = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+     mr.ondataavailable = async (e) => {
+       if (e.data.size > 0) {
+          await sendChunk(e.data);
+       }
+     };
+     mr.start();
+     
+     timeoutRef.current = setTimeout(() => {
+       if (mr.state === 'recording') {
+         mr.stop();
+       }
+       if (isRecordingRef.current) {
+         recordNextChunk();
+       }
+     }, 10000); // 10 second chunks
+  };
+
+  const startRecording = async () => {
+    if (!user) {
+      toast.error('You must be logged in to use the writing assistant');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      toast.success("Recording started");
+      recordNextChunk();
+    } catch (err) {
+      toast.error('Failed to access microphone');
+    }
+  };
+
+  const stopRecording = () => {
+    isRecordingRef.current = false;
+    setIsRecording(false);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const handleGenerateNotes = async () => {
+    if (!transcript || !sessionId || !user) {
+      toast.error('No transcription to process');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const response = await writingApi.generateNotes(sessionId, transcript, 'Meeting Notes', user.id);
+      setTranscript(response.data.structured_notes);
+      toast.success('Notes processed and structured');
+    } catch(err) {
+      toast.error('Failed to generate structured notes');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Render text with highlight
   const renderText = () => {
+    if (transcript) {
+       return <>{transcript}</>;
+    }
     const parts = SAMPLE_TEXT.split('with his');
     return (
       <>
@@ -229,7 +349,7 @@ export default function WritingAssistantPage() {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-10 pt-8">
-        <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Writing Assistant</h1>
+        <h1 className="text-[28px] font-bold text-gray-900 dark:text-gray-100 tracking-tight">Writing Assistant</h1>
         <FeatureHeader />
       </div>
 
@@ -237,73 +357,89 @@ export default function WritingAssistantPage() {
       <div className={`transition-all duration-500 ease-out ${toolsOpen ? 'lg:pr-80' : 'pr-0'}`}>
         {/* Editor Card */}
         <div 
-          className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative shadow-sm border border-gray-200/30"
-          style={{ backgroundColor: getBackgroundColor() }}
+          className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-gray-200/40 dark:border-gray-700/40 bg-[#FAFAFA] dark:bg-gray-900/50"
         >
           {/* Top Row */}
-          <div className="flex items-center justify-between mb-8 px-1">
+          <div className="flex items-center justify-between mb-8 px-1 select-none">
             {/* Left: Low confidence indicator */}
-            <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm"></span>
-              <span className="text-orange-400 text-sm font-medium tracking-wide">Low confidence</span>
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-orange-400/90 shadow-sm"></span>
+              <span className="text-orange-400/90 text-sm font-medium tracking-wide">Low confidence</span>
             </div>
 
-            {/* Center: Audio icons */}
-            <div className="flex items-center gap-4 text-[#3D6E4E]">
-              <MicrophoneIcon className="w-5 h-5" />
-              <WaveformIcon className="w-5 h-5" />
+            {/* Center: Audio controls */}
+            <div className="flex items-center gap-3 text-[#3D6E4E]">
+              {isRecording ? (
+                <button 
+                  onClick={stopRecording} 
+                  className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 font-semibold text-sm rounded-full flex items-center gap-2 transition-all duration-200 ease-out hover:shadow-md active:scale-[0.96]"
+                >
+                  <WaveformIcon className="w-4 h-4 animate-pulse" />
+                  Stop Recording
+                </button>
+              ) : (
+                <button 
+                  onClick={startRecording}
+                  className="bg-[#e8f3ee] hover:bg-[#d1e8da] active:bg-[#c2ddd0] px-4 py-2.5 font-semibold text-[#3D6E4E] text-sm flex items-center gap-2 rounded-full transition-all duration-200 ease-out hover:shadow-md active:scale-[0.96]"
+                >
+                  <MicrophoneIcon className="w-4 h-4" />
+                  Start Recording
+                </button>
+              )}
             </div>
 
             {/* Right: Clean and Structure button */}
-            <button className="bg-[#3D6E4E] text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-[#2d5239]/90 active:scale-[0.96] transition-all duration-300 ease-out shadow-md hover:shadow-lg">
-              Clean and Structure
+            <button 
+              onClick={handleGenerateNotes}
+              disabled={!transcript || isProcessing}
+              className={`bg-[#3D6E4E] text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ease-out shadow-sm hover:shadow-md hover:bg-[#345e43] active:bg-[#2a4d36] active:scale-[0.96] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:bg-[#3D6E4E] disabled:active:scale-100`}
+            >
+              {isProcessing ? 'Structuring...' : 'Clean and Structure'}
             </button>
           </div>
 
           {/* Text Content Area */}
-          <div className="relative pr-5">
-            {/* Custom Scrollbar Track */}
-            <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-gray-300/40 rounded-full">
-              <div className="w-full h-20 bg-gray-400/70 rounded-full mt-10"></div>
-            </div>
-
+          <div className="relative">
             {/* Text Content */}
             <div 
-              className="pr-8 max-h-[400px] overflow-y-auto"
+              className="writing-content pr-4 max-h-[400px] overflow-y-auto"
               style={{ 
                 fontFamily: getFontFamily(),
                 letterSpacing: `${letterSpacing}px`,
                 wordSpacing: `${wordSpacing}px`,
-                lineHeight: lineHeight
+                lineHeight: lineHeight,
+                WebkitFontSmoothing: 'antialiased',
+                MozOsxFontSmoothing: 'grayscale',
+                textRendering: 'optimizeLegibility'
               }}
             >
-              <h2 className="text-xl font-bold text-[#1a1a1a] mb-5">Early Life and Artistic Failure</h2>
-              <p className="text-[#1a1a1a] text-[15px] leading-relaxed whitespace-pre-line">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-5 tracking-tight">Early Life and Artistic Failure</h2>
+              <p className="text-gray-800 dark:text-gray-200 text-[15px] leading-[1.75] whitespace-pre-line">
                 {renderText()}
               </p>
             </div>
           </div>
 
           {/* Misheard Tooltip - positioned near highlighted text */}
-          <div className="absolute left-[280px] top-[200px] bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 p-5 w-64 z-20">
+          <div className="absolute left-[280px] top-[200px] bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100/50 dark:border-gray-700/50 p-5 w-64 z-20">
             <div className="flex flex-col items-center text-center">
               <InfoIcon className="w-6 h-6 text-gray-900 mb-3" />
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 We may have misheard you. Please confirm if the highlighted words are correct
               </p>
             </div>
             {/* Arrow pointer */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/95 border-r border-b border-gray-100/50 rotate-45"></div>
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/95 dark:bg-gray-800/95 border-r border-b border-gray-100/50 dark:border-gray-700/50 rotate-45"></div>
           </div>
 
           {/* Bottom: Copy to Clipboard Button */}
           <div className="flex justify-end mt-8">
             <button
               onClick={handleCopy}
-              className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ease-out shadow-md hover:shadow-lg active:scale-[0.96] ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ease-out shadow-sm hover:shadow-md active:scale-[0.96] ${
                 copied 
                   ? 'bg-[#3D6E4E] text-white' 
-                  : 'bg-[#3D6E4E] text-white hover:bg-[#2d5239]/90'
+                  : 'bg-[#3D6E4E] text-white hover:bg-[#345e43] active:bg-[#2a4d36]'
               }`}
             >
               {copied ? (
@@ -322,19 +458,19 @@ export default function WritingAssistantPage() {
         </div>
       </div>
 
-      {/* Tools Drawer Toggle Button - small arrow at right edge */}
+      {/* Tools Drawer Toggle Button - peeks out 6px from right edge */}
       {!toolsOpen && (
         <button
           onClick={() => setToolsOpen(true)}
-          className="fixed right-0 top-1/2 -translate-y-1/2 w-10 h-14 bg-[#3D6E4E] rounded-l-xl flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] hover:w-12 active:scale-[0.96] transition-all duration-300 ease-out z-30"
+          className="fixed right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%-6px)] hover:translate-x-0 w-10 h-14 bg-[#3D6E4E] rounded-l-xl flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] active:scale-[0.96] transition-all duration-300 ease-out z-40 group"
           aria-label="Open tools"
         >
-          <ChevronLeftIcon className="w-5 h-5" />
+          <ChevronLeftIcon className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </button>
       )}
 
-      {/* Tools Slide-over Drawer */}
-      <div className={`fixed inset-y-0 right-0 w-72 bg-white/95 backdrop-blur-xl shadow-2xl border-l border-gray-100/50 transform transition-transform duration-500 ease-out z-40 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      {/* Tools Slide-over Drawer - completely hidden when closed */}
+      <div className={`fixed inset-y-0 right-0 w-72 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl border-l border-gray-100/50 dark:border-gray-700/50 transform transition-transform duration-500 ease-out z-50 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="h-full flex flex-col p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-10">

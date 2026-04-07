@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/services/api';
+import { authApi, sessionApi } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -106,6 +106,19 @@ export function useVerifyEmail() {
   });
 }
 
+// Hook for resending verification email
+export function useResendVerification(userId: string) {
+  return useMutation({
+    mutationFn: () => authApi.resendVerification(userId),
+    onSuccess: () => {
+      toast.success('Verification code resent! Check your email.');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to resend verification code');
+    },
+  });
+}
+
 // Unified auth hook for components
 export function useAuth() {
   const loginMutation = useLogin();
@@ -118,6 +131,103 @@ export function useAuth() {
     logout: logoutMutation.mutateAsync,
     isLoading: loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending,
   };
+}
+
+// Hook for forgot password
+export function useForgotPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (email: string) => authApi.forgotPassword(email),
+    onSuccess: () => {
+      toast.success('If an account exists, a password reset link has been sent to your email.');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send reset link. Please try again.');
+    },
+  });
+}
+
+// Hook for reset password
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: ({ token, newPassword }: { token: string; newPassword: string }) =>
+      authApi.resetPassword(token, newPassword),
+    onSuccess: () => {
+      toast.success('Password reset successful! Please log in with your new password.');
+      router.push('/login');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to reset password. The link may have expired.');
+    },
+  });
+}
+
+// Hook for change password
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
+      authApi.changePassword(currentPassword, newPassword),
+    onSuccess: () => {
+      toast.success('Password changed successfully. Please log in again with your new password.');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to change password. Please check your current password.');
+    },
+  });
+}
+
+// Session management hooks
+export const sessionKeys = {
+  all: ['sessions'] as const,
+  list: () => [...sessionKeys.all, 'list'] as const,
+};
+
+// Hook to get all sessions
+export function useSessions() {
+  return useQuery({
+    queryKey: sessionKeys.list(),
+    queryFn: () => sessionApi.getSessions(),
+    retry: false,
+  });
+}
+
+// Hook to revoke a session
+export function useRevokeSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (sessionId: string) => sessionApi.revokeSession(sessionId),
+    onSuccess: () => {
+      toast.success('Session revoked successfully');
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to revoke session');
+    },
+  });
+}
+
+// Hook to logout from all devices
+export function useLogoutAll() {
+  const router = useRouter();
+  const { logout } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => sessionApi.logoutAll(),
+    onSuccess: () => {
+      toast.success('Logged out from all devices');
+      logout();
+      queryClient.clear();
+      router.push('/login');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to logout from all devices');
+    },
+  });
 }
 
 // Hook for logout

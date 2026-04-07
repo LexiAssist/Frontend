@@ -1,29 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { http } from '@/services/http';
+import { env } from '@/env';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const authHeader = request.headers.get('authorization');
     
-    // Call backend AI chat service
-    const response = await http.post('/api/v1/ai/chat', {
-      query: body.query,
-      user_id: body.userId,
-      context_chunks: body.contextChunks || [],
-      material_id: body.materialId,
-      conversation_id: body.conversationId,
+    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader || '',
+      },
+      body: JSON.stringify({
+        query: body.query,
+        user_id: body.userId,
+        context_chunks: body.contextChunks || [],
+        material_id: body.materialId,
+        conversation_id: body.conversationId,
+      }),
     });
 
-    return NextResponse.json(response);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { message: errorData.message || 'Failed to get AI response', success: false },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('AI chat error:', error);
-    
     return NextResponse.json(
-      { 
-        message: error.response?.data?.message || 'Failed to get AI response',
-        success: false 
-      },
-      { status: error.response?.status || 500 }
+      { message: error.message || 'Failed to get AI response', success: false },
+      { status: 500 }
     );
   }
 }

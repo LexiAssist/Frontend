@@ -34,15 +34,23 @@ function subscribeTokenRefresh(callback: (token: string) => void) {
   refreshSubscribers.push(callback);
 }
 
-// Notify all subscribers with new token
-function onTokenRefreshed(token: string) {
-  refreshSubscribers.forEach((callback) => callback(token));
+// Notify all subscribers with new token or null if failed
+function onTokenRefreshed(token: string | null) {
+  refreshSubscribers.forEach((callback) => callback(token ? token : ''));
   refreshSubscribers = [];
 }
 
 // Request interceptor
 httpClient.interceptors.request.use(
   async (config) => {
+    const url = config.url || '';
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/refresh');
+    
+    // Skip all token refresh loops for auth endpoints
+    if (isAuthEndpoint) {
+      return config;
+    }
+
     // Get token from store
     const { accessToken, isTokenExpired, refreshAccessToken } = useAuthStore.getState();
     
@@ -57,12 +65,16 @@ httpClient.interceptors.request.use(
           const { accessToken: newToken } = useAuthStore.getState();
           onTokenRefreshed(newToken!);
           config.headers.Authorization = `Bearer ${newToken}`;
+        } else {
+          onTokenRefreshed(null); // prevent hanging promises on failure
         }
       } else {
         // Wait for token refresh
         return new Promise((resolve) => {
           subscribeTokenRefresh((token: string) => {
-            config.headers.Authorization = `Bearer ${token}`;
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`;
+            }
             resolve(config);
           });
         });
@@ -96,8 +108,8 @@ httpClient.interceptors.response.use(
       const isAIEndpoint = url.includes('/ai/');
 
       // Handle 401 Unauthorized - try to refresh token
-      // Skip AI endpoints - they'll show their own error without logging out
-      if (status === 401 && !originalRequest._retry && !isAuthEndpoint && !isAIEndpoint) {
+      // Skip auth endpoints only
+      if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
         originalRequest._retry = true;
         
         const { refreshAccessToken, logout, accessToken } = useAuthStore.getState();

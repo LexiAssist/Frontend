@@ -9,6 +9,8 @@ import { Icon } from '@/components/Icon';
 import { toast } from 'sonner';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import dynamic from 'next/dynamic';
+import { readingApi } from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
 
 // Lazy load the illustration to improve initial page load performance
 const BookLoverCuate = dynamic(() => import('@/components/illustrations/BookLoverCuate'), {
@@ -119,7 +121,7 @@ export default function ReadingAssistantPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
   const [focusMode, setFocusMode] = useState(false);
   const [showDifficultyDropdown, setShowDifficultyDropdown] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number; type: string } | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   
@@ -142,7 +144,16 @@ export default function ReadingAssistantPage() {
   const [originalText, setOriginalText] = useState('');
   const [simplifiedText, setSimplifiedText] = useState('');
   const [summarizedText, setSummarizedText] = useState('');
-  const [vocabList] = useState<VocabWord[]>(MOCK_VOCAB_LIST);
+  const [vocabList, setVocabList] = useState<VocabWord[]>([]);
+  const [ttsAudioB64, setTtsAudioB64] = useState<string>('');
+  
+  // SSE Streaming state
+  const [streamStage, setStreamStage] = useState<'idle' | 'extracting' | 'storing' | 'summarizing' | 'vocab' | 'tts' | 'complete'>('idle');
+  const [streamingSummary, setStreamingSummary] = useState('');
+  const [streamingVocab, setStreamingVocab] = useState<VocabWord[]>([]);
+  const [streamProgress, setStreamProgress] = useState(0);
+  
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (viewState === 'reading') {
@@ -171,7 +182,7 @@ export default function ReadingAssistantPage() {
       toast.error('File must be under 25MB');
       return;
     }
-    setUploadedFile({ name: file.name, size: file.size, type: file.type });
+    setUploadedFile(file);
     setViewState('upload');
     toast.success(`"${file.name}" uploaded`);
   };
@@ -182,13 +193,85 @@ export default function ReadingAssistantPage() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!uploadedFile) return;
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+
     setIsProcessing(true);
-    setTimeout(() => {
+    setStreamStage('extracting');
+    setStreamingSummary('');
+    setStreamingVocab([]);
+    setStreamProgress(0);
+    
+    try {
+      await readingApi.analyseStream(
+        uploadedFile,
+        user.id,
+        (event) => {
+          switch (event.type) {
+            case 'status':
+              setStreamStage(event.data.stage);
+              break;
+            case 'summary_token':
+              setStreamingSummary(prev => prev + event.data.token);
+              break;
+            case 'vocab':
+              setStreamingVocab(prev => [...prev, {
+                word: event.data.term,
+                definition: event.data.definition,
+                synonyms: event.data.context_snippet ? [event.data.context_snippet] : []
+              }]);
+              break;
+            case 'progress':
+              setStreamProgress(event.data.percent);
+              break;
+            case 'complete':
+              // Use streaming data as fallback if available
+              const finalSummary = event.data.summary || streamingSummary;
+              const finalVocab = event.data.vocab_terms?.map((t: any) => ({
+                word: t.term,
+                definition: t.definition,
+                synonyms: t.context_snippet ? [t.context_snippet] : []
+              })) || streamingVocab;
+              
+              setSummarizedText(finalSummary);
+              setVocabList(finalVocab);
+              setTtsAudioB64(event.data.tts_audio_b64 || '');
+              
+              // Fallback mocks for original/simplified text
+              setOriginalText(`[Extracted Document: ${uploadedFile.name}]\n\n${MOCK_ORIGINAL_TEXT}`);
+              setSimplifiedText(`[Simplified version of ${uploadedFile.name}]\n\n${MOCK_SIMPLIFIED_TEXT}`);
+              
+              setViewState('reading');
+              setTextMode('summarized');
+              setIsProcessing(false);
+              setStreamStage('complete');
+              toast.success('Document analysed successfully');
+              break;
+            case 'error':
+              console.error('Stream error:', event.data);
+              toast.error(event.data.message || 'Analysis failed');
+              setIsProcessing(false);
+              setStreamStage('idle');
+              break;
+          }
+        },
+        (error) => {
+          console.error('Analysis error:', error);
+          toast.error(error.message || 'Failed to analyse document');
+          setIsProcessing(false);
+          setStreamStage('idle');
+        }
+      );
+    } catch (error: any) {
       setIsProcessing(false);
-      setViewState('reading');
-      toast.success('Document ready');
-    }, 1500);
+      setStreamStage('idle');
+      console.error('Analysis error:', error);
+      toast.error(error.message || 'Failed to analyse document');
+    }
   };
 
   const handleSummarize = () => {
@@ -378,6 +461,69 @@ export default function ReadingAssistantPage() {
             <Button onClick={handleSubmit} isLoading={isProcessing} className="w-full rounded-xl py-4 text-base font-semibold shadow-lg shadow-[#3D6E4E]/20">
               Submit Document
             </Button>
+            
+            {/* Streaming Progress Indicator */}
+            {isProcessing && (
+              <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#e5e7eb] space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[#1a1a1a]">
+                    {streamStage === 'extracting' && '📄 Extracting text...'}
+                    {streamStage === 'storing' && '💾 Storing document...'}
+                    {streamStage === 'summarizing' && '✨ Generating summary...'}
+                    {streamStage === 'vocab' && '📚 Extracting vocabulary...'}
+                    {streamStage === 'tts' && '🔊 Generating audio...'}
+                    {streamStage === 'complete' && '✅ Complete!'}
+                  </span>
+                  {streamStage === 'tts' && (
+                    <span className="text-xs text-[#5f5f5f]">{streamProgress}%</span>
+                  )}
+                </div>
+                
+                {/* Progress bar */}
+                <div className="h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[#3D6E4E] transition-all duration-300 rounded-full"
+                    style={{ 
+                      width: streamStage === 'extracting' ? '10%' :
+                             streamStage === 'storing' ? '25%' :
+                             streamStage === 'summarizing' ? '50%' :
+                             streamStage === 'vocab' ? '70%' :
+                             streamStage === 'tts' ? `${streamProgress}%` :
+                             streamStage === 'complete' ? '100%' : '0%'
+                    }}
+                  />
+                </div>
+                
+                {/* Live summary preview */}
+                {streamingSummary && (
+                  <div className="mt-4 p-4 bg-[#f8f9fa] rounded-xl">
+                    <p className="text-xs font-semibold text-[#5f5f5f] mb-2">Summary Preview:</p>
+                    <p className="text-sm text-[#1a1a1a] line-clamp-4">{streamingSummary}</p>
+                  </div>
+                )}
+                
+                {/* Live vocab preview */}
+                {streamingVocab.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-[#5f5f5f] mb-2">
+                      Vocabulary ({streamingVocab.length} terms):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {streamingVocab.slice(0, 5).map((v, i) => (
+                        <span key={i} className="px-2 py-1 bg-[#EBF3FF] text-[#407BFF] text-xs rounded-lg">
+                          {v.word}
+                        </span>
+                      ))}
+                      {streamingVocab.length > 5 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg">
+                          +{streamingVocab.length - 5} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -438,7 +584,16 @@ export default function ReadingAssistantPage() {
 
               {/* Content */}
               <CardContent className="p-8">
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-6">{textMode === 'summarized' ? 'Summary' : 'Early Life and Artistic Failure'}</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <h2 className="text-xl font-bold text-[#1a1a1a]">{textMode === 'summarized' ? 'Summary' : uploadedFile?.name || 'Document'}</h2>
+                  {ttsAudioB64 && textMode === 'summarized' && (
+                    <audio 
+                      controls 
+                      src={`data:audio/wav;base64,${ttsAudioB64}`} 
+                      className="h-10 w-full sm:w-auto"
+                    />
+                  )}
+                </div>
                 <DimmedText content={getCurrentText()} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
               </CardContent>
             </Card>
