@@ -17,8 +17,8 @@ function SocialLoginButton({
   label: string;
 }) {
   const iconSrc = provider === "google"
-    ? "/images/social/google.png"
-    : "/images/social/linkedin.png";
+    ? "/images/google-icon-logo-svgrepo-com.svg"
+    : "/images/linkedin-svgrepo-com.svg";
 
   return (
     <button
@@ -29,7 +29,8 @@ function SocialLoginButton({
         <Image
           src={iconSrc}
           alt={`${label} icon`}
-          fill
+          width={20}
+          height={20}
           className="object-contain"
         />
       </div>
@@ -124,12 +125,20 @@ export default function LoginPage() {
 
             {/* Password Input */}
             <div className="space-y-2">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-[#101928]"
-              >
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-[#101928]"
+                >
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-medium text-[#3C8350] hover:text-[#377749] transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="password"

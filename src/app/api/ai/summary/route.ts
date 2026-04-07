@@ -1,28 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { http } from '@/services/http';
+import { env } from '@/env';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const authHeader = request.headers.get('authorization');
     
-    // Call backend AI to generate summary
-    const response = await http.post('/api/v1/ai/generate/summary', {
-      query: body.content || body.text,
-      user_id: body.userId,
-      context_chunks: body.contextChunks || [],
-      material_id: body.materialId,
+    const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/ai/generate/summary`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader || '',
+      },
+      body: JSON.stringify({
+        query: body.content || body.text,
+        user_id: body.userId,
+        context_chunks: body.contextChunks || [],
+        material_id: body.materialId,
+      }),
     });
 
-    return NextResponse.json(response);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { message: errorData.message || 'Failed to generate summary', success: false },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('Summary generation error:', error);
-    
     return NextResponse.json(
-      { 
-        message: error.response?.data?.message || 'Failed to generate summary',
-        success: false 
-      },
-      { status: error.response?.status || 500 }
+      { message: error.message || 'Failed to generate summary', success: false },
+      { status: 500 }
     );
   }
 }

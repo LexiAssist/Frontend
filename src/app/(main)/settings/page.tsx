@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/hooks/useSettings";
+import { useSessions, useRevokeSession, useLogoutAll } from "@/hooks/useAuth";
+import type { Session } from "@/services/api";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Switch } from "@/components/ui/switch";
@@ -495,6 +497,232 @@ function DeveloperSettings() {
   );
 }
 
+// ==================== SESSION MANAGEMENT COMPONENT ====================
+
+function SessionManagement() {
+  const { data: sessions, isLoading, error, refetch } = useSessions();
+  const revokeMutation = useRevokeSession();
+  const logoutAllMutation = useLogoutAll();
+  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false);
+
+  const getDeviceIcon = (userAgent: string) => {
+    if (userAgent.toLowerCase().includes('mobile')) {
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      );
+    }
+    if (userAgent.toLowerCase().includes('tablet')) {
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      );
+    }
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    );
+  };
+
+  const getBrowserInfo = (userAgent: string) => {
+    if (userAgent.toLowerCase().includes('chrome')) return 'Chrome';
+    if (userAgent.toLowerCase().includes('firefox')) return 'Firefox';
+    if (userAgent.toLowerCase().includes('safari')) return 'Safari';
+    if (userAgent.toLowerCase().includes('edge')) return 'Edge';
+    return 'Browser';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium text-slate-900">Active Sessions</h3>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-slate-200 rounded" />
+                  <div className="h-3 w-48 bg-slate-200 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-slate-900">Active Sessions</h3>
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+          <p className="text-sm text-red-600">Failed to load sessions. Please try again.</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-2 text-sm font-medium text-red-700 hover:text-red-800"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentSession = sessions?.find((s: Session) => s.is_current);
+  const otherSessions = sessions?.filter((s: Session) => !s.is_current) || [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-medium text-slate-900">Active Sessions</h3>
+          <p className="text-sm text-slate-500">
+            Manage your active sessions across all devices
+          </p>
+        </div>
+        {otherSessions.length > 0 && (
+          <button
+            onClick={() => setShowLogoutAllConfirm(true)}
+            disabled={logoutAllMutation.isPending}
+            className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {logoutAllMutation.isPending ? 'Logging out...' : 'Logout All Devices'}
+          </button>
+        )}
+      </div>
+
+      {/* Current Session */}
+      {currentSession && (
+        <div className="p-4 rounded-xl border-2 border-[#3c8350]/30 bg-[#3c8350]/5">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#3c8350]/10 flex items-center justify-center text-[#3c8350]">
+              {getDeviceIcon(currentSession.user_agent)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-slate-900">Current Session</p>
+                <span className="px-2 py-0.5 text-xs font-medium bg-[#3c8350] text-white rounded-full">
+                  Active
+                </span>
+              </div>
+              <p className="text-sm text-slate-500">
+                {getBrowserInfo(currentSession.user_agent)} • {currentSession.ip_address}
+              </p>
+              <p className="text-xs text-slate-400">
+                Started {formatDate(currentSession.created_at)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other Sessions */}
+      {otherSessions.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-slate-700">Other Devices</p>
+          {otherSessions.map((session: Session) => (
+            <div
+              key={session.id}
+              className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                  {getDeviceIcon(session.user_agent)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900">
+                    {getBrowserInfo(session.user_agent)}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {session.ip_address}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Last active {formatDate(session.last_active_at)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revokeMutation.mutate(session.id)}
+                  disabled={revokeMutation.isPending}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {revokeMutation.isPending ? 'Revoking...' : 'Revoke'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <p className="text-sm text-slate-500 text-center">
+            No other active sessions found.
+          </p>
+        </div>
+      )}
+
+      {/* Logout All Confirmation Modal */}
+      {showLogoutAllConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-900">Logout from all devices?</h4>
+                <p className="text-sm text-slate-500">
+                  This will end all your active sessions, including the current one.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutAllConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  logoutAllMutation.mutate();
+                  setShowLogoutAllConfirm(false);
+                }}
+                disabled={logoutAllMutation.isPending}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {logoutAllMutation.isPending ? 'Logging out...' : 'Logout All'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ==================== ACCOUNT SETTINGS ====================
 
 function AccountSettings() {
@@ -528,6 +756,11 @@ function AccountSettings() {
       description="Manage your account security and data"
     >
       <div className="space-y-8">
+        {/* Session Management */}
+        <div className="pb-8 border-b border-slate-200">
+          <SessionManagement />
+        </div>
+
         {/* Change Password */}
         <div className="pb-8 border-b border-slate-200">
           <h3 className="text-lg font-medium text-slate-900 mb-4">

@@ -9,6 +9,8 @@ import { Icon } from '@/components/Icon';
 import { toast } from 'sonner';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import dynamic from 'next/dynamic';
+import { readingApi } from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
 
 // Lazy load the illustration to improve initial page load performance
 const BookLoverCuate = dynamic(() => import('@/components/illustrations/BookLoverCuate'), {
@@ -29,32 +31,36 @@ interface VocabWord {
   synonyms: string[];
 }
 
-const MOCK_ORIGINAL_TEXT = `Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
+const MOCK_ORIGINAL_TEXT = `Introduction to Machine Learning: Fundamentals and Applications
 
-Early Life and Artistic Failure
+Machine learning represents one of the most transformative technologies of the 21st century, enabling computers to learn from data and improve their performance without explicit programming.
 
-Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.
+Core Concepts and Methodologies
 
-His rejection from art school devastated him, and he struggled to make ends meet, painting postcards and drifting between homeless shelters. This period of his life would prove formative, as he immersed himself in political literature and began developing the radical views that would eventually lead to World War II and the Holocaust.`;
+Machine learning algorithms build mathematical models from training data to make predictions or decisions. The field encompasses three main paradigms: supervised learning, where models learn from labeled examples; unsupervised learning, which discovers hidden patterns in unlabeled data; and reinforcement learning, where agents learn through environmental feedback.
 
-const MOCK_SIMPLIFIED_TEXT = `Adolf Hitler's life is one of the most studied times in history. He went from being a failed artist to causing a global disaster.
+Deep learning, a subset of machine learning using artificial neural networks, has achieved remarkable success in image recognition, natural language processing, and game playing. These systems can automatically learn hierarchical representations of data, extracting increasingly complex features at each layer.`;
 
-Early Life and Artistic Failure
+const MOCK_SIMPLIFIED_TEXT = `Introduction to Machine Learning: Simple Explanation
 
-Adolf Hitler was born on April 20, 1889, in a small Austrian town. He had a difficult relationship with his strict father but loved his mother very much. In 1907, he moved to Vienna to become an artist. But the art school rejected him twice. During his poor years in Vienna, he started to believe in extreme nationalist and antisemitic ideas.
+Machine learning is a type of computer technology that helps computers learn from information and get better at tasks without being directly programmed.
 
-Being rejected from art school hurt him deeply. He struggled to survive by painting postcards and staying in shelters. This difficult time shaped his thinking. He read political books and developed extreme views that later led to World War II and the Holocaust.`;
+Basic Ideas and Methods
 
-const MOCK_SUMMARIZED_TEXT = `• Early Childhood: Adolf Hitler was born in 1889 in Braunau am Inn, Austria, where he experienced a strained relationship with his father and a close bond with his mother.
+Machine learning uses special math programs that learn from example data to make predictions. There are three main types: supervised learning uses labeled examples, unsupervised learning finds patterns on its own, and reinforcement learning learns through trial and error.
 
-• Artistic Ambitions: He moved to Vienna in 1907 to pursue a career in art but was ultimately rejected twice by the Academy of Fine Arts.
+Deep learning uses computer systems inspired by the human brain. It has achieved great success in recognizing images, understanding language, and playing complex games. These systems learn by finding patterns in data, discovering more complex ideas at each stage.`;
 
-• Ideological Formation: His period of poverty in Vienna served as the catalyst for his adoption of extreme nationalist and antisemitic beliefs.
+const MOCK_SUMMARIZED_TEXT = `• Definition: Machine learning enables computers to learn from data and improve performance without explicit programming.
 
-• Historical Significance: These early personal failures and radicalized views eventually led to his role as the architect of a global catastrophe.`;
+• Main Types: Supervised learning uses labeled data, unsupervised learning finds hidden patterns, and reinforcement learning learns through environmental feedback.
+
+• Deep Learning: A subset using neural networks that has achieved success in image recognition, language processing, and game playing.
+
+• Key Advantage: Systems automatically learn hierarchical data representations, extracting complex features at each processing layer.`;
 
 const MOCK_VOCAB_LIST: VocabWord[] = [
-  { word: 'Scrutinized', definition: 'To inspect with great care and attention to detail', synonyms: ['Inspect', 'examine', 'probe', 'audit'] },
+  { word: 'Algorithm', definition: 'A step-by-step procedure or formula for solving a problem', synonyms: ['Procedure', 'method', 'process', 'technique'] },
   { word: 'Antisemitic', definition: 'Hostile to or prejudiced against Jewish people', synonyms: ['Prejudiced', 'discriminatory', 'bigoted'] },
   { word: 'Nationalist', definition: 'A person who advocates political independence for their country', synonyms: ['Patriot', 'loyalist', 'chauvinist'] },
 ];
@@ -115,7 +121,7 @@ export default function ReadingAssistantPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
   const [focusMode, setFocusMode] = useState(false);
   const [showDifficultyDropdown, setShowDifficultyDropdown] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number; type: string } | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   
@@ -138,7 +144,16 @@ export default function ReadingAssistantPage() {
   const [originalText, setOriginalText] = useState('');
   const [simplifiedText, setSimplifiedText] = useState('');
   const [summarizedText, setSummarizedText] = useState('');
-  const [vocabList] = useState<VocabWord[]>(MOCK_VOCAB_LIST);
+  const [vocabList, setVocabList] = useState<VocabWord[]>([]);
+  const [ttsAudioB64, setTtsAudioB64] = useState<string>('');
+  
+  // SSE Streaming state
+  const [streamStage, setStreamStage] = useState<'idle' | 'extracting' | 'storing' | 'summarizing' | 'vocab' | 'tts' | 'complete'>('idle');
+  const [streamingSummary, setStreamingSummary] = useState('');
+  const [streamingVocab, setStreamingVocab] = useState<VocabWord[]>([]);
+  const [streamProgress, setStreamProgress] = useState(0);
+  
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (viewState === 'reading') {
@@ -167,7 +182,7 @@ export default function ReadingAssistantPage() {
       toast.error('File must be under 25MB');
       return;
     }
-    setUploadedFile({ name: file.name, size: file.size, type: file.type });
+    setUploadedFile(file);
     setViewState('upload');
     toast.success(`"${file.name}" uploaded`);
   };
@@ -178,13 +193,85 @@ export default function ReadingAssistantPage() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!uploadedFile) return;
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+
     setIsProcessing(true);
-    setTimeout(() => {
+    setStreamStage('extracting');
+    setStreamingSummary('');
+    setStreamingVocab([]);
+    setStreamProgress(0);
+    
+    try {
+      await readingApi.analyseStream(
+        uploadedFile,
+        user.id,
+        (event) => {
+          switch (event.type) {
+            case 'status':
+              setStreamStage(event.data.stage);
+              break;
+            case 'summary_token':
+              setStreamingSummary(prev => prev + event.data.token);
+              break;
+            case 'vocab':
+              setStreamingVocab(prev => [...prev, {
+                word: event.data.term,
+                definition: event.data.definition,
+                synonyms: event.data.context_snippet ? [event.data.context_snippet] : []
+              }]);
+              break;
+            case 'progress':
+              setStreamProgress(event.data.percent);
+              break;
+            case 'complete':
+              // Use streaming data as fallback if available
+              const finalSummary = event.data.summary || streamingSummary;
+              const finalVocab = event.data.vocab_terms?.map((t: any) => ({
+                word: t.term,
+                definition: t.definition,
+                synonyms: t.context_snippet ? [t.context_snippet] : []
+              })) || streamingVocab;
+              
+              setSummarizedText(finalSummary);
+              setVocabList(finalVocab);
+              setTtsAudioB64(event.data.tts_audio_b64 || '');
+              
+              // Fallback mocks for original/simplified text
+              setOriginalText(`[Extracted Document: ${uploadedFile.name}]\n\n${MOCK_ORIGINAL_TEXT}`);
+              setSimplifiedText(`[Simplified version of ${uploadedFile.name}]\n\n${MOCK_SIMPLIFIED_TEXT}`);
+              
+              setViewState('reading');
+              setTextMode('summarized');
+              setIsProcessing(false);
+              setStreamStage('complete');
+              toast.success('Document analysed successfully');
+              break;
+            case 'error':
+              console.error('Stream error:', event.data);
+              toast.error(event.data.message || 'Analysis failed');
+              setIsProcessing(false);
+              setStreamStage('idle');
+              break;
+          }
+        },
+        (error) => {
+          console.error('Analysis error:', error);
+          toast.error(error.message || 'Failed to analyse document');
+          setIsProcessing(false);
+          setStreamStage('idle');
+        }
+      );
+    } catch (error: any) {
       setIsProcessing(false);
-      setViewState('reading');
-      toast.success('Document ready');
-    }, 1500);
+      setStreamStage('idle');
+      console.error('Analysis error:', error);
+      toast.error(error.message || 'Failed to analyse document');
+    }
   };
 
   const handleSummarize = () => {
@@ -226,7 +313,7 @@ export default function ReadingAssistantPage() {
         <div className="sticky top-0 backdrop-blur-sm border-b border-[#e5e7eb] px-4 sm:px-6 py-3 flex items-center justify-between" style={{ backgroundColor: `${BACKGROUND_TINTS[backgroundTint]}f0` }}>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-[#e5e7eb] text-sm shadow-sm">
             <Icon name="file" size={14} className="text-[#3D6E4E]" />
-            <span className="text-[#1a1a1a] font-medium hidden sm:inline">History of Hitler.pdf</span>
+            <span className="text-[#1a1a1a] font-medium hidden sm:inline">ML_Introduction.pdf</span>
             <span className="text-[#1a1a1a] font-medium sm:hidden">Document</span>
           </div>
           <div className="flex items-center gap-2">
@@ -374,6 +461,69 @@ export default function ReadingAssistantPage() {
             <Button onClick={handleSubmit} isLoading={isProcessing} className="w-full rounded-xl py-4 text-base font-semibold shadow-lg shadow-[#3D6E4E]/20">
               Submit Document
             </Button>
+            
+            {/* Streaming Progress Indicator */}
+            {isProcessing && (
+              <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#e5e7eb] space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[#1a1a1a]">
+                    {streamStage === 'extracting' && '📄 Extracting text...'}
+                    {streamStage === 'storing' && '💾 Storing document...'}
+                    {streamStage === 'summarizing' && '✨ Generating summary...'}
+                    {streamStage === 'vocab' && '📚 Extracting vocabulary...'}
+                    {streamStage === 'tts' && '🔊 Generating audio...'}
+                    {streamStage === 'complete' && '✅ Complete!'}
+                  </span>
+                  {streamStage === 'tts' && (
+                    <span className="text-xs text-[#5f5f5f]">{streamProgress}%</span>
+                  )}
+                </div>
+                
+                {/* Progress bar */}
+                <div className="h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[#3D6E4E] transition-all duration-300 rounded-full"
+                    style={{ 
+                      width: streamStage === 'extracting' ? '10%' :
+                             streamStage === 'storing' ? '25%' :
+                             streamStage === 'summarizing' ? '50%' :
+                             streamStage === 'vocab' ? '70%' :
+                             streamStage === 'tts' ? `${streamProgress}%` :
+                             streamStage === 'complete' ? '100%' : '0%'
+                    }}
+                  />
+                </div>
+                
+                {/* Live summary preview */}
+                {streamingSummary && (
+                  <div className="mt-4 p-4 bg-[#f8f9fa] rounded-xl">
+                    <p className="text-xs font-semibold text-[#5f5f5f] mb-2">Summary Preview:</p>
+                    <p className="text-sm text-[#1a1a1a] line-clamp-4">{streamingSummary}</p>
+                  </div>
+                )}
+                
+                {/* Live vocab preview */}
+                {streamingVocab.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-[#5f5f5f] mb-2">
+                      Vocabulary ({streamingVocab.length} terms):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {streamingVocab.slice(0, 5).map((v, i) => (
+                        <span key={i} className="px-2 py-1 bg-[#EBF3FF] text-[#407BFF] text-xs rounded-lg">
+                          {v.word}
+                        </span>
+                      ))}
+                      {streamingVocab.length > 5 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg">
+                          +{streamingVocab.length - 5} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -391,7 +541,7 @@ export default function ReadingAssistantPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#e5e7eb]" style={{ backgroundColor: `${BACKGROUND_TINTS[backgroundTint]}f0` }}>
                 <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white rounded-full border border-[#e5e7eb] text-sm shadow-sm">
                   <Icon name="file" size={16} className="text-[#3D6E4E]" />
-                  <span className="text-[#1a1a1a] font-medium truncate max-w-[140px]">History of Hitler.pdf</span>
+                  <span className="text-[#1a1a1a] font-medium truncate max-w-[140px]">ML_Introduction.pdf</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
@@ -434,7 +584,16 @@ export default function ReadingAssistantPage() {
 
               {/* Content */}
               <CardContent className="p-8">
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-6">{textMode === 'summarized' ? 'Summary' : 'Early Life and Artistic Failure'}</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <h2 className="text-xl font-bold text-[#1a1a1a]">{textMode === 'summarized' ? 'Summary' : uploadedFile?.name || 'Document'}</h2>
+                  {ttsAudioB64 && textMode === 'summarized' && (
+                    <audio 
+                      controls 
+                      src={`data:audio/wav;base64,${ttsAudioB64}`} 
+                      className="h-10 w-full sm:w-auto"
+                    />
+                  )}
+                </div>
                 <DimmedText content={getCurrentText()} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
               </CardContent>
             </Card>

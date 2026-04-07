@@ -12,8 +12,16 @@ export function useAIChat() {
     }: { 
       query: string; 
       userId: string; 
-      options?: Parameters<typeof aiApi.chat>[2];
-    }) => aiApi.chat(query, userId, options),
+      options?: {
+        conversationId?: string;
+        materialId?: string;
+        contextChunks?: string[];
+      };
+    }) => aiApi.chat(query, userId, {
+      conversationId: options?.conversationId,
+      materialId: options?.materialId,
+      contextChunks: options?.contextChunks,
+    }),
     onError: (error: any) => {
       toast.error(error.message || 'Failed to get AI response');
     },

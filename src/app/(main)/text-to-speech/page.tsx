@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuthStore } from '@/store/authStore';
 import { FeatureHeader } from '@/components/FeatureHeader';
+import { audioApi } from '@/services/api';
 
 // Voice options type
 interface VoiceOption {
@@ -80,26 +81,20 @@ const highlightColors = [
   '#20B2AA', // Light sea green
 ];
 
-// Sample document content
-const sampleDocument = {
-  title: 'Early Life and Artistic Failure',
-  content: `Adolf Hitler's life remains one of the most studied and scrutinized periods in modern history, marking the transition from a failed artist to the architect of a global catastrophe.
-
-Early Life and Artistic Failure
-
-Adolf Hitler was born on April 20, 1889, in the small Austrian town of Braunau am Inn. His early years were shaped by a difficult relationship with his strict father and a deep devotion to his mother. In 1907, he moved to Vienna with dreams of becoming an artist. However, he was twice rejected by the Academy of Fine Arts. During his years of poverty in Vienna, he began to adopt the extreme nationalist and antisemitic ideologies that would later define his regime.`,
-};
+// No sample document - user must upload their own file
 
 export default function TextToSpeechPage() {
   const { user } = useAuthStore();
   const [currentStep, setCurrentStep] = useState<'upload' | 'processing' | 'reading'>('upload');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [extractedText, setExtractedText] = useState<string>('');
+  const [documentTitle, setDocumentTitle] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [words, setWords] = useState<string[]>([]);
   
   // Settings
-  const [selectedVoice, setSelectedVoice] = useState<string>('Alex');
+  const [selectedVoice, setSelectedVoice] = useState<string>('en');
   const [speed, setSpeed] = useState<string>('1');
   const [readingMode, setReadingMode] = useState<string>('word');
   const [dimSurrounding, setDimSurrounding] = useState(false);
@@ -110,31 +105,217 @@ export default function TextToSpeechPage() {
   
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
+  const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
+  const [lastTtsRequest, setLastTtsRequest] = useState<number>(0);
 
-  // Load available voices
+  // Load available voices (gTTS supported languages with accents)
   useEffect(() => {
-    const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      const voiceOptions: VoiceOption[] = availableVoices.map((v, i) => ({
-        id: `${v.name}-${i}`,
-        name: v.name,
-        lang: v.lang,
-      }));
-      setVoices(voiceOptions);
-      if (voiceOptions.length > 0 && !selectedVoice) {
-        setSelectedVoice(voiceOptions[0].id);
+    const gttsVoices: VoiceOption[] = [
+      // English variants
+      { id: 'en', name: 'English (US)', lang: 'en' },
+      { id: 'en-uk', name: 'English (UK)', lang: 'en-uk' },
+      { id: 'en-au', name: 'English (Australia)', lang: 'en-au' },
+      { id: 'en-in', name: 'English (India)', lang: 'en-in' },
+      { id: 'en-ca', name: 'English (Canada)', lang: 'en-ca' },
+      
+      // European languages
+      { id: 'es', name: 'Spanish (Spain)', lang: 'es' },
+      { id: 'es-us', name: 'Spanish (Mexico)', lang: 'es-us' },
+      { id: 'fr', name: 'French (France)', lang: 'fr' },
+      { id: 'fr-ca', name: 'French (Canada)', lang: 'fr-ca' },
+      { id: 'de', name: 'German', lang: 'de' },
+      { id: 'it', name: 'Italian', lang: 'it' },
+      { id: 'pt', name: 'Portuguese (Portugal)', lang: 'pt' },
+      { id: 'pt-br', name: 'Portuguese (Brazil)', lang: 'pt-br' },
+      { id: 'nl', name: 'Dutch', lang: 'nl' },
+      { id: 'pl', name: 'Polish', lang: 'pl' },
+      { id: 'tr', name: 'Turkish', lang: 'tr' },
+      { id: 'sv', name: 'Swedish', lang: 'sv' },
+      { id: 'cs', name: 'Czech', lang: 'cs' },
+      { id: 'el', name: 'Greek', lang: 'el' },
+      { id: 'hu', name: 'Hungarian', lang: 'hu' },
+      { id: 'ro', name: 'Romanian', lang: 'ro' },
+      { id: 'da', name: 'Danish', lang: 'da' },
+      { id: 'fi', name: 'Finnish', lang: 'fi' },
+      { id: 'no', name: 'Norwegian', lang: 'no' },
+      { id: 'sk', name: 'Slovak', lang: 'sk' },
+      { id: 'bg', name: 'Bulgarian', lang: 'bg' },
+      { id: 'hr', name: 'Croatian', lang: 'hr' },
+      { id: 'uk', name: 'Ukrainian', lang: 'uk' },
+      { id: 'ca', name: 'Catalan', lang: 'ca' },
+      
+      // Asian languages
+      { id: 'ja', name: 'Japanese', lang: 'ja' },
+      { id: 'zh', name: 'Chinese (Simplified)', lang: 'zh' },
+      { id: 'zh-tw', name: 'Chinese (Traditional)', lang: 'zh-tw' },
+      { id: 'ko', name: 'Korean', lang: 'ko' },
+      { id: 'th', name: 'Thai', lang: 'th' },
+      { id: 'vi', name: 'Vietnamese', lang: 'vi' },
+      { id: 'id', name: 'Indonesian', lang: 'id' },
+      { id: 'ms', name: 'Malay', lang: 'ms' },
+      { id: 'tl', name: 'Filipino', lang: 'tl' },
+      { id: 'ta', name: 'Tamil', lang: 'ta' },
+      
+      // Middle Eastern & African
+      { id: 'ar', name: 'Arabic', lang: 'ar' },
+      { id: 'iw', name: 'Hebrew', lang: 'iw' },
+      { id: 'fa', name: 'Persian', lang: 'fa' },
+      { id: 'hi', name: 'Hindi', lang: 'hi' },
+      { id: 'bn', name: 'Bengali', lang: 'bn' },
+      { id: 'mr', name: 'Marathi', lang: 'mr' },
+      { id: 'te', name: 'Telugu', lang: 'te' },
+      { id: 'ur', name: 'Urdu', lang: 'ur' },
+      { id: 'sw', name: 'Swahili', lang: 'sw' },
+      { id: 'af', name: 'Afrikaans', lang: 'af' },
+      
+      // Slavic & Baltic
+      { id: 'ru', name: 'Russian', lang: 'ru' },
+      { id: 'sr', name: 'Serbian', lang: 'sr' },
+      { id: 'mk', name: 'Macedonian', lang: 'mk' },
+      { id: 'sl', name: 'Slovenian', lang: 'sl' },
+      { id: 'lt', name: 'Lithuanian', lang: 'lt' },
+      { id: 'lv', name: 'Latvian', lang: 'lv' },
+      { id: 'et', name: 'Estonian', lang: 'et' },
+    ];
+    setVoices(gttsVoices);
+    if (!selectedVoice) {
+      setSelectedVoice('en');
+    }
+  }, []);
+  
+  // Cleanup audio URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+      if (previewAudioUrl) {
+        URL.revokeObjectURL(previewAudioUrl);
+      }
+      if (previewAudio) {
+        previewAudio.pause();
       }
     };
+  }, [audioUrl, previewAudioUrl, previewAudio]);
+
+  // Invalidate cached preview audio when settings or text change
+  useEffect(() => {
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      setPreviewAudio(null);
+    }
+    if (previewAudioUrl) {
+      URL.revokeObjectURL(previewAudioUrl);
+      setPreviewAudioUrl(null);
+    }
+    setPreviewingVoice(null);
+  }, [selectedVoice, speed, extractedText]);
+
+  // Invalidate cached main audio when settings or text change
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+    setIsPlaying(false);
+    setCurrentWordIndex(-1);
+  }, [selectedVoice, speed, extractedText]);
+
+  // Preview generated TTS audio
+  const handlePreviewAudio = async () => {
+    if (!extractedText) {
+      toast.error('No text to preview');
+      return;
+    }
     
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    // Rate limit: max 1 request per 3 seconds
+    const now = Date.now();
+    if (now - lastTtsRequest < 3000) {
+      toast.info('Please wait a moment before generating audio again');
+      return;
+    }
     
-    // Parse words from sample document
-    setWords(sampleDocument.content.split(/\s+/));
-  }, []);
+    // If already playing preview, stop it
+    if (previewAudio && !previewAudio.paused) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      setPreviewingVoice(null);
+      return;
+    }
+    
+    // Stop main audio if playing so preview doesn't overlap
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    // If preview already generated, just play it
+    if (previewAudioUrl && previewAudio) {
+      previewAudio.play();
+      setPreviewingVoice('preview');
+      return;
+    }
+    
+    setPreviewingVoice('preview');
+    setIsGenerating(true);
+    setLastTtsRequest(now);
+    
+    try {
+      // Generate TTS for a preview (first 500 characters)
+      const previewText = extractedText.slice(0, 500);
+      
+      const audioBlob = await audioApi.textToSpeech(previewText, selectedVoice, parseFloat(speed) < 1.0);
+      
+      // Clean up old preview URL before creating new one
+      if (previewAudioUrl) {
+        URL.revokeObjectURL(previewAudioUrl);
+      }
+      
+      const url = URL.createObjectURL(audioBlob);
+      setPreviewAudioUrl(url);
+      
+      const audio = new Audio(url);
+      setPreviewAudio(audio);
+      
+      audio.onended = () => {
+        setPreviewingVoice(null);
+      };
+      
+      audio.onerror = () => {
+        setPreviewingVoice(null);
+        toast.error('Error playing preview');
+      };
+      
+      audio.playbackRate = parseFloat(speed);
+      await audio.play();
+      toast.success('Playing preview of document');
+      
+    } catch (error: any) {
+      console.error('Preview error:', error);
+      if (error.response?.status === 429) {
+        toast.error('Rate limit exceeded. Please wait a few seconds.');
+      } else if (error.response?.status === 401) {
+        toast.error('Authentication failed. Please log in again.');
+      } else {
+        toast.error('Failed to generate preview. Please try again.');
+      }
+      setPreviewingVoice(null);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Drag and drop handlers
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -153,20 +334,34 @@ export default function TextToSpeechPage() {
     if (file) handleFileUpload(file);
   }, []);
 
-  const handleFileUpload = (file: File) => {
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-      'image/',
-    ];
-    const isAllowed = allowedTypes.some(
-      (type) => file.type === type || (type.endsWith('/') && file.type.startsWith(type))
-    );
+  const extractTextFromFile = async (file: File): Promise<string> => {
+    // Only accept text files - PDF/DOCX require backend processing
+    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          if (!content || content.trim().length === 0) {
+            reject(new Error('File is empty'));
+            return;
+          }
+          resolve(content);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+      });
+    }
+    
+    // Reject other file types - they need backend processing
+    throw new Error('Only .txt files are supported for now. PDF/DOCX support coming soon.');
+  };
 
-    if (!isAllowed) {
-      toast.error('Please upload a PDF, DOC, TXT, or image file');
+  const handleFileUpload = async (file: File) => {
+    // Only allow text files for now
+    const isTxtFile = file.type === 'text/plain' || file.name.endsWith('.txt');
+    
+    if (!isTxtFile) {
+      toast.error('Please upload a .txt file. PDF and DOC support coming soon.');
       return;
     }
 
@@ -176,7 +371,20 @@ export default function TextToSpeechPage() {
     }
 
     setUploadedFile(file);
-    toast.success(`File "${file.name}" uploaded successfully`);
+    
+    // Extract text from file
+    try {
+      const text = await extractTextFromFile(file);
+      setExtractedText(text);
+      setWords(text.split(/\s+/));
+      setDocumentTitle(file.name.replace(/\.[^/.]+$/, ''));
+      toast.success(`File "${file.name}" loaded successfully (${text.split(/\s+/).length} words)`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to read file';
+      toast.error(message);
+      console.error(error);
+      setUploadedFile(null);
+    }
   };
 
   const removeFile = () => {
@@ -186,7 +394,11 @@ export default function TextToSpeechPage() {
 
   const handleSubmit = () => {
     if (!uploadedFile) {
-      toast.error('Please upload a file first');
+      toast.error('Please upload a .txt file first');
+      return;
+    }
+    if (!extractedText || extractedText.trim().length === 0) {
+      toast.error('No text content found in file');
       return;
     }
     setCurrentStep('reading');
@@ -194,12 +406,12 @@ export default function TextToSpeechPage() {
   };
 
   const handlePlayPause = () => {
-    if (isPlaying) {
-      window.speechSynthesis.pause();
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play();
         setIsPlaying(true);
       } else {
         startSpeech();
@@ -207,60 +419,117 @@ export default function TextToSpeechPage() {
     }
   };
 
-  const startSpeech = () => {
-    if (!sampleDocument.content) return;
-
-    window.speechSynthesis.cancel();
+  const generateAndPlaySpeech = async () => {
+    if (!extractedText || extractedText.trim().length === 0) {
+      toast.error('No text to speak. Please upload a file first.');
+      return;
+    }
     
-    const utterance = new SpeechSynthesisUtterance(sampleDocument.content);
-    utterance.rate = parseFloat(speed);
-    utterance.pitch = 1;
-    utterance.volume = 1;
-
-    // Find selected voice
-    const availableVoices = window.speechSynthesis.getVoices();
-    const voice = availableVoices.find((v) => v.name.includes(selectedVoice) || selectedVoice.includes(v.name));
-    if (voice) utterance.voice = voice;
-
-    utterance.onstart = () => setIsPlaying(true);
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setCurrentWordIndex(-1);
-    };
-    utterance.onpause = () => setIsPlaying(false);
-    utterance.onresume = () => setIsPlaying(true);
+    // Rate limit: max 1 request per 3 seconds
+    const now = Date.now();
+    if (now - lastTtsRequest < 3000) {
+      toast.info('Please wait a moment before generating audio again');
+      return;
+    }
+    setLastTtsRequest(now);
     
-    // Word boundary tracking
-    utterance.onboundary = (event) => {
-      if (event.name === 'word') {
-        const charIndex = event.charIndex;
-        const textUpToIndex = sampleDocument.content.substring(0, charIndex);
-        const wordCount = textUpToIndex.split(/\s+/).filter(w => w.length > 0).length;
-        setCurrentWordIndex(wordCount);
+    // Stop current playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    // Stop preview audio if playing so main audio doesn't overlap
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      setPreviewingVoice(null);
+    }
+    
+    setIsGenerating(true);
+    
+    try {
+      // Call backend TTS API through the Gateway
+      const audioBlob = await audioApi.textToSpeech(extractedText, selectedVoice, parseFloat(speed) < 1.0);
+      
+      // Create audio URL from blob
+      const url = URL.createObjectURL(audioBlob);
+      
+      // Clean up old URL
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
       }
-    };
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+      
+      setAudioUrl(url);
+      
+      // Create and play audio
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      
+      audio.onplay = () => setIsPlaying(true);
+      audio.onended = () => {
+        setIsPlaying(false);
+        setCurrentWordIndex(-1);
+      };
+      audio.onpause = () => setIsPlaying(false);
+      audio.onerror = () => {
+        toast.error('Error playing audio');
+        setIsPlaying(false);
+      };
+      
+      // Play at selected speed
+      audio.playbackRate = parseFloat(speed);
+      await audio.play();
+      
+      toast.success('Playing text-to-speech audio');
+      
+    } catch (error: any) {
+      console.error('TTS Error:', error);
+      if (error.response?.status === 429) {
+        toast.error('Rate limit exceeded. Please wait a few seconds before trying again.');
+      } else if (error.response?.status === 401) {
+        toast.error('Authentication failed. Please refresh the page and log in again.');
+      } else {
+        toast.error('Failed to generate speech. Please try again.');
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  // Legacy function for compatibility
+  const startSpeech = () => {
+    generateAndPlaySpeech();
   };
 
   const handleSkipBack = () => {
-    // Restart current utterance
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      startSpeech();
+    // Restart current audio
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+      setIsPlaying(true);
     }
   };
 
   const handleSkipForward = () => {
-    // Stop current speech
-    window.speechSynthesis.cancel();
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setIsPlaying(false);
     setCurrentWordIndex(-1);
   };
 
   const handleClose = () => {
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
     setIsPlaying(false);
     setCurrentWordIndex(-1);
     setCurrentStep('upload');
@@ -268,16 +537,42 @@ export default function TextToSpeechPage() {
   };
 
   const handleExportAudio = () => {
-    toast.info('Export to MP3 feature coming soon!');
+    // Use main audio URL, or fallback to preview audio URL
+    const urlToDownload = audioUrl || previewAudioUrl;
+    
+    if (!urlToDownload) {
+      toast.info('Please generate audio first by clicking Play or Preview');
+      return;
+    }
+    
+    try {
+      // Generate filename
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const baseName = documentTitle?.trim() || 'text-to-speech';
+      const filename = `${baseName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '')}_${timestamp}.mp3`;
+      
+      // Download directly from the blob URL
+      const link = document.createElement('a');
+      link.href = urlToDownload;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Downloaded: ${filename}`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download audio. Please try again.');
+    }
   };
 
   // Render text with highlighting
   const renderHighlightedText = () => {
     if (!highlightEnabled || currentWordIndex < 0) {
-      return <span>{sampleDocument.content}</span>;
+      return <span>{extractedText}</span>;
     }
 
-    const allWords = sampleDocument.content.split(/(\s+)/);
+    const allWords = extractedText.split(/(\s+)/);
     let wordCounter = 0;
 
     return (
@@ -411,7 +706,7 @@ export default function TextToSpeechPage() {
                 <span className="font-bold">Click to upload</span> or drag and drop
               </p>
               <p className="text-[#5f5f5f] text-xs sm:text-sm mt-2">
-                PDF, DOC, TXT, image (max 25MB)
+                TXT files only (max 25MB)
               </p>
             </div>
           </motion.div>
@@ -482,7 +777,7 @@ export default function TextToSpeechPage() {
                     <Icon name="document" size={20} className="text-[#3D6E4E]" />
                   </div>
                   <span className="text-sm font-medium text-[#1a1a1a] truncate max-w-[200px]">
-                    {uploadedFile?.name || 'History of Hitler.pdf'}
+                    {uploadedFile?.name || `${documentTitle}.txt`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -494,9 +789,14 @@ export default function TextToSpeechPage() {
                   </button>
                   <button
                     onClick={handlePlayPause}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                    disabled={isGenerating}
+                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
                   >
-                    <Icon name={isPlaying ? 'pause' : 'play'} size={20} className="text-[#1a1a1a]" />
+                    {isGenerating ? (
+                      <div className="w-5 h-5 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Icon name={isPlaying ? 'pause' : 'play'} size={20} className="text-[#1a1a1a]" />
+                    )}
                   </button>
                   <button
                     onClick={handleSkipForward}
@@ -521,7 +821,7 @@ export default function TextToSpeechPage() {
                 }}
               >
                 <h3 className="text-lg font-bold text-[#1a1a1a] mb-4">
-                  {sampleDocument.title}
+                  {documentTitle || 'No Document'}
                 </h3>
                 <div
                   className="text-[15px] leading-relaxed text-[#1a1a1a] whitespace-pre-wrap"
@@ -529,7 +829,9 @@ export default function TextToSpeechPage() {
                     opacity: dimSurrounding && isPlaying ? 0.3 : 1,
                   }}
                 >
-                  {renderHighlightedText()}
+                  {extractedText ? renderHighlightedText() : (
+                    <span className="text-gray-400 italic">No content loaded. Please go back and upload a .txt file.</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -558,7 +860,7 @@ export default function TextToSpeechPage() {
                     <SelectTrigger className="w-full bg-white border-gray-200 rounded-xl h-11 text-sm">
                       <SelectValue placeholder="Select voice" />
                     </SelectTrigger>
-                    <SelectContent side="bottom" align="start" sideOffset={4}>
+                    <SelectContent side="bottom" align="start" sideOffset={4} className="max-h-64">
                       {voices.length > 0 ? (
                         voices.map((voice) => (
                           <SelectItem key={voice.id} value={voice.id}>
@@ -567,14 +869,38 @@ export default function TextToSpeechPage() {
                         ))
                       ) : (
                         <>
-                          <SelectItem value="Alex">Alex</SelectItem>
-                          <SelectItem value="Nadia">Nadia</SelectItem>
-                          <SelectItem value="Jake">Jake</SelectItem>
+                          <SelectItem value="en">English (US)</SelectItem>
+                          <SelectItem value="en-uk">English (UK)</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
                         </>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Preview Audio Button */}
+                <button
+                  onClick={handlePreviewAudio}
+                  disabled={isGenerating}
+                  className="w-full bg-white border-2 border-[#3D6E4E] text-[#3D6E4E] font-semibold py-2.5 px-4 rounded-xl hover:bg-[#E8F3EA] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isGenerating && previewingVoice === 'preview' ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : previewingVoice === 'preview' ? (
+                    <>
+                      <Icon name="pause" size={18} />
+                      Stop Preview
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="volume" size={18} />
+                      Preview Audio
+                    </>
+                  )}
+                </button>
 
                 {/* Speed */}
                 <div className="space-y-2">
@@ -713,10 +1039,15 @@ export default function TextToSpeechPage() {
                 {/* Export Audio Button */}
                 <button
                   onClick={handleExportAudio}
-                  className="w-full mt-4 bg-[#3D6E4E] text-white font-semibold py-3 px-6 rounded-full hover:bg-[#2d5a3d] transition-colors shadow-lg shadow-[#3D6E4E]/20 flex items-center justify-center gap-2"
+                  disabled={!audioUrl && !previewAudioUrl}
+                  className={`w-full mt-4 font-semibold py-3 px-6 rounded-full transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    audioUrl || previewAudioUrl
+                      ? 'bg-[#3D6E4E] text-white hover:bg-[#2d5a3d] shadow-[#3D6E4E]/20'
+                      : 'bg-gray-300 text-gray-500'
+                  }`}
                 >
                   <Icon name="download" size={18} />
-                  Export Audio (MP3)
+                  {audioUrl || previewAudioUrl ? 'Export Audio (MP3)' : 'Generate Audio First'}
                 </button>
               </div>
             </div>

@@ -145,6 +145,32 @@
   background: var(--primary-300);
 }
 
+/* Writing Assistant - Minimal subtle scrollbar */
+.writing-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.writing-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.writing-content::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 3px;
+}
+
+.writing-content::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+.dark .writing-content::-webkit-scrollbar-thumb {
+  background: #4B5563;
+}
+
+.dark .writing-content::-webkit-scrollbar-thumb:hover {
+  background: #6B7280;
+}
+
 /* Wave animation for landing page */
 @keyframes wave {
   0%, 100% { transform: rotate(12deg); }

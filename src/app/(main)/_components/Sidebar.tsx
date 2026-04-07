@@ -135,7 +135,8 @@ export default function Sidebar() {
     window.location.href = '/login';
   };
 
-  const avatarName = user?.name || 'Alison Eyo';
+  const computedName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.name;
+  const avatarName = computedName || 'Alison Eyo';
   const avatarEmail = user?.email || 'alis@lexiassist';
 
   const NavItem = ({
