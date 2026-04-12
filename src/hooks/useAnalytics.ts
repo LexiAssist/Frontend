@@ -8,6 +8,7 @@ export const analyticsKeys = {
   stats: () => [...analyticsKeys.all, 'stats'] as const,
   streak: () => [...analyticsKeys.all, 'streak'] as const,
   mastery: () => [...analyticsKeys.all, 'mastery'] as const,
+  goals: () => [...analyticsKeys.all, 'goals'] as const,
 };
 
 // Hook to fetch study stats
@@ -46,6 +47,46 @@ export function useRecordStudySession() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to record study session');
+    },
+  });
+}
+
+// Hook to fetch goals
+export function useGoals() {
+  return useQuery({
+    queryKey: analyticsKeys.goals(),
+    queryFn: () => analyticsApi.getGoals(),
+  });
+}
+
+// Hook to create goal
+export function useCreateGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: analyticsApi.createGoal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.goals() });
+      toast.success('Learning goal created successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create goal');
+    },
+  });
+}
+
+// Hook to complete goal
+export function useCompleteGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: analyticsApi.completeGoal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.goals() });
+      toast.success('Goal marked as completed!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to complete goal');
     },
   });
 }

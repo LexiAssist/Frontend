@@ -8,6 +8,6 @@ config({ path: resolve(process.cwd(), '.env.local') });
 export default defineConfig({
   schema: './prisma/schema.prisma',
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL || 'postgresql://lexiassist:lexiassist_secret@localhost:5432/lexiassist?sslmode=disable',
   },
 });

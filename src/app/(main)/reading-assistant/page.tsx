@@ -31,40 +31,6 @@ interface VocabWord {
   synonyms: string[];
 }
 
-const MOCK_ORIGINAL_TEXT = `Introduction to Machine Learning: Fundamentals and Applications
-
-Machine learning represents one of the most transformative technologies of the 21st century, enabling computers to learn from data and improve their performance without explicit programming.
-
-Core Concepts and Methodologies
-
-Machine learning algorithms build mathematical models from training data to make predictions or decisions. The field encompasses three main paradigms: supervised learning, where models learn from labeled examples; unsupervised learning, which discovers hidden patterns in unlabeled data; and reinforcement learning, where agents learn through environmental feedback.
-
-Deep learning, a subset of machine learning using artificial neural networks, has achieved remarkable success in image recognition, natural language processing, and game playing. These systems can automatically learn hierarchical representations of data, extracting increasingly complex features at each layer.`;
-
-const MOCK_SIMPLIFIED_TEXT = `Introduction to Machine Learning: Simple Explanation
-
-Machine learning is a type of computer technology that helps computers learn from information and get better at tasks without being directly programmed.
-
-Basic Ideas and Methods
-
-Machine learning uses special math programs that learn from example data to make predictions. There are three main types: supervised learning uses labeled examples, unsupervised learning finds patterns on its own, and reinforcement learning learns through trial and error.
-
-Deep learning uses computer systems inspired by the human brain. It has achieved great success in recognizing images, understanding language, and playing complex games. These systems learn by finding patterns in data, discovering more complex ideas at each stage.`;
-
-const MOCK_SUMMARIZED_TEXT = `• Definition: Machine learning enables computers to learn from data and improve performance without explicit programming.
-
-• Main Types: Supervised learning uses labeled data, unsupervised learning finds hidden patterns, and reinforcement learning learns through environmental feedback.
-
-• Deep Learning: A subset using neural networks that has achieved success in image recognition, language processing, and game playing.
-
-• Key Advantage: Systems automatically learn hierarchical data representations, extracting complex features at each processing layer.`;
-
-const MOCK_VOCAB_LIST: VocabWord[] = [
-  { word: 'Algorithm', definition: 'A step-by-step procedure or formula for solving a problem', synonyms: ['Procedure', 'method', 'process', 'technique'] },
-  { word: 'Antisemitic', definition: 'Hostile to or prejudiced against Jewish people', synonyms: ['Prejudiced', 'discriminatory', 'bigoted'] },
-  { word: 'Nationalist', definition: 'A person who advocates political independence for their country', synonyms: ['Patriot', 'loyalist', 'chauvinist'] },
-];
-
 const BACKGROUND_TINTS: Record<BackgroundTint, string> = {
   none: '#ffffff',
   yellow: '#FFF9E6',
@@ -143,9 +109,12 @@ export default function ReadingAssistantPage() {
   
   const [originalText, setOriginalText] = useState('');
   const [simplifiedText, setSimplifiedText] = useState('');
+  const [simplifiedCache, setSimplifiedCache] = useState<{beginner?: string; intermediate?: string}>({});
+  const [isSimplifying, setIsSimplifying] = useState(false);
   const [summarizedText, setSummarizedText] = useState('');
   const [vocabList, setVocabList] = useState<VocabWord[]>([]);
   const [ttsAudioB64, setTtsAudioB64] = useState<string>('');
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
   
   // SSE Streaming state
   const [streamStage, setStreamStage] = useState<'idle' | 'extracting' | 'storing' | 'summarizing' | 'vocab' | 'tts' | 'complete'>('idle');
@@ -154,13 +123,6 @@ export default function ReadingAssistantPage() {
   const [streamProgress, setStreamProgress] = useState(0);
   
   const { user } = useAuthStore();
-
-  useEffect(() => {
-    if (viewState === 'reading') {
-      setOriginalText(MOCK_ORIGINAL_TEXT);
-      setSimplifiedText(MOCK_SIMPLIFIED_TEXT);
-    }
-  }, [viewState]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -207,65 +169,47 @@ export default function ReadingAssistantPage() {
     setStreamProgress(0);
     
     try {
-      await readingApi.analyseStream(
+      // Use async polling method - no more timeout issues!
+      const result = await readingApi.analyseAsync(
         uploadedFile,
         user.id,
-        (event) => {
-          switch (event.type) {
-            case 'status':
-              setStreamStage(event.data.stage);
-              break;
-            case 'summary_token':
-              setStreamingSummary(prev => prev + event.data.token);
-              break;
-            case 'vocab':
-              setStreamingVocab(prev => [...prev, {
-                word: event.data.term,
-                definition: event.data.definition,
-                synonyms: event.data.context_snippet ? [event.data.context_snippet] : []
-              }]);
-              break;
-            case 'progress':
-              setStreamProgress(event.data.percent);
-              break;
-            case 'complete':
-              // Use streaming data as fallback if available
-              const finalSummary = event.data.summary || streamingSummary;
-              const finalVocab = event.data.vocab_terms?.map((t: any) => ({
-                word: t.term,
-                definition: t.definition,
-                synonyms: t.context_snippet ? [t.context_snippet] : []
-              })) || streamingVocab;
-              
-              setSummarizedText(finalSummary);
-              setVocabList(finalVocab);
-              setTtsAudioB64(event.data.tts_audio_b64 || '');
-              
-              // Fallback mocks for original/simplified text
-              setOriginalText(`[Extracted Document: ${uploadedFile.name}]\n\n${MOCK_ORIGINAL_TEXT}`);
-              setSimplifiedText(`[Simplified version of ${uploadedFile.name}]\n\n${MOCK_SIMPLIFIED_TEXT}`);
-              
-              setViewState('reading');
-              setTextMode('summarized');
-              setIsProcessing(false);
-              setStreamStage('complete');
-              toast.success('Document analysed successfully');
-              break;
-            case 'error':
-              console.error('Stream error:', event.data);
-              toast.error(event.data.message || 'Analysis failed');
-              setIsProcessing(false);
-              setStreamStage('idle');
-              break;
-          }
+        (progress, message) => {
+          // Update progress UI
+          setStreamProgress(progress);
+          console.log('[Analysis Progress]', progress, message);
+          
+          // Map progress to stages for UI
+          if (progress < 20) setStreamStage('extracting');
+          else if (progress < 40) setStreamStage('storing');
+          else if (progress < 70) setStreamStage('summarizing');
+          else if (progress < 90) setStreamStage('vocab');
+          else if (progress < 100) setStreamStage('tts');
+          else setStreamStage('complete');
         },
-        (error) => {
-          console.error('Analysis error:', error);
-          toast.error(error.message || 'Failed to analyse document');
-          setIsProcessing(false);
-          setStreamStage('idle');
-        }
+        'concise',
+        'Zephyr',
+        1.0
       );
+      
+      // Process final result
+      setSummarizedText(result.summary);
+      setVocabList(result.vocab_terms.map((t: any) => ({
+        word: t.term,
+        definition: t.definition,
+        synonyms: t.context_snippet ? [t.context_snippet] : []
+      })));
+      setTtsAudioB64(result.tts_audio_b64 || '');
+      setCurrentSessionId(result.session_id);
+      
+      setOriginalText(`[Document: ${uploadedFile.name}]\n\nThe original text is currently unavailable, but your summary and vocabulary have been successfully generated.`);
+      setSimplifiedText(`[Document: ${uploadedFile.name}]\n\nSimplified version is currently unavailable.`);
+      
+      setViewState('reading');
+      setTextMode('summarized');
+      setIsProcessing(false);
+      setStreamStage('complete');
+      toast.success('Document analysed successfully');
+      
     } catch (error: any) {
       setIsProcessing(false);
       setStreamStage('idle');
@@ -275,13 +219,41 @@ export default function ReadingAssistantPage() {
   };
 
   const handleSummarize = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setSummarizedText(MOCK_SUMMARIZED_TEXT);
+    toast.info('Summary was automatically generated during upload.');
+    setTextMode('summarized');
+  };
+
+  const loadPreviousSession = async (sessionId: string) => {
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const session = await readingApi.getSession(sessionId, user.id);
+      
+      setSummarizedText(session.summary);
+      setVocabList(session.vocab_terms.map(t => ({
+        word: t.term,
+        definition: t.definition,
+        synonyms: t.context_snippet ? [t.context_snippet] : []
+      })));
+      setTtsAudioB64(session.tts_audio_b64);
+      setCurrentSessionId(session.session_id);
+      
+      setOriginalText(`[Document: ${session.filename || 'Previous Session'}]\n\nThe original text is currently unavailable.`);
+      setSimplifiedText(`[Document: ${session.filename || 'Previous Session'}]\n\nSimplified version is currently unavailable.`);
+      
+      setViewState('reading');
       setTextMode('summarized');
+      toast.success('Previous session loaded');
+    } catch (error: any) {
+      console.error('Failed to load session:', error);
+      toast.error(error.message || 'Failed to load previous session');
+    } finally {
       setIsProcessing(false);
-      toast.success('Text summarized');
-    }, 1500);
+    }
   };
 
   const handleWordClick = (word: string, e: React.MouseEvent) => {
@@ -307,36 +279,97 @@ export default function ReadingAssistantPage() {
     return originalText;
   };
 
+  const handleDifficultySelect = async (level: Difficulty) => {
+    if (!user || !summarizedText) return;
+    
+    setDifficulty(level);
+    setTextMode('simplified');
+    setShowDifficultyDropdown(false);
+    
+    // Check if we already have this level cached
+    if (simplifiedCache[level]) {
+      setSimplifiedText(simplifiedCache[level]!);
+      return;
+    }
+    
+    // Need to generate simplified text
+    setIsSimplifying(true);
+    try {
+      const result = await readingApi.simplify(summarizedText, level);
+      setSimplifiedText(result.simplified_text);
+      setSimplifiedCache(prev => ({ ...prev, [level]: result.simplified_text }));
+    } catch (error: any) {
+      console.error('Failed to simplify text:', error);
+      toast.error('Failed to generate simplified text');
+      // Fall back to summary text
+      setSimplifiedText(summarizedText);
+    } finally {
+      setIsSimplifying(false);
+    }
+  };
+
   if (focusMode) {
+    // If current text mode has no content but summary exists, switch to summary
+    const currentText = getCurrentText();
+    const hasSummary = !!summarizedText;
+    const displayText = currentText || (hasSummary ? summarizedText : 'No content available');
+    
     return (
       <div className="fixed inset-0 z-50 overflow-auto" style={{ backgroundColor: BACKGROUND_TINTS[backgroundTint] }}>
         <div className="sticky top-0 backdrop-blur-sm border-b border-[#e5e7eb] px-4 sm:px-6 py-3 flex items-center justify-between" style={{ backgroundColor: `${BACKGROUND_TINTS[backgroundTint]}f0` }}>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-[#e5e7eb] text-sm shadow-sm">
             <Icon name="file" size={14} className="text-[#3D6E4E]" />
-            <span className="text-[#1a1a1a] font-medium hidden sm:inline">ML_Introduction.pdf</span>
+            <span className="text-[#1a1a1a] font-medium hidden sm:inline truncate max-w-[200px]">{uploadedFile?.name || 'Document'}</span>
             <span className="text-[#1a1a1a] font-medium sm:hidden">Document</span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setTextMode('original')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${textMode === 'original' ? 'bg-[#3D6E4E] text-white shadow-sm' : 'bg-white text-[#5f5f5f] border border-[#e5e7eb] hover:border-[#3D6E4E]'}`}>Original</button>
+            {summarizedText && (
+              <button onClick={() => setTextMode('summarized')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${textMode === 'summarized' ? 'bg-[#3D6E4E] text-white shadow-sm' : 'bg-white text-[#5f5f5f] border border-[#e5e7eb] hover:border-[#3D6E4E]'}`}>Summary</button>
+            )}
             <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setShowDifficultyDropdown(!showDifficultyDropdown); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center gap-1.5 transition-all ${textMode === 'simplified' || textMode === 'summarized' ? 'bg-[#3D6E4E] text-white border-[#3D6E4E] shadow-sm' : 'bg-white text-[#5f5f5f] border-[#e5e7eb] hover:border-[#3D6E4E]'}`}>
+              <button onClick={(e) => { e.stopPropagation(); setShowDifficultyDropdown(!showDifficultyDropdown); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center gap-1.5 transition-all ${textMode === 'simplified' ? 'bg-[#3D6E4E] text-white border-[#3D6E4E] shadow-sm' : 'bg-white text-[#5f5f5f] border-[#e5e7eb] hover:border-[#3D6E4E]'}`}>
                 <span className="hidden sm:inline">Simplified</span>
                 <span className="sm:hidden">Simple</span>
                 <Icon name="chevron-down" size={14} />
               </button>
               {showDifficultyDropdown && (
                 <div className="absolute top-full mt-2 right-0 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 w-36 z-50">
-                  <button onClick={() => { setDifficulty('beginner'); setTextMode('simplified'); setShowDifficultyDropdown(false); }} className={`block w-full text-left px-4 py-2 text-sm ${difficulty === 'beginner' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-medium' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'}`}>Beginner</button>
-                  <button onClick={() => { setDifficulty('intermediate'); setTextMode('simplified'); setShowDifficultyDropdown(false); }} className={`block w-full text-left px-4 py-2 text-sm ${difficulty === 'intermediate' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-medium' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'}`}>Intermediate</button>
+                  <button onClick={() => handleDifficultySelect('beginner')} disabled={isSimplifying} className={`block w-full text-left px-4 py-2 text-sm ${difficulty === 'beginner' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-medium' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'} ${isSimplifying ? 'opacity-50 cursor-not-allowed' : ''}`}>Beginner</button>
+                  <button onClick={() => handleDifficultySelect('intermediate')} disabled={isSimplifying} className={`block w-full text-left px-4 py-2 text-sm ${difficulty === 'intermediate' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-medium' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'} ${isSimplifying ? 'opacity-50 cursor-not-allowed' : ''}`}>Intermediate</button>
                 </div>
               )}
             </div>
-            <button onClick={() => setFocusMode(false)} className="p-2 rounded-full bg-gray-900 text-white hover:bg-gray-800 shadow-lg transition-colors"><Icon name="close" size={20} /></button>
+            {ttsAudioB64 && (
+              <audio 
+                controls 
+                src={`data:audio/wav;base64,${ttsAudioB64}`} 
+                className="h-8 w-32 sm:w-48"
+              />
+            )}
+            <button 
+              onClick={() => setFocusMode(false)} 
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 shadow-lg transition-colors"
+            >
+              <Icon name="close" size={18} />
+              <span className="text-sm font-medium hidden sm:inline">Exit</span>
+            </button>
           </div>
         </div>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-2xl font-bold text-[#1a1a1a] mb-6">{textMode === 'summarized' ? 'Summary' : 'Early Life and Artistic Failure'}</h1>
-          <DimmedText content={getCurrentText()} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 text-[#1a1a1a]">
+          <h1 className="text-2xl font-bold mb-6">
+            {!currentText && hasSummary ? 'Summary' : textMode === 'summarized' ? 'Summary' : textMode === 'simplified' ? `Simplified (${difficulty})` : (uploadedFile?.name || 'Document Content')}
+          </h1>
+          {isSimplifying ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex items-center gap-3 text-[#5f5f5f]">
+                <div className="w-5 h-5 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
+                <span>Generating {difficulty} version...</span>
+              </div>
+            </div>
+          ) : (
+            <DimmedText content={displayText} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
+          )}
         </div>
       </div>
     );
@@ -541,7 +574,7 @@ export default function ReadingAssistantPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#e5e7eb]" style={{ backgroundColor: `${BACKGROUND_TINTS[backgroundTint]}f0` }}>
                 <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white rounded-full border border-[#e5e7eb] text-sm shadow-sm">
                   <Icon name="file" size={16} className="text-[#3D6E4E]" />
-                  <span className="text-[#1a1a1a] font-medium truncate max-w-[140px]">ML_Introduction.pdf</span>
+                  <span className="text-[#1a1a1a] font-medium truncate max-w-[140px]">{uploadedFile?.name || 'Document'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
@@ -554,11 +587,23 @@ export default function ReadingAssistantPage() {
                   >
                     Original
                   </button>
+                  {summarizedText && (
+                    <button 
+                      onClick={() => setTextMode('summarized')} 
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
+                        textMode === 'summarized'
+                          ? 'bg-[#3D6E4E] text-white border-[#3D6E4E] shadow-sm'
+                          : 'bg-transparent text-[#5f5f5f] hover:bg-white/50'
+                      }`}
+                    >
+                      Summary
+                    </button>
+                  )}
                   <div className="relative">
                     <button 
                       onClick={(e) => { e.stopPropagation(); setShowDifficultyDropdown(!showDifficultyDropdown); }} 
                       className={`px-4 py-2 rounded-xl text-sm font-medium border-2 flex items-center gap-2 transition-all ${
-                        textMode === 'simplified' || textMode === 'summarized'
+                        textMode === 'simplified'
                           ? 'bg-[#3D6E4E] text-white border-[#3D6E4E] shadow-sm'
                           : 'bg-transparent text-[#5f5f5f] hover:bg-white/50'
                       }`}
@@ -568,14 +613,21 @@ export default function ReadingAssistantPage() {
                     </button>
                     {showDifficultyDropdown && (
                       <div className="absolute top-full mt-2 right-0 bg-white rounded-xl shadow-lg border border-[#e5e7eb] py-2 w-36 z-50" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => { setDifficulty('beginner'); setTextMode('simplified'); setShowDifficultyDropdown(false); }} className={`block w-full text-left px-4 py-2.5 text-sm ${difficulty === 'beginner' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-semibold' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'}`}>Beginner</button>
-                        <button onClick={() => { setDifficulty('intermediate'); setTextMode('simplified'); setShowDifficultyDropdown(false); }} className={`block w-full text-left px-4 py-2.5 text-sm ${difficulty === 'intermediate' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-semibold' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'}`}>Intermediate</button>
+                        <button onClick={() => handleDifficultySelect('beginner')} disabled={isSimplifying} className={`block w-full text-left px-4 py-2.5 text-sm ${difficulty === 'beginner' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-semibold' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'} ${isSimplifying ? 'opacity-50 cursor-not-allowed' : ''}`}>Beginner</button>
+                        <button onClick={() => handleDifficultySelect('intermediate')} disabled={isSimplifying} className={`block w-full text-left px-4 py-2.5 text-sm ${difficulty === 'intermediate' ? 'bg-[#f0f7f1] text-[#3D6E4E] font-semibold' : 'text-[#5f5f5f] hover:bg-[#f8f9fa]'} ${isSimplifying ? 'opacity-50 cursor-not-allowed' : ''}`}>Intermediate</button>
                       </div>
                     )}
                   </div>
-                  <button onClick={() => setFocusMode(true)} className="p-2.5 rounded-xl hover:bg-black/5 text-[#5f5f5f] transition-colors ml-1" title="Focus Mode">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                  </button>
+                  {summarizedText && (
+                    <button 
+                      onClick={() => setFocusMode(true)} 
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#e5e7eb] hover:border-[#3D6E4E] hover:text-[#3D6E4E] text-[#5f5f5f] transition-all shadow-sm" 
+                      title="Focus Mode (Fullscreen)"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                      <span className="text-sm font-medium hidden sm:inline">Focus</span>
+                    </button>
+                  )}
                   <button onClick={() => setViewState('home')} className="p-2.5 rounded-xl hover:bg-black/5 text-[#5f5f5f] transition-colors">
                     <Icon name="close" size={20} />
                   </button>
@@ -586,7 +638,7 @@ export default function ReadingAssistantPage() {
               <CardContent className="p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <h2 className="text-xl font-bold text-[#1a1a1a]">{textMode === 'summarized' ? 'Summary' : uploadedFile?.name || 'Document'}</h2>
-                  {ttsAudioB64 && textMode === 'summarized' && (
+                  {ttsAudioB64 && (
                     <audio 
                       controls 
                       src={`data:audio/wav;base64,${ttsAudioB64}`} 
@@ -594,7 +646,16 @@ export default function ReadingAssistantPage() {
                     />
                   )}
                 </div>
-                <DimmedText content={getCurrentText()} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
+                {isSimplifying ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex items-center gap-3 text-[#5f5f5f]">
+                      <div className="w-5 h-5 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
+                      <span>Generating {difficulty} version...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <DimmedText content={getCurrentText()} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -892,9 +953,6 @@ function DimmedText({
               <span>{paragraph.replace('•', '').trim()}</span>
             </div>
           );
-        }
-        if (paragraph.trim() === 'Early Life and Artistic Failure') {
-          return <h3 key={idx} className="font-bold text-lg text-[#1a1a1a] mt-8 mb-4">{paragraph}</h3>;
         }
         
         const words = paragraph.split(/(\s+)/);

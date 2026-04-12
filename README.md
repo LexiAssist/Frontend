@@ -1,114 +1,491 @@
-# LexiAssist - Frontend
+# LexiAssist Frontend
 
-A brief, one-to-two sentence description of what LexiAssist does. [e.g., The official frontend web application for LexiAssist, built to provide a seamless and responsive user interface for AI-driven tasks.]
+Modern Next.js frontend for the LexiAssist AI-powered learning platform.
 
-##  Tech Stack
+## Tech Stack
 
-* **Framework:** [Next.js](https://nextjs.org/)
-* **UI Library:** React
-* **Styling:** [Tailwind CSS / CSS Modules / Styled Components]
-* **Assets:** Custom SVG icon library
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS 4
+- **UI Components:** Radix UI + shadcn/ui
+- **State Management:** Zustand
+- **Data Fetching:** TanStack Query (React Query)
+- **Forms:** React Hook Form + Zod
+- **Animations:** Framer Motion
+- **Icons:** Lucide React
 
-## 🛠️ Getting Started
+## Features
 
-Follow these steps to set up the project locally on your machine.
+### Authentication
+- ✅ Registration with email verification
+- ✅ Login with JWT tokens
+- ✅ Automatic token refresh
+- ✅ Password reset flow
+- ✅ Session management
+- ✅ Social login UI (Google, LinkedIn)
+
+### Dashboard
+- ✅ Study statistics (streak, time, quizzes, materials)
+- ✅ Learning tools grid
+- ✅ Quick actions
+- ✅ Recent activity
+- ✅ Responsive design
+
+### Learning Tools
+- ✅ **Chat Assistant:** AI-powered study buddy
+- ✅ **Quizzes:** Create, take, and AI-generate quizzes
+- ✅ **Flashcards:** Create decks and AI-generate cards
+- ✅ **Reading Assistant:** PDF analysis with summaries
+- ✅ **Text-to-Speech:** Convert text to audio
+- ✅ **Writing Assistant:** Speech-to-text with note generation
+
+### Content Management
+- ✅ Courses (CRUD operations)
+- ✅ Materials (upload and manage)
+- ✅ Quiz attempts and grading
+- ✅ Flashcard decks
+
+### Analytics
+- ✅ Study streak tracking
+- ✅ Study time statistics
+- ✅ Quiz performance
+- ✅ Topic mastery
+- ✅ Learning goals
+
+## Project Structure
+
+```
+Frontend/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── (auth)/            # Auth pages (login, register, etc.)
+│   │   ├── (main)/            # Protected pages (dashboard, features)
+│   │   ├── api/               # API routes (proxies to backend)
+│   │   └── page.tsx           # Landing page
+│   ├── components/            # React components
+│   │   ├── ui/                # shadcn/ui components
+│   │   ├── auth/              # Auth-specific components
+│   │   ├── landing/           # Landing page components
+│   │   └── illustrations/     # SVG illustrations
+│   ├── hooks/                 # Custom React hooks
+│   │   ├── useAuth.ts         # Authentication hooks
+│   │   ├── useCourses.ts      # Course management
+│   │   ├── useQuizzes.ts      # Quiz management
+│   │   ├── useFlashcards.ts   # Flashcard management
+│   │   ├── useAI.ts           # AI features
+│   │   └── useAnalytics.ts    # Analytics hooks
+│   ├── services/              # API service layer
+│   │   ├── api.ts             # API functions
+│   │   ├── http.ts            # HTTP client (Axios)
+│   │   └── mockApi.ts         # Mock data for development
+│   ├── store/                 # Zustand stores
+│   │   └── authStore.ts       # Authentication state
+│   ├── types/                 # TypeScript types
+│   │   └── index.ts           # Shared types
+│   ├── lib/                   # Utilities
+│   │   └── utils.ts           # Helper functions
+│   └── env.ts                 # Environment configuration
+├── public/                    # Static assets
+│   ├── images/                # Images
+│   └── icon/                  # Icons (798 SVG files)
+├── .env.local                 # Environment variables
+├── next.config.ts             # Next.js configuration
+├── tailwind.config.ts         # Tailwind CSS configuration
+├── tsconfig.json              # TypeScript configuration
+└── package.json               # Dependencies
+```
+
+## Getting Started
 
 ### Prerequisites
-Make sure you have the following installed:
-* [Node.js](https://nodejs.org/) (Version 16.x or higher recommended)
-* npm, yarn, or pnpm
+
+- Node.js 18+ installed
+- Backend services running (see root README)
 
 ### Installation
 
-1. Clone the repository:
-  bash
-   git clone [https://github.com/LexiAssist/Frontend.git](https://github.com/LexiAssist/Frontend.git)
-
-   Navigate into the project directory:
-
-Bash
-cd Frontend
-Install the dependencies:
-
-Bash
+```bash
+# Install dependencies
 npm install
-# or yarn install
-Start the development server:
 
-Bash
+# Create environment file
+cp .env.local .env.local
+
+# Update environment variables
+# Edit .env.local with your backend URL
+```
+
+### Environment Variables
+
+Create `.env.local`:
+
+```env
+# Backend API Gateway URL
+NEXT_PUBLIC_API_GATEWAY_URL=http://localhost:8080
+
+# AI Proxy URL (optional, for direct AI service access)
+NEXT_PUBLIC_API_PROXY_URL=http://localhost:5005
+
+# Mock Mode (set to 'false' to use real backend)
+NEXT_PUBLIC_USE_MOCK_API=false
+
+# Database (for Prisma, if using direct DB access)
+DATABASE_URL=postgres://lexiassist:lexiassist_secret@localhost:5432/lexiassist
+```
+
+### Development
+
+```bash
+# Start development server
 npm run dev
-# or yarn dev
-Open your browser and visit http://localhost:3000 to see the app in action.
 
-📂 Project Structure
-A quick overview of the main directories in this project:
+# Open browser to http://localhost:3000
+```
 
-/components - Reusable UI components (buttons, modals, etc.)
+### Build
 
-/pages or /app - Next.js routing and page views
+```bash
+# Build for production
+npm run build
 
-/public/icon - Contains the primary white SVG icon assets used throughout the app
+# Start production server
+npm start
+```
 
-/styles - Global CSS and styling configurations
+### Linting
 
-## 🔐 Authentication Flow
+```bash
+# Run ESLint
+npm run lint
+```
 
-### Test Email (Development Only)
+## API Integration
 
-For testing email verification without a real email service, use this special test email:
+### Authentication Flow
 
-| Field | Value |
-|-------|-------|
-| **Test Email** | `mytest@email.com` |
-| **Password** | Any password (min 8 characters) |
+```typescript
+import { useAuth } from '@/hooks/useAuth';
 
-### How to Get the OTP Code
+function LoginPage() {
+  const { login, isLoading } = useAuth();
+  
+  const handleSubmit = async (email: string, password: string) => {
+    try {
+      await login({ email, password });
+      // Redirects to /dashboard on success
+    } catch (error) {
+      // Error handling
+    }
+  };
+}
+```
 
-When you register with `mytest@email.com`, the OTP will be printed in the **backend logs** (not sent to email):
+### Data Fetching
 
-1. **Watch the backend logs** (in a separate terminal):
-   ```powershell
-   cd lexiassist-backend
-   docker-compose -f infra/docker-compose.yml logs -f user-service
-   ```
+```typescript
+import { useCourses } from '@/hooks/useCourses';
 
-2. **Register** at `http://localhost:3000/register` with `mytest@email.com`
+function CoursesPage() {
+  const { data: courses, isLoading, error } = useCourses();
+  
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState error={error} />;
+  
+  return <CourseList courses={courses} />;
+}
+```
 
-3. **Look for the OTP** in the logs:
-   ```
-   ========================================
-   [DEV OTP] Email: mytest@email.com
-   [DEV OTP] Code:  394827
-   ========================================
-   ```
+### API Calls
 
-4. **Enter that code** on the verify-email page
+```typescript
+import { courseApi } from '@/services/api';
 
-### Resending OTP
+// Create course
+const course = await courseApi.create({
+  name: 'Machine Learning 101',
+  description: 'Introduction to ML',
+  color: '#3B82F6'
+});
 
-If the code expires (15 minutes) or you need a new one:
-1. Wait for the 60-second countdown on the verify-email page
-2. Click **"Resend Code"**
-3. Check the backend logs for the **new OTP** (old one will be invalid)
+// Get courses
+const courses = await courseApi.getAll();
 
-### Authentication Pages
+// Update course
+await courseApi.update(courseId, { name: 'Updated Name' });
 
-| Page | Route | Description |
-|------|-------|-------------|
-| Register | `/register` | Create new account |
-| Login | `/login` | Sign in to existing account |
-| Verify Email | `/verify-email?userId=xxx` | Enter 6-digit OTP |
-| Forgot Password | `/forgot-password` | Request password reset |
-| Reset Password | `/reset-password?token=xxx` | Set new password |
+// Delete course
+await courseApi.delete(courseId);
+```
 
----
+## State Management
 
-## 🤝 Contributing
+### Auth Store (Zustand)
 
-We welcome contributions! If you would like to help improve LexiAssist, please follow these steps:
+```typescript
+import { useAuthStore } from '@/store/authStore';
 
-1. Fork the repository.
-2. Create a new branch for your feature (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'Add some amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
+function Component() {
+  const { user, isAuthenticated, login, logout } = useAuthStore();
+  
+  // Access user data
+  console.log(user?.email);
+  
+  // Check auth status
+  if (!isAuthenticated) {
+    // Redirect to login
+  }
+}
+```
+
+### React Query
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// Fetch data
+const { data, isLoading } = useQuery({
+  queryKey: ['courses'],
+  queryFn: () => courseApi.getAll()
+});
+
+// Mutate data
+const { mutate: createCourse } = useMutation({
+  mutationFn: courseApi.create,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['courses'] });
+  }
+});
+```
+
+## Styling
+
+### Tailwind CSS
+
+```tsx
+// Use Tailwind utility classes
+<div className="flex items-center gap-4 p-6 rounded-lg bg-white shadow-md">
+  <h1 className="text-2xl font-bold text-gray-900">Title</h1>
+</div>
+```
+
+### Custom Colors
+
+```css
+/* Primary color: #377749 (green) */
+/* Secondary color: #df7361 (coral) */
+/* Background: #ECF3EE (light green) */
+```
+
+### Responsive Design
+
+```tsx
+// Mobile-first approach
+<div className="w-full md:w-1/2 lg:w-1/3">
+  {/* Content */}
+</div>
+```
+
+## Components
+
+### UI Components (shadcn/ui)
+
+```tsx
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
+
+<Button variant="primary" size="lg">
+  Click Me
+</Button>
+```
+
+### Custom Components
+
+```tsx
+import { FeatureHeader } from '@/components/FeatureHeader';
+import { LoadingState } from '@/components/LoadingState';
+import { EmptyState } from '@/components/EmptyState';
+```
+
+## Routing
+
+### App Router Structure
+
+```
+app/
+├── (auth)/              # Auth layout (no sidebar)
+│   ├── login/
+│   ├── register/
+│   └── verify-email/
+├── (main)/              # Main layout (with sidebar)
+│   ├── dashboard/
+│   ├── chat-assistant/
+│   ├── quizzes/
+│   └── flashcards/
+└── page.tsx             # Landing page
+```
+
+### Navigation
+
+```tsx
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+// Link component
+<Link href="/dashboard">Dashboard</Link>
+
+// Programmatic navigation
+const router = useRouter();
+router.push('/dashboard');
+```
+
+## Error Handling
+
+### API Errors
+
+```typescript
+try {
+  await authApi.login(email, password);
+} catch (error) {
+  // Error is already parsed in api.ts
+  toast.error(error.message || 'Login failed');
+}
+```
+
+### Error Boundaries
+
+```tsx
+// app/error.tsx
+'use client';
+
+export default function Error({ error, reset }: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+```
+
+## Performance
+
+### Code Splitting
+
+```tsx
+import dynamic from 'next/dynamic';
+
+// Lazy load components
+const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+  loading: () => <LoadingSpinner />
+});
+```
+
+### Image Optimization
+
+```tsx
+import Image from 'next/image';
+
+<Image
+  src="/images/logo.svg"
+  alt="Logo"
+  width={200}
+  height={50}
+  priority // For above-the-fold images
+/>
+```
+
+## Testing
+
+### Unit Tests
+
+```bash
+# Run tests (if configured)
+npm run test
+```
+
+### E2E Tests
+
+```bash
+# Run E2E tests (if configured)
+npm run test:e2e
+```
+
+## Deployment
+
+### Vercel (Recommended)
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+```
+
+### Docker
+
+```bash
+# Build Docker image
+docker build -t lexiassist-frontend .
+
+# Run container
+docker run -p 3000:3000 lexiassist-frontend
+```
+
+### Environment Variables
+
+Set these in your deployment platform:
+- `NEXT_PUBLIC_API_GATEWAY_URL`
+- `NEXT_PUBLIC_AI_PROXY_URL`
+- `DATABASE_URL` (if using Prisma)
+
+## Troubleshooting
+
+### Issue: API calls fail with CORS error
+
+**Solution:** Check backend `ALLOWED_ORIGINS` includes frontend URL
+
+### Issue: 401 Unauthorized
+
+**Solution:** Check token in sessionStorage, try logout/login
+
+### Issue: Styles not loading
+
+**Solution:** Clear `.next` cache and rebuild
+
+```bash
+rm -rf .next
+npm run dev
+```
+
+### Issue: TypeScript errors
+
+**Solution:** Regenerate types
+
+```bash
+npm run db:generate  # If using Prisma
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make changes
+3. Run linter: `npm run lint`
+4. Test changes
+5. Submit pull request
+
+## License
+
+Proprietary - LexiAssist
+
+## Support
+
+For issues or questions:
+- Check `FRONTEND_BACKEND_INTEGRATION.md`
+- Review `API_DOCUMENTATION.md`
+- Check browser console for errors
+- Review backend logs

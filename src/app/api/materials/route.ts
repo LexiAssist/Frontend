@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/env';
-import { mockApi } from '@/lib/mockApi';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || !env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 // GET /api/materials - List all materials
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
-    
-    if (USE_MOCK) {
-      console.log('[MOCK] Get materials');
-      return NextResponse.json({ materials: mockApi.getMaterials() });
-    }
     
     const headers: HeadersInit = {};
     if (authHeader) {
@@ -40,15 +32,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
-    
-    if (USE_MOCK) {
-      // Parse form data for mock
-      const formData = await request.formData();
-      const file = formData.get('file') as File;
-      console.log('[MOCK] Upload material:', file?.name);
-      const material = mockApi.uploadMaterial(file);
-      return NextResponse.json({ material, message: 'File uploaded successfully' });
-    }
     
     // Forward the request to backend
     // Get the form data from the request
@@ -91,11 +74,6 @@ export async function DELETE(request: NextRequest) {
     
     if (!id) {
       return NextResponse.json({ error: 'No material ID provided' }, { status: 400 });
-    }
-    
-    if (USE_MOCK) {
-      console.log('[MOCK] Delete material:', id);
-      return NextResponse.json({ success: true, message: 'Material deleted' });
     }
     
     const headers: HeadersInit = {};

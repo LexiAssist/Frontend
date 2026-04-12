@@ -32,16 +32,7 @@ const TINT_COLORS: { id: BackgroundTint; color: string }[] = [
   { id: 'cool', color: '#F0F8FF' },
 ];
 
-// Sample text content (educational example)
-const SAMPLE_TEXT = `Machine Learning: A Comprehensive Introduction
-
-Machine learning is a subset of artificial intelligence that enables computer systems to automatically learn and improve from experience without being explicitly programmed. The field has seen tremendous growth in recent years, transforming industries from healthcare to finance.
-
-Key Concepts and Applications
-
-At its core, machine learning involves algorithms that can identify patterns in data and make predictions or decisions based on those patterns. Supervised learning uses labeled training data to teach models, while unsupervised learning discovers hidden patterns in unlabeled data. Reinforcement learning, inspired by behavioral psychology, allows agents to learn optimal behaviors through trial and error.
-
-Applications are widespread and growing daily. Recommendation systems power platforms like Netflix and Spotify. Computer vision enables self-driving cars and medical image analysis. Natural language processing drives virtual assistants and translation services. As computational power increases and datasets grow, machine learning continues to push the boundaries of what computers can accomplish.`;
+// Placeholder text removed - now using renderText() for dynamic empty state
 
 // Icons
 const MicrophoneIcon = ({ className }: { className?: string }) => (
@@ -49,6 +40,12 @@ const MicrophoneIcon = ({ className }: { className?: string }) => (
     <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3Z"/>
     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
     <line x1="12" x2="12" y1="19" y2="22"/>
+  </svg>
+);
+
+const SparklesIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
   </svg>
 );
 
@@ -62,6 +59,89 @@ const WaveformIcon = ({ className }: { className?: string }) => (
     <path d="M22 10v4"/>
   </svg>
 );
+
+// Audio Waveform Visualization Component with Real-time Frequency Data
+const AudioWaveform = ({ 
+  level, 
+  isRecording, 
+  analyserRef 
+}: { 
+  level: number; 
+  isRecording: boolean;
+  analyserRef?: React.RefObject<AnalyserNode | null>;
+}) => {
+  const [frequencies, setFrequencies] = useState<number[]>(Array(12).fill(20));
+  const animationRef = useRef<number | null>(null);
+  
+  useEffect(() => {
+    if (!isRecording || !analyserRef?.current) {
+      // Reset to idle state when not recording
+      setFrequencies(Array(12).fill(20));
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      return;
+    }
+    
+    const analyser = analyserRef.current;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    
+    const updateFrequencies = () => {
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Sample 12 frequency bands evenly across the spectrum
+      const bands = 12;
+      const newFrequencies = Array(bands).fill(0).map((_, i) => {
+        const startIndex = Math.floor((i / bands) * (dataArray.length / 2));
+        const endIndex = Math.floor(((i + 1) / bands) * (dataArray.length / 2));
+        let sum = 0;
+        for (let j = startIndex; j < endIndex; j++) {
+          sum += dataArray[j];
+        }
+        const avg = sum / (endIndex - startIndex);
+        // Normalize to 10-100% range
+        return Math.max(10, Math.min(100, (avg / 255) * 100));
+      });
+      
+      setFrequencies(newFrequencies);
+      animationRef.current = requestAnimationFrame(updateFrequencies);
+    };
+    
+    updateFrequencies();
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isRecording, analyserRef]);
+  
+  const bars = 12;
+  return (
+    <div className="flex items-center justify-center gap-[3px] h-10">
+      {Array.from({ length: bars }).map((_, i) => {
+        const height = isRecording ? frequencies[i] || 20 : 20;
+        return (
+          <motion.div
+            key={i}
+            className="w-[3px] bg-gradient-to-t from-red-600 to-red-400 rounded-full"
+            animate={{
+              height: isRecording ? `${height}%` : '20%',
+              opacity: isRecording ? Math.max(0.4, height / 100) : 0.4,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 15,
+              mass: 0.5,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 const BookmarkIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -105,6 +185,14 @@ const ClipboardIcon = ({ className }: { className?: string }) => (
 const CheckIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const TrashIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18"/>
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
   </svg>
 );
 
@@ -169,11 +257,30 @@ export default function WritingAssistantPage() {
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  
+  // Audio visualization state
+  const [audioLevel, setAudioLevel] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  
+  // Stats
+  const wordCount = transcript?.trim() ? transcript.trim().split(/\s+/).length : 0;
+  const charCount = transcript?.length || 0;
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionIdRef = useRef<string | undefined>(undefined);
+  
+  // Keep sessionIdRef in sync with sessionId state
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   // Refs for click outside handling
   const fontDropdownRef = useRef<HTMLDivElement>(null);
@@ -203,9 +310,21 @@ export default function WritingAssistantPage() {
 
   // Copy to clipboard handler
   const handleCopy = () => {
-    navigator.clipboard.writeText(transcript || SAMPLE_TEXT);
+    if (!transcript) return;
+    navigator.clipboard.writeText(transcript);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+  
+  // Clear transcript
+  const handleClear = () => {
+    if (!transcript) return;
+    if (confirm('Are you sure you want to clear all text?')) {
+      setTranscript('');
+      setSessionId(undefined);
+      sessionIdRef.current = undefined;
+      toast.success('Text cleared');
+    }
   };
 
   // Get font family
@@ -224,52 +343,113 @@ export default function WritingAssistantPage() {
   };
 
   const sendChunk = async (blob: Blob) => {
+    if (!user) return;
+    
     try {
-      const res = await writingApi.transcribe(blob, 'en', sessionId);
+      // Use the current sessionId from ref to ensure latest value
+      const currentSessionId = sessionIdRef.current;
+      const res = await writingApi.transcribe(blob, 'en', currentSessionId);
       const reader = res.body?.getReader();
-      if (!reader) return;
+      if (!reader) {
+        toast.error('Failed to start transcription');
+        return;
+      }
 
       const decoder = new TextDecoder();
       let done = false;
-      let newSid = sessionId;
+      let buffer = '';
+      let chunkText = ''; // Collect text for this chunk
       
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         if (value) {
-          const chunkString = decoder.decode(value, { stream: true });
-          const messages = chunkString.split('\n\n');
-          for (const msg of messages) {
-             if (msg.includes('session_id:')) {
-                const match = msg.match(/session_id:\s*(.+)/);
-                if (match && !newSid) {
-                  newSid = match[1].trim();
-                  setSessionId(newSid);
-                }
-             } else if (msg.startsWith('data: ') && !msg.includes('[DONE]')) {
-                const text = msg.substring(6);
-                if (text.trim()) {
-                   setTranscript(prev => prev + text);
-                }
-             }
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Process complete SSE events (separated by double newlines)
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || ''; // Keep incomplete event in buffer
+          
+          for (const event of events) {
+            if (!event.trim()) continue;
+            
+            const lines = event.split('\n');
+            let eventType = '';
+            let eventData = '';
+            
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                eventType = line.substring(7).trim();
+              } else if (line.startsWith('data: ')) {
+                eventData = line.substring(6).trim();
+              }
+            }
+            
+            // Handle session_id event - only update if we don't have one yet
+            if (eventType === 'session_id' && eventData && !sessionIdRef.current) {
+              setSessionId(eventData);
+              sessionIdRef.current = eventData;
+              console.log('[Transcribe] New Session ID:', eventData);
+            }
+            
+            // Handle text data events (only regular data events with text, not session_id)
+            if (eventData && eventData !== '[DONE]' && eventType !== 'session_id') {
+              chunkText += eventData;
+            }
           }
         }
       }
+      
+      // Process any remaining data in buffer
+      if (buffer.trim()) {
+        const lines = buffer.split('\n');
+        let eventType = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.substring(7).trim();
+          } else if (line.startsWith('data: ') && eventType !== 'session_id') {
+            const text = line.substring(6).trim();
+            if (text && text !== '[DONE]') {
+              chunkText += text;
+            }
+          }
+        }
+      }
+      
+      // Append the complete chunk text to transcript with a space separator
+      if (chunkText.trim()) {
+        setTranscript(prev => {
+          const separator = prev && !prev.endsWith(' ') ? ' ' : '';
+          return prev + separator + chunkText.trim();
+        });
+      }
     } catch(err) {
-      console.error(err);
+      console.error('Transcription error:', err);
+      toast.error('Failed to transcribe audio');
     }
   };
 
   const recordNextChunk = () => {
      if (!isRecordingRef.current || !streamRef.current) return;
      
-     const mr = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+     const mr = new MediaRecorder(streamRef.current, { 
+       mimeType: 'audio/webm;codecs=opus' 
+     });
+     
      mr.ondataavailable = async (e) => {
        if (e.data.size > 0) {
           await sendChunk(e.data);
        }
      };
+     
+     mr.onerror = (e) => {
+       console.error('MediaRecorder error:', e);
+       toast.error('Recording error occurred');
+       stopRecording();
+     };
+     
      mr.start();
+     mediaRecorderRef.current = mr;
      
      timeoutRef.current = setTimeout(() => {
        if (mr.state === 'recording') {
@@ -278,7 +458,7 @@ export default function WritingAssistantPage() {
        if (isRecordingRef.current) {
          recordNextChunk();
        }
-     }, 10000); // 10 second chunks
+     }, 5000); // 5 second chunks for faster transcription
   };
 
   const startRecording = async () => {
@@ -291,6 +471,28 @@ export default function WritingAssistantPage() {
       streamRef.current = stream;
       isRecordingRef.current = true;
       setIsRecording(true);
+      
+      // Set up audio visualization
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      // Start visualization loop
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const updateAudioLevel = () => {
+        if (!isRecordingRef.current) return;
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setAudioLevel(average / 128); // Normalize to 0-1
+        animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+      };
+      updateAudioLevel();
+      
       toast.success("Recording started");
       recordNextChunk();
     } catch (err) {
@@ -301,11 +503,33 @@ export default function WritingAssistantPage() {
   const stopRecording = () => {
     isRecordingRef.current = false;
     setIsRecording(false);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setAudioLevel(0);
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
+    
+    toast.success('Recording stopped');
   };
 
   const handleGenerateNotes = async () => {
@@ -316,27 +540,132 @@ export default function WritingAssistantPage() {
     setIsProcessing(true);
     try {
       const response = await writingApi.generateNotes(sessionId, transcript, 'Meeting Notes', user.id);
-      setTranscript(response.data.structured_notes);
+      setTranscript(response.structured_notes);
       toast.success('Notes processed and structured');
     } catch(err) {
+      console.error('Note generation error:', err);
       toast.error('Failed to generate structured notes');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Render text with highlight
-  const renderText = () => {
-    if (transcript) {
-       return <>{transcript}</>;
+  const handleDownloadMarkdown = () => {
+    if (!transcript) {
+      toast.error('No content to download');
+      return;
     }
-    const parts = SAMPLE_TEXT.split('with his');
+    
+    const blob = new Blob([transcript], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `notes_${new Date().toISOString().split('T')[0]}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Markdown downloaded');
+  };
+
+  const handleDownloadPDF = () => {
+    if (!transcript) {
+      toast.error('No content to download');
+      return;
+    }
+    
+    // For PDF export, we'll create a simple text-based PDF
+    // In a production app, you'd use a library like jsPDF or pdfmake
+    toast.info('PDF export coming soon. Use markdown export for now.');
+  };
+
+  const handleViewHistory = async () => {
+    if (!user) {
+      toast.error('You must be logged in to view history');
+      return;
+    }
+    
+    setShowHistory(true);
+    setIsLoadingHistory(true);
+    
+    try {
+      const sessions = await writingApi.getHistory(user.id);
+      setHistory(sessions);
+    } catch (err) {
+      console.error('Failed to load history:', err);
+      toast.error('Failed to load history');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleLoadSession = (session: any) => {
+    setTranscript(session.structured_notes || session.raw_text);
+    setSessionId(session.session_id);
+    setShowHistory(false);
+    toast.success('Session loaded');
+  };
+
+  // Render text with basic markdown support
+  const renderText = () => {
+    if (!transcript || transcript.trim() === '') {
+      return (
+        <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+          <div className={`p-6 rounded-full mb-5 transition-all duration-500 ${isRecording ? 'bg-red-50 animate-pulse' : 'bg-gray-100'}`}>
+            <MicrophoneIcon className={`w-10 h-10 transition-all duration-500 ${isRecording ? 'text-red-400' : 'text-gray-300'}`} />
+          </div>
+          <p className="text-center text-sm font-medium">
+            {isRecording 
+              ? "Listening... Your words will appear here as you speak." 
+              : "Click 'Start Recording' to transcribe your lecture or notes."}
+          </p>
+          <p className="text-center text-xs text-gray-300 mt-2">
+            Speak clearly for best results
+          </p>
+        </div>
+      );
+    }
+    
+    // Split by lines and render with basic formatting
+    const lines = transcript.split('\n');
     return (
-      <>
-        {parts[0]}
-        <span className="bg-yellow-400 px-0.5 rounded-sm">with his</span>
-        {parts[1]}
-      </>
+      <div className="space-y-2">
+        {lines.map((line, idx) => {
+          // Headers
+          if (line.startsWith('# ')) {
+            return <h1 key={idx} className="text-2xl font-bold mt-4 mb-2">{line.substring(2)}</h1>;
+          }
+          if (line.startsWith('## ')) {
+            return <h2 key={idx} className="text-xl font-bold mt-3 mb-2">{line.substring(3)}</h2>;
+          }
+          if (line.startsWith('### ')) {
+            return <h3 key={idx} className="text-lg font-semibold mt-2 mb-1">{line.substring(4)}</h3>;
+          }
+          // Bullet points
+          if (line.startsWith('- ') || line.startsWith('* ')) {
+            return <li key={idx} className="ml-4">{line.substring(2)}</li>;
+          }
+          // Numbered lists
+          if (/^\d+\.\s/.test(line)) {
+            return <li key={idx} className="ml-4">{line.replace(/^\d+\.\s/, '')}</li>;
+          }
+          // Bold text (simple **text** pattern)
+          if (line.includes('**')) {
+            const parts = line.split('**');
+            return (
+              <p key={idx}>
+                {parts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : part)}
+              </p>
+            );
+          }
+          // Regular paragraph
+          if (line.trim()) {
+            return <p key={idx}>{line}</p>;
+          }
+          // Empty line
+          return <br key={idx} />;
+        })}
+      </div>
     );
   };
 
@@ -345,57 +674,88 @@ export default function WritingAssistantPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="min-h-[calc(100vh-80px)] relative antialiased"
+      className="min-h-[calc(100vh-80px)] relative"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-10 pt-8">
-        <h1 className="text-[28px] font-bold text-gray-900 dark:text-gray-100 tracking-tight">Writing Assistant</h1>
-        <FeatureHeader />
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <h1 className="text-[28px] font-bold text-gray-900 dark:text-gray-100 tracking-tight">Writing Assistant</h1>
+          <div className="w-10 h-10 rounded-full bg-[#3D6E4E] flex items-center justify-center shadow-md">
+            <MicrophoneIcon className="w-5 h-5 text-white" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleViewHistory}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            View History
+          </button>
+          <FeatureHeader />
+        </div>
       </div>
 
-      {/* Main Content Area with Editor Card */}
-      <div className={`transition-all duration-500 ease-out ${toolsOpen ? 'lg:pr-80' : 'pr-0'}`}>
+      {/* Main Content */}
+      <div className="relative">
         {/* Editor Card */}
         <div 
           className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-gray-200/40 dark:border-gray-700/40 bg-[#FAFAFA] dark:bg-gray-900/50"
         >
-          {/* Top Row */}
-          <div className="flex items-center justify-between mb-8 px-1 select-none">
-            {/* Left: Low confidence indicator */}
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-orange-400/90 shadow-sm"></span>
-              <span className="text-orange-400/90 text-sm font-medium tracking-wide">Low confidence</span>
-            </div>
+          {/* Tools Toggle Button - Top Right */}
+          <button
+            onClick={() => setToolsOpen(true)}
+            className="absolute top-4 right-4 p-2 rounded-xl bg-white shadow-sm border border-gray-200 text-gray-600 hover:text-[#3D6E4E] hover:border-[#3D6E4E] hover:shadow-md transition-all duration-200 z-10"
+            aria-label="Open tools"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
 
-            {/* Center: Audio controls */}
-            <div className="flex items-center gap-3 text-[#3D6E4E]">
+          {/* Recording Control Bar - Centered and prominent */}
+          <div className="flex flex-col items-center mb-8">
+            {/* Main recording button / waveform display */}
+            <div className="flex items-center justify-center">
               {isRecording ? (
-                <button 
-                  onClick={stopRecording} 
-                  className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 font-semibold text-sm rounded-full flex items-center gap-2 transition-all duration-200 ease-out hover:shadow-md active:scale-[0.96]"
-                >
-                  <WaveformIcon className="w-4 h-4 animate-pulse" />
-                  Stop Recording
-                </button>
+                <div className="flex items-center gap-4 bg-gradient-to-r from-red-50 to-orange-50 px-6 py-3 rounded-full border border-red-100 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-3 w-3 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                    <AudioWaveform level={audioLevel} isRecording={isRecording} analyserRef={analyserRef} />
+                  </div>
+                  <div className="h-8 w-px bg-red-200 mx-1"></div>
+                  <button 
+                    onClick={stopRecording} 
+                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-5 py-2 font-semibold text-sm rounded-full flex items-center gap-2 transition-all duration-200 ease-out shadow-md hover:shadow-lg active:scale-[0.96]"
+                  >
+                    <span className="w-2.5 h-2.5 bg-white rounded-sm" />
+                    Stop Recording
+                  </button>
+                </div>
               ) : (
                 <button 
                   onClick={startRecording}
-                  className="bg-[#e8f3ee] hover:bg-[#d1e8da] active:bg-[#c2ddd0] px-4 py-2.5 font-semibold text-[#3D6E4E] text-sm flex items-center gap-2 rounded-full transition-all duration-200 ease-out hover:shadow-md active:scale-[0.96]"
+                  className="bg-[#3D6E4E] hover:bg-[#2d5239] text-white px-8 py-4 font-semibold text-base flex items-center gap-3 rounded-full transition-all duration-200 ease-out shadow-lg hover:shadow-xl active:scale-[0.96]"
                 >
-                  <MicrophoneIcon className="w-4 h-4" />
+                  <MicrophoneIcon className="w-6 h-6" />
                   Start Recording
                 </button>
               )}
             </div>
-
-            {/* Right: Clean and Structure button */}
-            <button 
-              onClick={handleGenerateNotes}
-              disabled={!transcript || isProcessing}
-              className={`bg-[#3D6E4E] text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ease-out shadow-sm hover:shadow-md hover:bg-[#345e43] active:bg-[#2a4d36] active:scale-[0.96] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:bg-[#3D6E4E] disabled:active:scale-100`}
-            >
-              {isProcessing ? 'Structuring...' : 'Clean and Structure'}
-            </button>
+            
+            {/* Status text below button */}
+            <div className="mt-3">
+              {isRecording ? (
+                <span className="text-red-500 text-sm font-medium animate-pulse">Recording in progress...</span>
+              ) : transcript ? (
+                <span className="text-green-600 text-sm font-medium">Recording complete</span>
+              ) : (
+                <span className="text-gray-400 text-sm">Click to start transcribing your lecture or notes</span>
+              )}
+            </div>
           </div>
 
           {/* Text Content Area */}
@@ -413,64 +773,89 @@ export default function WritingAssistantPage() {
                 textRendering: 'optimizeLegibility'
               }}
             >
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-5 tracking-tight">Early Life and Artistic Failure</h2>
-              <p className="text-gray-800 dark:text-gray-200 text-[15px] leading-[1.75] whitespace-pre-line">
+              <div className="text-gray-800 dark:text-gray-200 text-[15px] leading-[1.75] whitespace-pre-line min-h-[200px]">
                 {renderText()}
-              </p>
+              </div>
             </div>
           </div>
 
-          {/* Misheard Tooltip - positioned near highlighted text */}
-          <div className="absolute left-[280px] top-[200px] bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100/50 dark:border-gray-700/50 p-5 w-64 z-20">
-            <div className="flex flex-col items-center text-center">
-              <InfoIcon className="w-6 h-6 text-gray-900 mb-3" />
-              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                We may have misheard you. Please confirm if the highlighted words are correct
-              </p>
+          {/* Bottom: Stats and Actions Toolbar */}
+          <div className="mt-6 pt-4 border-t border-gray-200/60">
+            {/* Primary Actions - Full width button style */}
+            <div className="flex items-center gap-3 mb-4">
+              <button 
+                onClick={handleGenerateNotes}
+                disabled={!transcript || isProcessing}
+                className={`flex-1 bg-[#3D6E4E] text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ease-out shadow-sm hover:shadow-md hover:bg-[#345e43] active:bg-[#2a4d36] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm disabled:hover:bg-[#3D6E4E] disabled:active:scale-100 flex items-center justify-center gap-2`}
+              >
+                {isProcessing ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Structuring your notes...
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon className="w-4 h-4" />
+                    Clean and Structure Notes
+                  </>
+                )}
+              </button>
             </div>
-            {/* Arrow pointer */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/95 dark:bg-gray-800/95 border-r border-b border-gray-100/50 dark:border-gray-700/50 rotate-45"></div>
-          </div>
-
-          {/* Bottom: Copy to Clipboard Button */}
-          <div className="flex justify-end mt-8">
-            <button
-              onClick={handleCopy}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ease-out shadow-sm hover:shadow-md active:scale-[0.96] ${
-                copied 
-                  ? 'bg-[#3D6E4E] text-white' 
-                  : 'bg-[#3D6E4E] text-white hover:bg-[#345e43] active:bg-[#2a4d36]'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <CheckIcon className="w-4 h-4" />
-                  <span>Copied</span>
-                </>
-              ) : (
-                <>
-                  <ClipboardIcon className="w-4 h-4" />
-                  <span>Copy to Clipboard</span>
-                </>
-              )}
-            </button>
+            
+            {/* Secondary Actions Row */}
+            <div className="flex items-center justify-between">
+              {/* Stats on the left */}
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                  {wordCount} words
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                  {charCount} characters
+                </span>
+              </div>
+              
+              {/* Action buttons on the right */}
+              <div className="flex items-center gap-2">
+                {transcript && (
+                  <button
+                    onClick={handleClear}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Clear
+                  </button>
+                )}
+                <button
+                  onClick={handleCopy}
+                  disabled={!transcript}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-out active:scale-[0.96] disabled:opacity-50 disabled:cursor-not-allowed ${
+                    copied 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <CheckIcon className="w-4 h-4" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardIcon className="w-4 h-4" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Tools Drawer Toggle Button - peeks out 6px from right edge */}
-      {!toolsOpen && (
-        <button
-          onClick={() => setToolsOpen(true)}
-          className="fixed right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%-6px)] hover:translate-x-0 w-10 h-14 bg-[#3D6E4E] rounded-l-xl flex items-center justify-center text-white shadow-lg hover:bg-[#2d5239] active:scale-[0.96] transition-all duration-300 ease-out z-40 group"
-          aria-label="Open tools"
-        >
-          <ChevronLeftIcon className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        </button>
-      )}
-
-      {/* Tools Slide-over Drawer - completely hidden when closed */}
-      <div className={`fixed inset-y-0 right-0 w-72 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl border-l border-gray-100/50 dark:border-gray-700/50 transform transition-transform duration-500 ease-out z-50 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      {/* Tools Drawer - Inline on desktop, overlay on mobile */}
+      <div className={`fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-out z-40 ${toolsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="h-full flex flex-col p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-10">
@@ -664,13 +1049,19 @@ export default function WritingAssistantPage() {
             {/* Export Menu */}
             {showExportMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100/50 py-3 z-50">
-                <button className="w-full flex items-center gap-4 px-5 py-3.5 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]">
-                  <GoogleDriveIcon className="w-5 h-5" />
-                  <span className="font-medium">Export to Google docx</span>
+                <button 
+                  onClick={handleDownloadMarkdown}
+                  className="w-full flex items-center gap-4 px-5 py-3.5 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]"
+                >
+                  <ExportIcon className="w-5 h-5" />
+                  <span className="font-medium">Download as Markdown</span>
                 </button>
-                <button className="w-full flex items-center gap-4 px-5 py-3.5 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]">
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="w-full flex items-center gap-4 px-5 py-3.5 text-sm text-gray-700 hover:bg-gray-50/80 active:scale-[0.98] transition-all duration-300 ease-out rounded-xl mx-2 w-[calc(100%-16px)]"
+                >
                   <WordIcon className="w-5 h-5" />
-                  <span className="font-medium">Download as docx</span>
+                  <span className="font-medium">Download as PDF</span>
                 </button>
               </div>
             )}
@@ -681,9 +1072,62 @@ export default function WritingAssistantPage() {
       {/* Backdrop when tools open */}
       {toolsOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 transition-opacity duration-300"
+          className="fixed inset-0 bg-black/30 z-30 transition-opacity duration-300"
           onClick={() => setToolsOpen(false)}
         />
+      )}
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Note History</h2>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3D6E4E]"></div>
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No previous sessions found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((session) => (
+                    <div
+                      key={session.session_id}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                      onClick={() => handleLoadSession(session)}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                          {session.subject || 'Untitled Session'}
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          {new Date(session.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                        {session.structured_notes || session.raw_text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </motion.div>
   );

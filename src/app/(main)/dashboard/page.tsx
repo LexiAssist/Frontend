@@ -1,15 +1,16 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Clock, FileText, TrendingUp, Target, Award, BookOpen } from "lucide-react";
+import { Clock, FileText, TrendingUp, Target, Award, BookOpen, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { FeatureHeader } from "@/components/FeatureHeader";
-import { useStudyStats, useStudyStreak } from "@/hooks/useAnalytics";
+import { useStudyStats, useStudyStreak, useTopicMastery } from "@/hooks/useAnalytics";
 import { useFlashcardDecks } from "@/hooks/useFlashcards";
 import { useQuizzes } from "@/hooks/useQuizzes";
 import { LoadingState } from "@/components/LoadingState";
+import { GoalsManager } from "@/components/goals";
 
 // Lazy load illustrations for better performance
 const ReadingALetterRafiki = dynamic(
@@ -199,6 +200,7 @@ export default function DashboardPage() {
   // Fetch real data from backend
   const { data: studyStats, isLoading: statsLoading } = useStudyStats();
   const { data: studyStreak, isLoading: streakLoading } = useStudyStreak();
+  const { data: topicMastery, isLoading: masteryLoading } = useTopicMastery();
   const { data: flashcardDecks, isLoading: decksLoading } = useFlashcardDecks(5, 0);
   const { data: quizzes, isLoading: quizzesLoading } = useQuizzes(5, 0);
 
@@ -252,7 +254,7 @@ export default function DashboardPage() {
     },
   ];
 
-  const isLoading = statsLoading || streakLoading || decksLoading || quizzesLoading;
+  const isLoading = statsLoading || streakLoading || masteryLoading || decksLoading || quizzesLoading;
 
   return (
     <div className="flex flex-col h-full">
@@ -260,7 +262,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8 sm:mb-10 pt-8">
         <div className="flex flex-col gap-2">
           <h1 className="text-[#272a28] text-2xl sm:text-3xl tracking-tight font-bold">
-            Hello, {user?.name?.split(" ")[0] || "Student"}!
+            Hello, {user?.first_name || user?.name?.split(" ")[0] || "Student"}!
           </h1>
           <p className="text-[#555c56] text-sm sm:text-base">
             Ready to continue your learning journey?
@@ -303,6 +305,47 @@ export default function DashboardPage() {
             subtitle="reviewed"
             icon={<FileText className="w-5 h-5" />}
           />
+        </div>
+      )}
+
+      {/* Topic Mastery Section - Requirement 19.3 */}
+      {!masteryLoading && topicMastery && topicMastery.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-[#272a28] mb-4">Topic Mastery</h2>
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topicMastery.map((topic, index) => (
+                <div key={index} className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-4 h-4 text-[var(--primary-500)]" />
+                      <span className="font-medium text-slate-900 text-sm">{topic.topic}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-slate-700">
+                      {Math.round(topic.mastery_score)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${
+                        topic.mastery_score >= 80 
+                          ? 'bg-green-500' 
+                          : topic.mastery_score >= 60 
+                          ? 'bg-[var(--primary-500)]' 
+                          : 'bg-amber-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(0, topic.mastery_score))}%` }}
+                    />
+                  </div>
+                  {topic.last_reviewed && (
+                    <p className="text-xs text-slate-400">
+                      Last reviewed: {new Date(topic.last_reviewed).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -449,6 +492,11 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Learning Goals */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <GoalsManager />
           </div>
         </div>
       </div>

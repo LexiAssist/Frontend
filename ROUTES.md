@@ -19,7 +19,8 @@
 | `/chat-assistant` | `src/app/(main)/chat-assistant/page.tsx` | RAG academic chatbot | ✅ Working |
 | `/flashcards` | `src/app/(main)/flashcards/page.tsx` | Flashcard study sets | ✅ Working |
 | `/quizzes` | `src/app/(main)/quizzes/page.tsx` | Quiz generator & taker | ✅ Working |
-| `/materials` | *(Coming soon)* | Course materials library | 🚧 Planned |
+| `/materials` | `src/app/(main)/materials/page.tsx` | Course materials library | ✅ Working |
+| `/goals` | `src/app/(main)/goals/page.tsx` | Learning goals & targets | ✅ Working |
 
 ### Error Pages
 | Route | File | Description | Status |

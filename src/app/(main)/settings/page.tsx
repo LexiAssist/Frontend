@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   Bell,
   Shield,
-  Code,
   Trash2,
   Lock,
   ChevronRight,
@@ -15,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/hooks/useSettings";
 import { useSessions, useRevokeSession, useLogoutAll } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store/authStore";
 import type { Session } from "@/services/api";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -31,7 +31,6 @@ type SettingsCategory =
   | "profile"
   | "notifications"
   | "privacy"
-  | "developer"
   | "account";
 
 interface NavItem {
@@ -44,7 +43,6 @@ const navItems: NavItem[] = [
   { id: "profile", label: "Profile", icon: User },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "privacy", label: "Privacy", icon: Shield },
-  { id: "developer", label: "Developer", icon: Code },
   { id: "account", label: "Account", icon: Lock },
 ];
 
@@ -128,7 +126,6 @@ export default function SettingsPage() {
               {activeCategory === "profile" && <ProfileSettings />}
               {activeCategory === "notifications" && <NotificationSettings />}
               {activeCategory === "privacy" && <PrivacySettings />}
-              {activeCategory === "developer" && <DeveloperSettings />}
               {activeCategory === "account" && <AccountSettings />}
             </motion.div>
           </AnimatePresence>
@@ -142,12 +139,29 @@ export default function SettingsPage() {
 
 function ProfileSettings() {
   const { saveProfile, profileState, resetFormState } = useSettings();
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState({
-    firstName: "NAME",
-    lastName: "SURNAME",
-    email: "name.surname@example.com",
-    bio: "Learning enthusiast",
+    firstName: user?.first_name || "",
+    lastName: user?.last_name || "",
+    email: user?.email || "",
+    school: user?.school || "",
+    department: user?.department || "",
+    academicLevel: user?.academic_level || "",
   });
+
+  // Update form data when user data loads
+  React.useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        email: user.email || "",
+        school: user.school || "",
+        department: user.department || "",
+        academicLevel: user.academic_level || "",
+      });
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +174,7 @@ function ProfileSettings() {
   return (
     <SettingsSection
       title="Profile Settings"
-      description="Update your personal information and bio"
+      description="Update your personal information"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -196,20 +210,55 @@ function ProfileSettings() {
             }
             placeholder="Enter your email"
             className="transition-colors duration-300"
+            disabled
+            title="Email cannot be changed"
+          />
+          <p className="text-xs text-slate-500 mt-1">Email address cannot be changed</p>
+        </FormField>
+
+        <FormField label="School">
+          <Input
+            value={formData.school}
+            onChange={(e) =>
+              setFormData({ ...formData, school: e.target.value })
+            }
+            placeholder="Enter your school name"
+            className="transition-colors duration-300"
           />
         </FormField>
 
-        <FormField label="Bio">
-          <textarea
-            value={formData.bio}
-            onChange={(e) =>
-              setFormData({ ...formData, bio: e.target.value })
-            }
-            placeholder="Tell us about yourself"
-            rows={4}
-            className="w-full px-3 py-2 rounded-md border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3c8350] transition-colors duration-300 resize-none"
-          />
-        </FormField>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Department">
+            <Input
+              value={formData.department}
+              onChange={(e) =>
+                setFormData({ ...formData, department: e.target.value })
+              }
+              placeholder="e.g., Computer Science"
+              className="transition-colors duration-300"
+            />
+          </FormField>
+
+          <FormField label="Academic Level">
+            <Select
+              value={formData.academicLevel}
+              onValueChange={(value) =>
+                setFormData({ ...formData, academicLevel: value })
+              }
+            >
+              <SelectTrigger className="w-full transition-colors duration-300">
+                <SelectValue placeholder="Select level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="high_school">High School</SelectItem>
+                <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                <SelectItem value="graduate">Graduate</SelectItem>
+                <SelectItem value="phd">PhD</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
+        </div>
 
         <StatusMessage state={profileState} />
 
@@ -231,14 +280,32 @@ function ProfileSettings() {
 // ==================== NOTIFICATION SETTINGS ====================
 
 function NotificationSettings() {
-  const { saveNotifications, notificationsState, resetFormState } =
-    useSettings();
+  const { 
+    saveNotifications, 
+    notificationsState, 
+    resetFormState,
+    notificationSettings,
+    isLoadingNotifications 
+  } = useSettings();
+  
   const [settings, setSettings] = useState({
     emailNotifications: true,
     pushNotifications: false,
     weeklyDigest: true,
     marketingEmails: false,
   });
+
+  // Load settings from API when available
+  useEffect(() => {
+    if (notificationSettings) {
+      setSettings({
+        emailNotifications: notificationSettings.emailNotifications ?? true,
+        pushNotifications: notificationSettings.pushNotifications ?? false,
+        weeklyDigest: notificationSettings.weeklyDigest ?? true,
+        marketingEmails: notificationSettings.marketingEmails ?? false,
+      });
+    }
+  }, [notificationSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +318,21 @@ function NotificationSettings() {
   const handleToggle = (key: keyof typeof settings) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  if (isLoadingNotifications) {
+    return (
+      <SettingsSection
+        title="Notification Preferences"
+        description="Choose how you want to be notified"
+      >
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 bg-slate-100 animate-pulse rounded-xl" />
+          ))}
+        </div>
+      </SettingsSection>
+    );
+  }
 
   return (
     <SettingsSection
@@ -388,115 +470,6 @@ function PrivacySettings() {
   );
 }
 
-// ==================== DEVELOPER SETTINGS ====================
-
-function DeveloperSettings() {
-  const { isMockModeEnabled, toggleMockMode, isMockLoading } = useSettings();
-
-  return (
-    <SettingsSection
-      title="Developer Settings"
-      description="Advanced settings for development and testing"
-    >
-      <div className="space-y-6">
-        {/* Mock Backend Toggle */}
-        <div
-          className={`
-            p-4 sm:p-6 rounded-xl border-2 transition-all duration-300
-            ${
-              isMockModeEnabled
-                ? "border-amber-400 bg-amber-50/50"
-                : "border-slate-200"
-            }
-          `}
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-slate-900">
-                  Enable Mock Backend
-                </h3>
-                <span
-                  className={`
-                    px-2 py-0.5 text-xs font-medium rounded-full
-                    ${
-                      isMockModeEnabled
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-slate-100 text-slate-600"
-                    }
-                  `}
-                >
-                  {isMockModeEnabled ? "Active" : "Inactive"}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                When enabled, all form submissions on this Settings page will be
-                routed through a mock backend service with simulated network
-                delays. No real API calls will be made.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <code className="px-2 py-1 text-xs bg-slate-100 rounded text-slate-600">
-                  Delay: 1000ms
-                </code>
-                <code className="px-2 py-1 text-xs bg-slate-100 rounded text-slate-600">
-                  Scope: Settings page only
-                </code>
-              </div>
-            </div>
-            <Switch
-              checked={isMockModeEnabled}
-              onCheckedChange={toggleMockMode}
-              disabled={isMockLoading}
-              className="data-[state=checked]:bg-amber-500"
-            />
-          </div>
-        </div>
-
-        {/* Mock Mode Info */}
-        {isMockModeEnabled && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-amber-50 rounded-xl border border-amber-200"
-          >
-            <h4 className="text-sm font-medium text-amber-900 mb-2">
-              Mock Mode is Active
-            </h4>
-            <ul className="space-y-1 text-sm text-amber-800">
-              <li>• Profile save operations will be mocked</li>
-              <li>• Notification preferences will be stored locally</li>
-              <li>• Privacy settings updates are simulated</li>
-              <li>• Password changes return mock responses</li>
-              <li>• Check browser console for mock activity logs</li>
-            </ul>
-          </motion.div>
-        )}
-
-        {/* Environment Info */}
-        <div className="p-4 bg-slate-50 rounded-xl">
-          <h4 className="text-sm font-medium text-slate-900 mb-2">
-            Environment Information
-          </h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Node Env</span>
-              <span className="text-slate-700 font-mono">
-                {process.env.NODE_ENV}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Next.js Version</span>
-              <span className="text-slate-700 font-mono">
-                16.1.6
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </SettingsSection>
-  );
-}
-
 // ==================== SESSION MANAGEMENT COMPONENT ====================
 
 function SessionManagement() {
@@ -505,15 +478,16 @@ function SessionManagement() {
   const logoutAllMutation = useLogoutAll();
   const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false);
 
-  const getDeviceIcon = (userAgent: string) => {
-    if (userAgent.toLowerCase().includes('mobile')) {
+  const getDeviceIcon = (userAgent: string, deviceType?: string) => {
+    const type = deviceType?.toLowerCase() || userAgent.toLowerCase();
+    if (type.includes('mobile') || type.includes('phone')) {
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
       );
     }
-    if (userAgent.toLowerCase().includes('tablet')) {
+    if (type.includes('tablet') || type.includes('ipad')) {
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -527,12 +501,27 @@ function SessionManagement() {
     );
   };
 
-  const getBrowserInfo = (userAgent: string) => {
-    if (userAgent.toLowerCase().includes('chrome')) return 'Chrome';
-    if (userAgent.toLowerCase().includes('firefox')) return 'Firefox';
-    if (userAgent.toLowerCase().includes('safari')) return 'Safari';
-    if (userAgent.toLowerCase().includes('edge')) return 'Edge';
+  const getBrowserInfo = (session: Session) => {
+    // Use browser field if available, otherwise parse user_agent
+    if (session.browser) return session.browser;
+    
+    const userAgent = session.user_agent.toLowerCase();
+    if (userAgent.includes('chrome')) return 'Chrome';
+    if (userAgent.includes('firefox')) return 'Firefox';
+    if (userAgent.includes('safari')) return 'Safari';
+    if (userAgent.includes('edge')) return 'Edge';
     return 'Browser';
+  };
+
+  const getDeviceName = (session: Session) => {
+    // Use device_name if available, otherwise use browser + device type
+    if (session.device_name) return session.device_name;
+    
+    const browser = getBrowserInfo(session);
+    const deviceType = session.device_type || 
+      (session.user_agent.toLowerCase().includes('mobile') ? 'Mobile' : 'Desktop');
+    
+    return `${browser} on ${deviceType}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -614,17 +603,18 @@ function SessionManagement() {
         <div className="p-4 rounded-xl border-2 border-[#3c8350]/30 bg-[#3c8350]/5">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-[#3c8350]/10 flex items-center justify-center text-[#3c8350]">
-              {getDeviceIcon(currentSession.user_agent)}
+              {getDeviceIcon(currentSession.user_agent, currentSession.device_type)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-slate-900">Current Session</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium text-slate-900">{getDeviceName(currentSession)}</p>
                 <span className="px-2 py-0.5 text-xs font-medium bg-[#3c8350] text-white rounded-full">
-                  Active
+                  This device
                 </span>
               </div>
               <p className="text-sm text-slate-500">
-                {getBrowserInfo(currentSession.user_agent)} • {currentSession.ip_address}
+                {currentSession.ip_address}
+                {currentSession.location && ` • ${currentSession.location}`}
               </p>
               <p className="text-xs text-slate-400">
                 Started {formatDate(currentSession.created_at)}
@@ -645,14 +635,15 @@ function SessionManagement() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                  {getDeviceIcon(session.user_agent)}
+                  {getDeviceIcon(session.user_agent, session.device_type)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-slate-900">
-                    {getBrowserInfo(session.user_agent)}
+                    {getDeviceName(session)}
                   </p>
                   <p className="text-sm text-slate-500">
                     {session.ip_address}
+                    {session.location && ` • ${session.location}`}
                   </p>
                   <p className="text-xs text-slate-400">
                     Last active {formatDate(session.last_active_at)}

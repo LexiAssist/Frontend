@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/env';
-import { mockApi } from '@/lib/mockApi';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || !env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 /**
  * GET /api/auth/me
@@ -10,12 +7,6 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || !env.NEXT_PU
  */
 export async function GET(request: NextRequest) {
   try {
-    // Use mock API if enabled or backend URL not set
-    if (USE_MOCK) {
-      console.log('[MOCK] Get current user');
-      return NextResponse.json({ user: mockApi.getCurrentUser() });
-    }
-    
     const response = await fetch(`${env.NEXT_PUBLIC_API_GATEWAY_URL}/api/auth/me`, {
       headers: {
         'Content-Type': 'application/json',

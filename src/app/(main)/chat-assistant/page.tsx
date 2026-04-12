@@ -15,13 +15,15 @@ import {
   X,
   FileText,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import { useAuthStore } from '@/store/authStore';
-import { useAIChat } from '@/hooks/useAI';
-import { materialApi } from '@/services/api';
+import { useAIChat, useConversation } from '@/hooks/useAI';
+import { materialApi, aiApi } from '@/services/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FormattedMessage } from '@/components/chat/FormattedMessage';
 
 const starterCards = [
   {
@@ -82,6 +84,8 @@ export default function ChatAssistantPage() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [isTyping, setIsTyping] = useState(false);
+  const [useStreaming, setUseStreaming] = useState(false); // Toggle for streaming
+  const [streamingMessage, setStreamingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +93,9 @@ export default function ChatAssistantPage() {
   
   const { user } = useAuthStore();
   const chatMutation = useAIChat();
+  
+  // Load previous conversation if conversationId is provided (Requirement 17.4)
+  const { data: conversationData, isLoading: isLoadingConversation } = useConversation(conversationId);
 
   useEffect(() => {
     if (folderInputRef.current) {
@@ -96,6 +103,23 @@ export default function ChatAssistantPage() {
       folderInputRef.current.setAttribute('directory', '');
     }
   }, []);
+  
+  // Load conversation messages when conversation data is fetched (Requirement 17.4)
+  useEffect(() => {
+    if (conversationData && typeof conversationData === 'object' && 'messages' in conversationData) {
+      const data = conversationData as any;
+      if (data.messages && Array.isArray(data.messages)) {
+        const loadedMessages: Message[] = data.messages.map((msg: any, idx: number) => ({
+          id: msg.id || `loaded-${Date.now()}-${idx}`,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          sources: msg.sources,
+        }));
+        setMessages(loadedMessages);
+      }
+    }
+  }, [conversationData]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -145,7 +169,7 @@ export default function ChatAssistantPage() {
       try {
         const materialId = await uploadFile(file);
         
-        if (materialId) {
+        if (materialId && materialId.trim() !== '') {
           setUploadedFiles(prev => 
             prev.map(f => 
               f.id === tempId 
@@ -200,7 +224,7 @@ export default function ChatAssistantPage() {
       try {
         const materialId = await uploadFile(file);
         
-        if (materialId) {
+        if (materialId && materialId.trim() !== '') {
           setUploadedFiles(prev => 
             prev.map(f => 
               f.id === tempId 
@@ -233,7 +257,7 @@ export default function ChatAssistantPage() {
     }
 
     const userMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       role: 'user',
       content: prompt,
       timestamp: new Date(),
@@ -249,39 +273,114 @@ export default function ChatAssistantPage() {
         .filter(f => !f.id.startsWith('temp-'))
         .map(f => f.id);
 
-      const response = await chatMutation.mutateAsync({
-        query: userMessage.content,
-        userId: user.id,
-        options: {
-          conversationId,
-          materialId: materialIds.length > 0 ? materialIds[0] : undefined,
-        },
-      });
-
-      // Update conversation ID for follow-up messages
-      if (response.conversation_id) {
-        setConversationId(response.conversation_id);
+      // Retrieve context chunks from the retrieval service
+      let contextChunks: string[] = [];
+      if (uploadedFiles.length > 0) {
+        try {
+          const retrievalResult = await aiApi.retrieveContext(
+            userMessage.content,
+            user.id,
+            5 // top_k
+          );
+          contextChunks = retrievalResult.results?.map((c: any) => c.chunk_text) || [];
+        } catch (err) {
+          console.warn('Failed to retrieve context:', err);
+          // Continue without context - AI will inform user
+        }
       }
 
-      // Check if AI returned a "no context" response
-      let content = response.response;
-      if (isNoContextResponse(content) && uploadedFiles.length === 0) {
-        content = `I don't have any documents to reference yet. To get the most accurate answers, please upload your study materials using the "Attach" button above.\n\nIn the meantime, I can try to help with general knowledge questions, but my answers will be more helpful once I can reference your specific course materials.`;
+      // Use streaming if enabled (Requirement 17.6)
+      let useStreamingFallback = false;
+      if (useStreaming) {
+        try {
+          setStreamingMessage('');
+          
+          await aiApi.chatStream(
+            userMessage.content,
+            user.id,
+            {
+              conversationId,
+              contextChunks,
+            },
+            // onToken callback
+            (token: string) => {
+              setStreamingMessage(prev => prev + token);
+            },
+            // onComplete callback
+            (response) => {
+              // Update conversation ID for follow-up messages
+              if (response.conversation_id) {
+                setConversationId(response.conversation_id);
+              }
+
+              // Check if AI returned a "no context" response
+              let content = response.response;
+              if (isNoContextResponse(content) && uploadedFiles.length === 0) {
+                content = `I don't have any documents to reference yet. To get the most accurate answers, please upload your study materials using the "Attach" button above.\n\nIn the meantime, I can try to help with general knowledge questions, but my answers will be more helpful once I can reference your specific course materials.`;
+              }
+
+              const assistantMessage: Message = {
+                id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                role: 'assistant',
+                content: content,
+                timestamp: new Date(),
+                sources: response.sources,
+              };
+
+              setMessages(prev => [...prev, assistantMessage]);
+              setStreamingMessage('');
+              setIsTyping(false);
+            },
+            // onError callback
+            (error) => {
+              console.error('Chat stream error:', error);
+              // Fall back to non-streaming on error
+              useStreamingFallback = true;
+            }
+          );
+        } catch (error) {
+          console.warn('Streaming failed, falling back to standard chat:', error);
+          useStreamingFallback = true;
+        }
       }
+      
+      // Fall back to non-streaming if streaming failed or was not enabled
+      if (!useStreaming || useStreamingFallback) {
+        // Use regular non-streaming chat
+        const response = await chatMutation.mutateAsync({
+          query: userMessage.content,
+          userId: user.id,
+          options: {
+            conversationId,
+            contextChunks,
+          },
+        });
 
-      const assistantMessage: Message = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: content,
-        timestamp: new Date(),
-        sources: response.sources,
-      };
+        // Update conversation ID for follow-up messages
+        if (response.conversation_id) {
+          setConversationId(response.conversation_id);
+        }
 
-      setMessages(prev => [...prev, assistantMessage]);
+        // Check if AI returned a "no context" response
+        let content = response.response;
+        if (isNoContextResponse(content) && uploadedFiles.length === 0) {
+          content = `I don't have any documents to reference yet. To get the most accurate answers, please upload your study materials using the "Attach" button above.\n\nIn the meantime, I can try to help with general knowledge questions, but my answers will be more helpful once I can reference your specific course materials.`;
+        }
+
+        const assistantMessage: Message = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          role: 'assistant',
+          content: content,
+          timestamp: new Date(),
+          sources: response.sources,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsTyping(false);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       toast.error('Failed to get response. Please try again.');
-    } finally {
       setIsTyping(false);
     }
   };
@@ -401,14 +500,24 @@ export default function ChatAssistantPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col lg:min-h-screen">
-      <div className="flex justify-between items-center pb-4 pt-2 lg:pb-6 lg:pt-4">
+    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-6xl flex-col lg:h-screen overflow-hidden">
+      {/* Header - Fixed at top */}
+      <div className="flex justify-between items-center pb-4 pt-2 lg:pb-6 lg:pt-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <LexiAssistSymbol />
           <div>
             <h1 className="text-lg font-semibold text-slate-900">LexiAssist Chat</h1>
             <p className="text-sm text-slate-500">
-              {conversationId ? 'Continuing conversation' : 'New conversation'}
+              {isLoadingConversation ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading conversation...
+                </span>
+              ) : conversationId ? (
+                'Continuing conversation'
+              ) : (
+                'New conversation'
+              )}
               {uploadedFiles.length > 0 && (
                 <span className="ml-2 text-[var(--primary-500)]">
                   • {uploadedFiles.length} document{uploadedFiles.length !== 1 ? 's' : ''} attached
@@ -418,6 +527,20 @@ export default function ChatAssistantPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setUseStreaming(!useStreaming)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                useStreaming
+                  ? 'bg-[var(--primary-500)] text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              title="Toggle streaming responses"
+            >
+              <MessageSquare className="w-3 h-3 inline mr-1" />
+              {useStreaming ? 'Streaming' : 'Standard'}
+            </button>
+          </div>
           {messages.length > 0 && (
             <button
               onClick={startNewChat}
@@ -432,11 +555,11 @@ export default function ChatAssistantPage() {
 
       {messages.length === 0 ? (
         /* Empty State with Starter Cards */
-        <section className="flex flex-1 flex-col items-center justify-center">
+        <section className="flex flex-1 flex-col items-center justify-center overflow-y-auto">
           <div className="flex w-full max-w-[860px] flex-col items-center">
             <LexiAssistSymbol />
             <h1 className="pt-4 text-center text-[2rem] font-bold tracking-tight text-slate-950 sm:text-[2.35rem]">
-              Good Afternoon, {user?.name?.split(' ')[0] || 'Student'}
+              Good Afternoon, {user?.first_name || user?.name?.split(' ')[0] || 'Student'}
             </h1>
             <p className="pt-2 text-center text-[2rem] font-bold tracking-tight text-slate-950 sm:text-[2.35rem]">
               What&apos;s on <span className="text-[var(--primary-500)]">your mind?</span>
@@ -510,8 +633,9 @@ export default function ChatAssistantPage() {
         </section>
       ) : (
         /* Chat Interface with Messages */
-        <section className="flex flex-1 flex-col">
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        <section className="flex flex-1 flex-col min-h-0">
+          {/* Messages - Scrollable area */}
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             <AnimatePresence>
               {messages.map((message, index) => (
                 <motion.div
@@ -536,15 +660,19 @@ export default function ChatAssistantPage() {
                         : 'bg-slate-100 text-slate-900'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {message.content}
-                    </p>
+                    {message.role === 'assistant' ? (
+                      <FormattedMessage content={message.content} />
+                    ) : (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {message.content}
+                      </p>
+                    )}
                     {message.sources && message.sources.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-200/50">
                         <p className="text-xs text-slate-500">Sources:</p>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {message.sources.map((source, idx) => (
-                            <span key={idx} className="text-xs bg-slate-200/50 px-2 py-1 rounded">
+                          {message.sources.filter(Boolean).map((source, idx) => (
+                            <span key={`${message.id}-source-${idx}`} className="text-xs bg-slate-200/50 px-2 py-1 rounded">
                               {source}
                             </span>
                           ))}
@@ -576,11 +704,18 @@ export default function ChatAssistantPage() {
                     <Bot className="w-5 h-5 text-white" />
                   </div>
                   <div className="bg-slate-100 rounded-2xl px-5 py-3">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
+                    {streamingMessage ? (
+                      <div className="relative">
+                        <FormattedMessage content={streamingMessage} />
+                        <span className="inline-block w-0.5 h-4 bg-[var(--primary-500)] ml-0.5 animate-pulse align-middle" />
+                      </div>
+                    ) : (
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -588,8 +723,8 @@ export default function ChatAssistantPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input area */}
-          <div className="border-t border-slate-200 bg-white p-4">
+          {/* Input area - Fixed at bottom */}
+          <div className="border-t border-slate-200 bg-white p-4 flex-shrink-0">
             <div className="max-w-4xl mx-auto">
               {/* Show uploaded files above input */}
               {uploadedFiles.length > 0 && (

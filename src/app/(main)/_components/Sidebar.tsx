@@ -6,6 +6,7 @@ import type { ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useLogout } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -21,6 +22,7 @@ import {
   PenSquare,
   Settings,
   Sparkles,
+  Target,
   X,
 } from 'lucide-react';
 
@@ -36,6 +38,8 @@ const studyBuddyLinks: NavLink[] = [
   { label: 'Chat', href: '/chat-assistant', icon: MessageSquare },
   { label: 'Flashcards', href: '/flashcards', icon: BookOpen },
   { label: 'Quizzes', href: '/quizzes', icon: FileText },
+  { label: 'Materials', href: '/materials', icon: FileText },
+  { label: 'Learning Goals', href: '/goals', icon: Target },
 ];
 
 const mainLinks: NavLink[] = [
@@ -117,7 +121,8 @@ const staggerItem = {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
+  const logoutMutation = useLogout();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [studyBuddyOpen, setStudyBuddyOpen] = useState(true);
 
@@ -131,8 +136,8 @@ export default function Sidebar() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
+    // Use the useLogout hook which handles all requirements (5.1-5.5)
+    logoutMutation.mutate();
   };
 
   const computedName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.name;
@@ -197,7 +202,8 @@ export default function Sidebar() {
         </div>
         <button
           onClick={handleLogout}
-          className="rounded-full p-2.5 text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 touch-target flex-shrink-0"
+          disabled={logoutMutation.isPending}
+          className="rounded-full p-2.5 text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 touch-target flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Log out"
         >
           <DoorOpen className="h-4 w-4" />
@@ -311,7 +317,7 @@ export default function Sidebar() {
             aria-label="Profile"
           >
             <span className="text-sm font-semibold">
-              {user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2) || 'AE'}
+              {(user?.first_name?.[0] || user?.name?.[0] || 'A') + (user?.last_name?.[0] || user?.name?.split(' ')[1]?.[0] || 'E')}
             </span>
           </Link>
         </div>

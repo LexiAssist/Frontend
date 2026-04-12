@@ -16,10 +16,10 @@ import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/LoadingState';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
-import { useGenerateFlashcards } from '@/hooks/useFlashcards';
+import { useGenerateFlashcards, useCreateFlashcardDeck } from '@/hooks/useFlashcards';
 import { flashcardApi } from '@/services/api';
 
-type ViewState = "upload" | "ready" | "generated" | "list";
+type ViewState = "upload" | "ready" | "generated" | "list" | "textInput";
 
 type SelectedDocument = {
   name: string;
@@ -265,7 +265,9 @@ function GeneratedState({
   onNext, 
   onPrev, 
   onFlip, 
-  isFlipped 
+  isFlipped,
+  onSaveDeck,
+  isSaving
 }: { 
   flashcards: GeneratedFlashcard[];
   currentIndex: number;
@@ -273,6 +275,8 @@ function GeneratedState({
   onPrev: () => void;
   onFlip: () => void;
   isFlipped: boolean;
+  onSaveDeck: () => void;
+  isSaving: boolean;
 }) {
   const currentCard = flashcards[currentIndex];
 
@@ -334,6 +338,17 @@ function GeneratedState({
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Save Deck Button */}
+      <div className="flex justify-center pt-6">
+        <Button
+          onClick={onSaveDeck}
+          isLoading={isSaving}
+          className="px-8"
+        >
+          Save Flashcard Deck
+        </Button>
+      </div>
     </motion.div>
   );
 }
@@ -349,6 +364,7 @@ export default function FlashcardsPage() {
   
   const { user } = useAuthStore();
   const generateMutation = useGenerateFlashcards();
+  const createDeckMutation = useCreateFlashcardDeck();
 
   const handleOpenPicker = () => {
     fileInputRef.current?.click();
@@ -403,9 +419,32 @@ export default function FlashcardsPage() {
         userId: user.id,
       });
 
-      // Parse the generated flashcards
-      // The AI returns them as text, we need to parse into structured format
-      const parsedFlashcards = parseFlashcardsFromAI(result.flashcards);
+      console.log('[Flashcards] API response:', result);
+
+      // The API returns { flashcards: [{front, back, topic}, ...] }
+      const flashcardsArray = result.flashcards;
+      
+      if (!Array.isArray(flashcardsArray)) {
+        console.error('[Flashcards] Expected array but got:', typeof flashcardsArray, flashcardsArray);
+        throw new Error('Invalid response format: expected flashcards array');
+      }
+      
+      if (flashcardsArray.length === 0) {
+        toast.warning('No flashcards were generated. Please try with different content.');
+        return;
+      }
+
+      // Map API response to our component format
+      const parsedFlashcards = flashcardsArray.map((card: any, index: number) => ({
+        id: `card-${index}`,
+        front: String(card.front || card.question || ''),
+        back: String(card.back || card.answer || ''),
+      }));
+      
+      if (parsedFlashcards.length === 0) {
+        toast.warning('Could not parse flashcards from AI response. Please try again.');
+        return;
+      }
       
       setGeneratedFlashcards(parsedFlashcards);
       setCurrentCardIndex(0);
@@ -415,6 +454,7 @@ export default function FlashcardsPage() {
       toast.success(`Generated ${parsedFlashcards.length} flashcards!`);
     } catch (error) {
       console.error('Generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate flashcards');
     }
   }, [user, generateMutation]);
 
@@ -446,6 +486,35 @@ export default function FlashcardsPage() {
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
   };
+
+  const handleSaveDeck = useCallback(async () => {
+    if (!user?.id || generatedFlashcards.length === 0) {
+      toast.error('No flashcards to save');
+      return;
+    }
+
+    try {
+      // Generate a title based on the source
+      const title = selectedDocument?.name 
+        ? `Flashcards: ${selectedDocument.name}`
+        : `Flashcards - ${new Date().toLocaleDateString()}`;
+
+      await createDeckMutation.mutateAsync({
+        title,
+        description: `Generated from ${selectedDocument?.name || 'text input'}`,
+        cards: generatedFlashcards.map((card, index) => ({
+          front: card.front,
+          back: card.back,
+          order_index: index,
+        })),
+      });
+
+      toast.success('Flashcard deck saved successfully!');
+    } catch (error) {
+      console.error('Save deck error:', error);
+      // Error toast is already shown by the mutation
+    }
+  }, [user, generatedFlashcards, selectedDocument, createDeckMutation]);
 
   const headerTitle =
     viewState === "generated" && selectedDocument
@@ -480,6 +549,8 @@ export default function FlashcardsPage() {
                 onPrev={handlePrevCard}
                 onFlip={handleFlip}
                 isFlipped={isFlipped}
+                onSaveDeck={handleSaveDeck}
+                isSaving={createDeckMutation.isPending}
               />
             </motion.div>
           ) : (
@@ -517,82 +588,4 @@ export default function FlashcardsPage() {
       </div>
     </div>
   );
-}
-
-// Helper function to parse AI-generated flashcards
-function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
-  const flashcards: GeneratedFlashcard[] = [];
-  
-  // Try to parse common formats:
-  // Format 1: Q: ... A: ...
-  // Format 2: Front: ... Back: ...
-  // Format 3: Numbered lists
-  
-  const lines = aiResponse.split('\n').filter(line => line.trim());
-  let currentFront = '';
-  let currentBack = '';
-  let isQuestion = true;
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    
-    // Check for Q: or Question: prefix
-    if (trimmed.match(/^Q\d*[:.)]/i) || trimmed.match(/^Question[:)]/i)) {
-      if (currentFront && currentBack) {
-        flashcards.push({
-          id: `card-${flashcards.length}`,
-          front: currentFront,
-          back: currentBack,
-        });
-      }
-      currentFront = trimmed.replace(/^Q\d*[:.)]\s*/i, '').replace(/^Question[:)]\s*/i, '');
-      currentBack = '';
-      isQuestion = false;
-    }
-    // Check for A: or Answer: prefix
-    else if (trimmed.match(/^A\d*[:.)]/i) || trimmed.match(/^Answer[:)]/i)) {
-      currentBack = trimmed.replace(/^A\d*[:.)]\s*/i, '').replace(/^Answer[:)]\s*/i, '');
-      isQuestion = true;
-    }
-    // Check for Front: prefix
-    else if (trimmed.match(/^Front[:)]/i)) {
-      if (currentFront && currentBack) {
-        flashcards.push({
-          id: `card-${flashcards.length}`,
-          front: currentFront,
-          back: currentBack,
-        });
-      }
-      currentFront = trimmed.replace(/^Front[:)]\s*/i, '');
-      currentBack = '';
-    }
-    // Check for Back: prefix
-    else if (trimmed.match(/^Back[:)]/i)) {
-      currentBack = trimmed.replace(/^Back[:)]\s*/i, '');
-    }
-    // Accumulate content
-    else if (!isQuestion && currentFront && !currentBack) {
-      currentBack = trimmed;
-    }
-  }
-  
-  // Don't forget the last card
-  if (currentFront && currentBack) {
-    flashcards.push({
-      id: `card-${flashcards.length}`,
-      front: currentFront,
-      back: currentBack,
-    });
-  }
-  
-  // If no flashcards were parsed, create a fallback
-  if (flashcards.length === 0) {
-    flashcards.push({
-      id: 'card-0',
-      front: 'Generated Content',
-      back: aiResponse,
-    });
-  }
-  
-  return flashcards;
 }
