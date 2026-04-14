@@ -52,7 +52,7 @@ export function useGenerateFlashcards() {
   
   return useMutation({
     mutationFn: ({ content, userId }: { content: string; userId: string }) =>
-      flashcardApi.generateFromContent(content, userId, accessToken || undefined),
+      flashcardApi.generateFromContent(content, userId),
     onError: (error: any) => {
       toast.error(error.message || 'Failed to generate flashcards');
     },

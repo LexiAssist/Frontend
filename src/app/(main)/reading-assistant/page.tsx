@@ -25,10 +25,11 @@ type Difficulty = 'beginner' | 'intermediate';
 type FontChoice = 'default' | 'opendyslexic' | 'roboto';
 type BackgroundTint = 'none' | 'yellow' | 'blue' | 'green' | 'beige' | 'cream' | 'pink' | 'lavender' | 'mint' | 'peach' | 'sky' | 'rose' | 'sage' | 'warm' | 'cool';
 
+// Matches backend VocabTerm model exactly
 interface VocabWord {
-  word: string;
+  term: string;
   definition: string;
-  synonyms: string[];
+  context_snippet: string;
 }
 
 const MOCK_ORIGINAL_TEXT = `Introduction to Machine Learning: Fundamentals and Applications
@@ -60,9 +61,9 @@ const MOCK_SUMMARIZED_TEXT = `• Definition: Machine learning enables computers
 • Key Advantage: Systems automatically learn hierarchical data representations, extracting complex features at each processing layer.`;
 
 const MOCK_VOCAB_LIST: VocabWord[] = [
-  { word: 'Algorithm', definition: 'A step-by-step procedure or formula for solving a problem', synonyms: ['Procedure', 'method', 'process', 'technique'] },
-  { word: 'Antisemitic', definition: 'Hostile to or prejudiced against Jewish people', synonyms: ['Prejudiced', 'discriminatory', 'bigoted'] },
-  { word: 'Nationalist', definition: 'A person who advocates political independence for their country', synonyms: ['Patriot', 'loyalist', 'chauvinist'] },
+  { term: 'Algorithm', definition: 'A step-by-step procedure or formula for solving a problem', context_snippet: 'The algorithm efficiently sorts the data' },
+  { term: 'Antisemitic', definition: 'Hostile to or prejudiced against Jewish people', context_snippet: 'The text discusses historical antisemitic rhetoric' },
+  { term: 'Nationalist', definition: 'A person who advocates political independence for their country', context_snippet: 'The nationalist movement gained momentum' },
 ];
 
 const BACKGROUND_TINTS: Record<BackgroundTint, string> = {
@@ -146,12 +147,34 @@ export default function ReadingAssistantPage() {
   const [summarizedText, setSummarizedText] = useState('');
   const [vocabList, setVocabList] = useState<VocabWord[]>([]);
   const [ttsAudioB64, setTtsAudioB64] = useState<string>('');
+  const [audioMimeType, setAudioMimeType] = useState<string>('audio/wav');
   
   // SSE Streaming state
   const [streamStage, setStreamStage] = useState<'idle' | 'extracting' | 'storing' | 'summarizing' | 'vocab' | 'tts' | 'complete'>('idle');
   const [streamingSummary, setStreamingSummary] = useState('');
   const [streamingVocab, setStreamingVocab] = useState<VocabWord[]>([]);
   const [streamProgress, setStreamProgress] = useState(0);
+  const [isSlowConnection, setIsSlowConnection] = useState(false);
+  
+  // Use refs to avoid stale closure issues in SSE callbacks
+  const streamingSummaryRef = useRef(streamingSummary);
+  const streamingVocabRef = useRef(streamingVocab);
+  
+  // Keep refs in sync with state
+  useEffect(() => { streamingSummaryRef.current = streamingSummary; }, [streamingSummary]);
+  useEffect(() => { streamingVocabRef.current = streamingVocab; }, [streamingVocab]);
+  
+  // Track slow connection warning
+  useEffect(() => {
+    if (isProcessing && streamStage !== 'complete') {
+      const timer = setTimeout(() => {
+        setIsSlowConnection(true);
+      }, 30000); // Show warning after 30 seconds
+      return () => clearTimeout(timer);
+    } else {
+      setIsSlowConnection(false);
+    }
+  }, [isProcessing, streamStage]);
   
   const { user } = useAuthStore();
 
@@ -211,35 +234,40 @@ export default function ReadingAssistantPage() {
         uploadedFile,
         user.id,
         (event) => {
+          console.log('[ReadingAssistant] SSE event:', event.type, event.data);
           switch (event.type) {
             case 'status':
+              console.log('[ReadingAssistant] Status update:', event.data.stage);
               setStreamStage(event.data.stage);
               break;
             case 'summary_token':
               setStreamingSummary(prev => prev + event.data.token);
               break;
             case 'vocab':
+              // Store exactly as backend sends it
               setStreamingVocab(prev => [...prev, {
-                word: event.data.term,
+                term: event.data.term,
                 definition: event.data.definition,
-                synonyms: event.data.context_snippet ? [event.data.context_snippet] : []
+                context_snippet: event.data.context_snippet
               }]);
               break;
             case 'progress':
               setStreamProgress(event.data.percent);
               break;
             case 'complete':
-              // Use streaming data as fallback if available
-              const finalSummary = event.data.summary || streamingSummary;
-              const finalVocab = event.data.vocab_terms?.map((t: any) => ({
-                word: t.term,
-                definition: t.definition,
-                synonyms: t.context_snippet ? [t.context_snippet] : []
-              })) || streamingVocab;
+              console.log('[ReadingAssistant] Complete event received:', event.data);
+              // Use refs to get current values (avoid stale closure)
+              // Use data exactly as backend sends it
+              const finalSummary = event.data.summary || streamingSummaryRef.current;
+              const finalVocab = event.data.vocab_terms || streamingVocabRef.current;
+              
+              console.log('[ReadingAssistant] Setting final summary:', finalSummary?.slice(0, 100));
+              console.log('[ReadingAssistant] Setting vocab count:', finalVocab?.length);
               
               setSummarizedText(finalSummary);
               setVocabList(finalVocab);
               setTtsAudioB64(event.data.tts_audio_b64 || '');
+              setAudioMimeType(event.data.audio_mime_type || 'audio/wav');
               
               // Fallback mocks for original/simplified text
               setOriginalText(`[Extracted Document: ${uploadedFile.name}]\n\n${MOCK_ORIGINAL_TEXT}`);
@@ -252,16 +280,54 @@ export default function ReadingAssistantPage() {
               toast.success('Document analysed successfully');
               break;
             case 'error':
-              console.error('Stream error:', event.data);
-              toast.error(event.data.message || 'Analysis failed');
+              console.error('[ReadingAssistant] Stream error:', event.data);
+              
+              // Handle rate limit errors specifically
+              if (event.data.code === 429 || event.data.message?.includes('rate limit') || event.data.message?.includes('quota')) {
+                toast.error(
+                  <div>
+                    <p>⏳ AI service rate limit reached</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      The free tier allows 20 requests per day. Please try again tomorrow or upgrade your plan.
+                    </p>
+                  </div>,
+                  { duration: 8000 }
+                );
+              } else {
+                toast.error(event.data.message || 'Analysis failed');
+              }
+              
               setIsProcessing(false);
               setStreamStage('idle');
               break;
+            default:
+              console.log('[ReadingAssistant] Unknown event type:', event.type);
           }
         },
         (error) => {
-          console.error('Analysis error:', error);
-          toast.error(error.message || 'Failed to analyse document');
+          console.error('[ReadingAssistant] Analysis error:', error);
+          
+          // Check if we have partial results to show
+          const hasPartialResults = streamingSummaryRef.current || streamingVocabRef.current.length > 0;
+          
+          if (hasPartialResults) {
+            toast.error(
+              <div>
+                <p>Connection lost during analysis.</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Partial results available. Try refreshing or uploading again.
+                </p>
+              </div>,
+              { duration: 6000 }
+            );
+          } else {
+            toast.error(
+              error.message?.includes('timeout') 
+                ? 'Analysis timed out. Please try with a smaller document or try again.'
+                : (error.message || 'Failed to analyse document')
+            );
+          }
+          
           setIsProcessing(false);
           setStreamStage('idle');
         }
@@ -269,7 +335,7 @@ export default function ReadingAssistantPage() {
     } catch (error: any) {
       setIsProcessing(false);
       setStreamStage('idle');
-      console.error('Analysis error:', error);
+      console.error('[ReadingAssistant] Analysis error:', error);
       toast.error(error.message || 'Failed to analyse document');
     }
   };
@@ -284,9 +350,9 @@ export default function ReadingAssistantPage() {
     }, 1500);
   };
 
-  const handleWordClick = (word: string, e: React.MouseEvent) => {
+  const handleWordClick = (term: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const vocab = vocabList.find(v => v.word.toLowerCase() === word.toLowerCase());
+    const vocab = vocabList.find(v => v.term.toLowerCase() === term.toLowerCase());
     if (vocab) {
       setSelectedWord(vocab);
       setTooltipPosition({ x: e.clientX, y: e.clientY });
@@ -376,7 +442,7 @@ export default function ReadingAssistantPage() {
           className="w-full space-y-6 sm:space-y-8"
         >
           {/* Hero Card with Soft Blue Background */}
-          <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-0">
             <div className="absolute inset-0 opacity-[0.08]">
               <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
                 <defs><pattern id="p1" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
@@ -424,14 +490,14 @@ export default function ReadingAssistantPage() {
       {/* UPLOAD */}
       {viewState === 'upload' && uploadedFile && (
         <div className="w-full space-y-8">
-          <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <Card className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-0">
             <div className="absolute inset-0 opacity-[0.06]">
               <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
                 <defs><pattern id="p2" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M0 30 Q15 15 30 30" fill="none" stroke="#407BFF" strokeWidth="1.5"/></pattern></defs>
                 <rect width="100%" height="100%" fill="url(#p2)"/>
               </svg>
             </div>
-            <CardContent className="relative z-10 p-6 flex items-center gap-6">
+            <CardContent className="relative z-10 p-8 flex items-center gap-6">
               <div className="flex-shrink-0 w-28 h-22" aria-hidden="true">
                 {/* TODO: Insert specific Reading Assistant SVG here. Link later. */}
               </div>
@@ -445,7 +511,7 @@ export default function ReadingAssistantPage() {
           <div className="space-y-5 max-w-md">
             <p className="text-base font-semibold text-[#1a1a1a]">Document uploaded</p>
             
-            <div className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#e5e7eb]">
+            <div className="flex items-center gap-4 bg-white rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#e5e7eb]">
               <div className="w-12 h-12 rounded-xl bg-[#E8F3EA] flex items-center justify-center">
                 <Icon name="file" size={24} className="text-[#3D6E4E]" />
               </div>
@@ -464,7 +530,7 @@ export default function ReadingAssistantPage() {
             
             {/* Streaming Progress Indicator */}
             {isProcessing && (
-              <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#e5e7eb] space-y-4">
+              <div className="bg-white rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#e5e7eb] space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-[#1a1a1a]">
                     {streamStage === 'extracting' && '📄 Extracting text...'}
@@ -511,7 +577,7 @@ export default function ReadingAssistantPage() {
                     <div className="flex flex-wrap gap-2">
                       {streamingVocab.slice(0, 5).map((v, i) => (
                         <span key={i} className="px-2 py-1 bg-[#EBF3FF] text-[#407BFF] text-xs rounded-lg">
-                          {v.word}
+                          {v.term}
                         </span>
                       ))}
                       {streamingVocab.length > 5 && (
@@ -520,6 +586,16 @@ export default function ReadingAssistantPage() {
                         </span>
                       )}
                     </div>
+                  </div>
+                )}
+                
+                {/* Slow connection warning */}
+                {isSlowConnection && (
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <p className="text-sm text-amber-800 flex items-center gap-2">
+                      <span>⏱️</span>
+                      <span>This is taking longer than usual. Please don&apos;t close this page.</span>
+                    </p>
                   </div>
                 )}
               </div>
@@ -583,13 +659,13 @@ export default function ReadingAssistantPage() {
               </div>
 
               {/* Content */}
-              <CardContent className="p-8">
+              <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <h2 className="text-xl font-bold text-[#1a1a1a]">{textMode === 'summarized' ? 'Summary' : uploadedFile?.name || 'Document'}</h2>
                   {ttsAudioB64 && textMode === 'summarized' && (
                     <audio 
                       controls 
-                      src={`data:audio/wav;base64,${ttsAudioB64}`} 
+                      src={`data:${audioMimeType};base64,${ttsAudioB64}`} 
                       className="h-10 w-full sm:w-auto"
                     />
                   )}
@@ -678,17 +754,17 @@ export default function ReadingAssistantPage() {
 
       {/* Word Tooltip */}
       {selectedWord && (
-        <div className="fixed z-50 bg-white rounded-2xl shadow-xl border border-[#e5e7eb] p-4 w-64" style={{ left: Math.min(tooltipPosition.x, window.innerWidth - 280), top: Math.min(tooltipPosition.y + 20, window.innerHeight - 180) }} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed z-50 bg-white rounded-2xl shadow-xl border border-[#e5e7eb] p-6 w-64" style={{ left: Math.min(tooltipPosition.x, window.innerWidth - 280), top: Math.min(tooltipPosition.y + 20, window.innerHeight - 180) }} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <h4 className="font-bold text-base text-[#1a1a1a]">{selectedWord.word}</h4>
+              <h4 className="font-bold text-base text-[#1a1a1a]">{selectedWord.term}</h4>
               <button className="text-[#3D6E4E] hover:scale-110 transition-transform"><Icon name="volume" size={18} /></button>
             </div>
             <button onClick={() => setSelectedWord(null)} className="text-[#9ca3af] hover:text-[#5f5f5f]"><Icon name="close" size={18} /></button>
           </div>
           <p className="text-sm text-[#5f5f5f] mb-3 leading-relaxed">{selectedWord.definition}</p>
           <div className="border-t border-[#e5e7eb] pt-2">
-            <p className="text-xs text-[#3D6E4E] font-semibold">Synonyms: <span className="text-[#9ca3af] font-normal">{selectedWord.synonyms.join(', ')}</span></p>
+            <p className="text-xs text-[#3D6E4E] font-semibold">Context: <span className="text-[#9ca3af] font-normal">{selectedWord.context_snippet}</span></p>
           </div>
         </div>
       )}
@@ -849,8 +925,8 @@ function ToolsPanel({
         <h4 className="text-sm font-bold text-[#3D6E4E] mb-3">Vocabulary List</h4>
         <div className="space-y-1">
           {vocabList.map((vocab) => (
-            <button key={vocab.word} onClick={(e) => handleWordClick(vocab.word, e)} className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-[#1a1a1a] hover:bg-[#f0f7f1] transition-colors">
-              {vocab.word}
+            <button key={vocab.term} onClick={(e) => handleWordClick(vocab.term, e)} className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-[#1a1a1a] hover:bg-[#f0f7f1] transition-colors">
+              {vocab.term}
             </button>
           ))}
         </div>
@@ -898,14 +974,14 @@ function DimmedText({
         }
         
         const words = paragraph.split(/(\s+)/);
-        const highlighted = vocabList.map(v => v.word.toLowerCase());
+        const highlighted = vocabList.map(v => v.term.toLowerCase());
         
         return (
           <p key={idx} className={`mb-5 transition-opacity duration-300 ${dimmed && activeParagraph !== idx ? 'opacity-30' : 'opacity-100'}`} onMouseEnter={() => dimmed && setActiveParagraph(idx)} onMouseLeave={() => dimmed && setActiveParagraph(null)}>
             {words.map((word, wIdx) => {
               const clean = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
               if (highlighted.includes(clean) && clean.length > 0) {
-                const vocab = vocabList.find(v => v.word.toLowerCase() === clean);
+                const vocab = vocabList.find(v => v.term.toLowerCase() === clean);
                 return <span key={wIdx} className="bg-[#EBF3FF] px-1 rounded cursor-pointer hover:bg-[#d4e5ff] transition-colors border-b-2 border-[#407BFF] font-medium" onClick={(e) => onWordClick(word, e)} title={vocab?.definition}>{word}</span>;
               }
               return <span key={wIdx}>{word}</span>;

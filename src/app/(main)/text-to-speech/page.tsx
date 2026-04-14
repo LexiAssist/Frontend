@@ -656,7 +656,7 @@ export default function TextToSpeechPage() {
           {/* Hero Banner Card - Full Width */}
           <div className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-sm w-full">
             <HexPattern />
-            <div className="relative z-10 p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+            <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
               <div className="flex-shrink-0 w-24 h-20 sm:w-32 sm:h-28 lg:w-40 lg:h-32">
                 <img
                   src="/images/reading assitant svg (lady and envelope).svg"
@@ -719,7 +719,7 @@ export default function TextToSpeechPage() {
               className="space-y-4 w-full"
             >
               <p className="text-[#5f5f5f] text-sm font-medium">Document uploaded</p>
-              <div className="flex items-center gap-3 sm:gap-4 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#e5e7eb] w-full max-w-none">
+              <div className="flex items-center gap-3 sm:gap-4 bg-white rounded-2xl p-6 shadow-sm border border-[#e5e7eb] w-full max-w-none">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#E8F3EA] flex items-center justify-center flex-shrink-0">
                   <Icon name="document" size={20} className="text-[#3D6E4E] sm:w-6 sm:h-6" />
                 </div>

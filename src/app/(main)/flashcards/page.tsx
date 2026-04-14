@@ -19,7 +19,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useGenerateFlashcards } from '@/hooks/useFlashcards';
 import { flashcardApi } from '@/services/api';
 
-type ViewState = "upload" | "ready" | "generated" | "list";
+type ViewState = "upload" | "ready" | "generated" | "list" | "textInput";
 
 type SelectedDocument = {
   name: string;
@@ -58,7 +58,7 @@ function PageHeader({ title }: { title: string }) {
 
 function Banner() {
   return (
-    <div className="relative overflow-hidden rounded-lg bg-[#ff9a05] px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
+    <div className="relative overflow-hidden rounded-2xl bg-[#ff9a05] px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
       <div
         className="absolute inset-0 opacity-25"
         style={{
@@ -67,8 +67,8 @@ function Banner() {
           backgroundSize: "52px 52px",
         }}
       />
-      <div className="relative z-10 flex min-h-[160px] sm:min-h-[180px] lg:min-h-[206px] flex-col sm:flex-row items-center justify-center gap-4 sm:gap-[32px] lg:gap-[52px]">
-        <div className="relative h-[120px] w-[160px] sm:h-[140px] sm:w-[180px] lg:h-[206px] lg:w-[225px] shrink-0">
+      <div className="relative z-10 flex min-h-[160px] sm:min-h-[180px] lg:min-h-[206px] flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-12">
+        <div className="relative h-[120px] w-[160px] sm:h-[140px] sm:w-[180px] lg:h-[206px] lg:w-[225px] shrink-0 p-4">
           <Image
             src="/images/flashcard.jpg"
             alt="Flashcards illustration"
@@ -80,7 +80,7 @@ function Banner() {
           <h2 className="text-[20px] sm:text-[24px] lg:text-[28px] font-semibold leading-[1.2] tracking-[-0.02em] text-[#272A28]">
             Flashcards
           </h2>
-          <p className="pt-3 sm:pt-5 lg:pt-7 text-[16px] sm:text-[18px] lg:text-[20px] leading-[1.3] sm:leading-[1.2] tracking-[-0.02em] text-[#555C56]">
+          <p className="pt-4 sm:pt-5 lg:pt-6 text-[16px] sm:text-[18px] lg:text-[20px] leading-[1.3] sm:leading-[1.2] tracking-[-0.02em] text-[#555C56]">
             Learn more effectively with AI-generated flashcards. Upload a document or enter text to get started.
           </p>
         </div>
@@ -101,7 +101,7 @@ function UploadDropzone({ onChooseFile, onTextInput }: { onChooseFile: () => voi
       <button
         type="button"
         onClick={onChooseFile}
-        className="flex min-h-[220px] sm:min-h-[260px] lg:min-h-[286px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-[var(--primary-500)] bg-[rgba(60,131,80,0.18)] px-4 sm:px-8 text-center touch-target hover:bg-[rgba(60,131,80,0.25)] transition-colors"
+        className="flex min-h-[220px] sm:min-h-[260px] lg:min-h-[286px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--primary-500)] bg-[rgba(60,131,80,0.18)] px-6 sm:px-8 py-8 sm:py-10 lg:py-12 text-center touch-target hover:bg-[rgba(60,131,80,0.25)] transition-colors"
       >
         <div className="flex h-[56px] w-[56px] sm:h-[68px] sm:w-[68px] lg:h-[78px] lg:w-[78px] items-center justify-center rounded-full bg-[var(--primary-500)]">
           <CloudUpload className="h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10 text-[var(--primary-50)]" />

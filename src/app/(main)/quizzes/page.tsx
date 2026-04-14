@@ -27,7 +27,7 @@ interface GeneratedQuiz {
   time_limit_minutes: number;
 }
 
-type ViewState = 'upload' | 'ready' | 'generated' | 'taking' | 'results';
+type ViewState = 'upload' | 'ready' | 'generated' | 'taking' | 'results' | 'textInput';
 
 function Header() {
   return (
@@ -55,10 +55,10 @@ function HeroBanner() {
         }}
       />
 
-      <div className="relative z-10 flex items-center gap-8 px-8 lg:px-10 py-8">
+      <div className="relative z-10 flex items-center gap-8 px-6 sm:px-8 lg:px-10 py-8 lg:py-10">
         {/* Illustration */}
         <div className="hidden sm:block flex-shrink-0">
-          <div className="relative h-[160px] w-[200px] lg:h-[200px] lg:w-[240px]">
+          <div className="relative h-[160px] w-[200px] lg:h-[200px] lg:w-[240px] p-2">
             <svg viewBox="0 0 200 180" fill="none" className="h-full w-full">
               <rect x="20" y="40" width="140" height="100" rx="8" fill="white" fillOpacity="0.9" />
               <rect x="35" y="55" width="100" height="8" rx="4" fill="#df7361" fillOpacity="0.3" />
@@ -141,7 +141,7 @@ function DocumentCard({
         Document uploaded
       </h3>
 
-      <div className="flex items-center gap-4 rounded-xl bg-[#f0f0f0] p-4">
+      <div className="flex items-center gap-4 rounded-2xl bg-[#f0f0f0] p-6">
         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#3f835b]">
           <FileText className="h-6 w-6 text-white" />
         </div>

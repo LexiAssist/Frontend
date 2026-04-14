@@ -8,6 +8,7 @@ const mockUser: User = {
   name: 'Test User',
   email: 'test@lexiassist.com',
   avatar: '',
+  role: 'student',
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -29,15 +30,19 @@ export const mockAuthApi = {
           name: credentials.email.split('@')[0],
           email: credentials.email,
           avatar: '',
+          role: 'student',
         },
-        token: 'mock-jwt-token',
+        access_token: 'mock-jwt-token',
+        refresh_token: 'mock-refresh-token',
+        token_type: 'bearer',
+        expires_at: new Date(Date.now() + 3600_000).toISOString(),
       },
     };
   },
 
   async register(credentials: RegisterCredentials): Promise<{ data: AuthResponse }> {
     await delay(MOCK_DELAY);
-    
+
     return {
       data: {
         user: {
@@ -45,8 +50,12 @@ export const mockAuthApi = {
           name: credentials.name,
           email: credentials.email,
           avatar: '',
+          role: 'student',
         },
-        token: 'mock-jwt-token',
+        access_token: 'mock-jwt-token',
+        refresh_token: 'mock-refresh-token',
+        token_type: 'bearer',
+        expires_at: new Date(Date.now() + 3600_000).toISOString(),
       },
     };
   },

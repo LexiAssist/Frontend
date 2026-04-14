@@ -95,26 +95,28 @@ function ToolCard({
       <motion.div
         whileHover={{ y: -4 }}
         whileTap={{ scale: 0.98 }}
-        className="relative overflow-hidden rounded-2xl cursor-pointer transition-shadow duration-200 hover:shadow-xl h-[160px] sm:h-[200px] lg:h-[220px]"
+        className="relative overflow-hidden rounded-2xl cursor-pointer transition-shadow duration-200 hover:shadow-xl aspect-[2/1] p-6"
         style={{ backgroundColor: bgColor }}
       >
         {/* Puzzle pattern background */}
         <PuzzlePattern />
 
-        <div className="relative z-10 h-full flex items-center justify-between px-6 sm:px-8 py-6">
+        <div className="relative z-10 h-full card-inner">
           {/* Text Content - Left aligned */}
-          <div className="flex flex-col gap-3 max-w-[55%]">
-            <h3 className="text-[#272a28] text-lg sm:text-xl lg:text-2xl tracking-tight leading-snug font-bold whitespace-pre-line">
+          <div className="card-text">
+            <h3 className="text-[#272a28] text-base sm:text-lg lg:text-xl tracking-tight leading-snug font-bold whitespace-pre-line">
               {title}
             </h3>
-            <p className="text-[#555c56] text-xs sm:text-sm leading-relaxed">
+            <p className="text-[#555c56] text-xs sm:text-sm leading-relaxed line-clamp-2">
               {description}
             </p>
           </div>
 
           {/* Illustration - Right side */}
-          <div className="w-[130px] h-[130px] sm:w-[150px] sm:h-[150px] lg:w-[170px] lg:h-[160px] flex-shrink-0 flex items-center justify-center">
-            {illustration}
+          <div className="card-illustration">
+            <div className="w-[90px] h-[90px] sm:w-[110px] sm:h-[110px] lg:w-[130px] lg:h-[130px] flex-shrink-0 overflow-hidden">
+              {illustration}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -135,7 +137,7 @@ function StatCard({ title, value, subtitle, icon, trend }: StatCardProps) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm"
+      className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -176,7 +178,7 @@ function QuickAction({ title, description, icon, href, color }: QuickActionProps
       <motion.div
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-[var(--primary-500)] hover:shadow-md transition-all bg-white"
+        className="flex items-center gap-4 p-6 rounded-2xl border border-slate-200 hover:border-[var(--primary-500)] hover:shadow-md transition-all bg-white"
       >
         <div 
           className="w-12 h-12 rounded-xl flex items-center justify-center"
@@ -257,7 +259,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 sm:mb-10 pt-8">
+      <div className="flex items-center justify-between mb-8 pt-8">
         <div className="flex flex-col gap-2">
           <h1 className="text-[#272a28] text-2xl sm:text-3xl tracking-tight font-bold">
             Hello, {user?.name?.split(" ")[0] || "Student"}!
@@ -306,10 +308,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Left Column - Tools */}
-        <div className="lg:col-span-2">
+      {/* Main Content Area */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Section - Tools */}
+        <div className="flex-1">
           <h2 className="text-lg font-semibold text-[#272a28] mb-4">Learning Tools</h2>
           <motion.div
             initial="hidden"
@@ -323,7 +325,7 @@ export default function DashboardPage() {
                 },
               },
             }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
             {tools.map((tool, index) => (
               <motion.div
@@ -349,22 +351,21 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        {/* Right Column - Quick Actions & Recent Activity */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#272a28] mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              {quickActions.map((action) => (
-                <QuickAction key={action.title} {...action} />
-              ))}
-            </div>
+        {/* Right Panel */}
+        <div className="w-full md:w-[280px] lg:w-[320px] flex flex-col gap-6 mt-4">
+          {/* Actions Section */}
+          <div className="flex flex-col gap-4">
+            <h2 className="text-lg font-semibold text-[#272a28]">Quick Actions</h2>
+            {quickActions.map((action) => (
+              <QuickAction key={action.title} {...action} />
+            ))}
           </div>
 
-          {/* Recent Flashcards */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#272a28] mb-4">Recent Flashcards</h2>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
+          {/* Recent Section */}
+          <div className="flex flex-col gap-6 bg-white rounded-2xl border border-slate-200 p-6">
+            {/* Recent Flashcards */}
+            <div className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold text-[#272a28]">Recent Flashcards</h2>
               {decksLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
@@ -404,12 +405,10 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Recent Quizzes */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#272a28] mb-4">Recent Quizzes</h2>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
+            {/* Recent Quizzes */}
+            <div className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold text-[#272a28]">Recent Quizzes</h2>
               {quizzesLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
