@@ -10,10 +10,10 @@ import {
   FileText,
   HelpCircle,
   X,
+  Sparkles,
 } from "lucide-react";
 import { FeatureHeader } from '@/components/FeatureHeader';
 import { Button } from '@/components/ui/Button';
-import { LoadingState } from '@/components/LoadingState';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { useGenerateFlashcards } from '@/hooks/useFlashcards';
@@ -43,17 +43,6 @@ function getExtension(name: string) {
 function getDisplayName(name: string) {
   const withoutExt = name.replace(/\.[^.]+$/, "");
   return withoutExt || name;
-}
-
-function PageHeader({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <h1 className="text-[22px] sm:text-[28px] font-semibold leading-[1.2] tracking-[-0.02em] text-[#272A28]">
-        {title}
-      </h1>
-      <FeatureHeader />
-    </div>
-  );
 }
 
 function Banner() {
@@ -146,35 +135,35 @@ function TextInputState({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={transitionProps}
-      className="w-full"
+      className="w-full max-w-2xl"
     >
-      <p className="text-[16px] sm:text-[20px] font-medium leading-[1.2] tracking-[-0.02em] text-[#6b6f6c] mb-4">
-        Enter your content
-      </p>
-      
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Paste your study material here..."
-        className="w-full min-h-[200px] p-4 rounded-lg border border-gray-200 focus:border-[var(--primary-500)] focus:ring-1 focus:ring-[var(--primary-500)] outline-none resize-none"
-      />
-      
-      <div className="flex gap-3 mt-4">
-        <Button
-          onClick={onCancel}
-          variant="outline"
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={() => onSubmit(text)}
-          isLoading={isLoading}
-          disabled={!text.trim()}
-          className="flex-1"
-        >
-          Generate Flashcards
-        </Button>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Enter your content</h3>
+        
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Paste your study material here..."
+          className="w-full min-h-[200px] p-4 rounded-xl border border-slate-200 focus:border-[var(--primary-500)] focus:ring-1 focus:ring-[var(--primary-500)] outline-none resize-none"
+        />
+        
+        <div className="flex gap-3 mt-4">
+          <Button
+            onClick={onCancel}
+            variant="outline"
+            className="flex-1 rounded-xl"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => onSubmit(text)}
+            isLoading={isLoading}
+            disabled={!text.trim()}
+            className="flex-1 rounded-xl"
+          >
+            Generate Flashcards
+          </Button>
+        </div>
       </div>
     </motion.div>
   );
@@ -197,45 +186,41 @@ function ReadyState({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={transitionProps}
-      className="w-full"
+      className="w-full max-w-md"
     >
-      <p className="text-[16px] sm:text-[20px] font-medium leading-[1.2] tracking-[-0.02em] text-[#6b6f6c]">
-        Document uploaded
-      </p>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Document uploaded</h3>
 
-      <div className="mt-4 sm:mt-5 flex h-[56px] sm:h-[64px] w-full max-w-[380px] items-center justify-between rounded-lg bg-[#efefef] px-4 sm:px-6">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center text-[var(--primary-500)] shrink-0">
-            <FileText className="h-6 w-6 sm:h-8 sm:w-8 fill-current stroke-[1.6]" />
+        <div className="flex items-center gap-4 rounded-xl bg-slate-50 px-4 py-4 border border-slate-100">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary-500)] shrink-0">
+            <FileText className="h-5 w-5 text-white" />
           </div>
-          <div className="min-w-0">
-            <p className="text-[14px] sm:text-[16px] font-medium text-[#555C56] truncate">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-900 truncate">
               {document.name}
             </p>
-            <p className="pt-0.5 text-[12px] sm:text-[14px] text-[#888d89]">
-              {document.extension}
-            </p>
+            <p className="text-xs text-slate-500">{document.extension}</p>
           </div>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="rounded-lg p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 shrink-0"
+            aria-label="Remove selected document"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isLoading}
-          className="rounded-full p-2 text-black transition hover:bg-white disabled:opacity-50 touch-target shrink-0"
-          aria-label="Remove selected document"
+        <Button
+          onClick={onSubmit}
+          isLoading={isLoading}
+          className="mt-5 w-full rounded-xl"
         >
-          <X className="h-5 w-5" />
-        </button>
+          Generate Flashcards
+        </Button>
       </div>
-
-      <Button
-        onClick={onSubmit}
-        isLoading={isLoading}
-        className="mt-5 sm:mt-6 w-full max-w-[380px] h-[48px] sm:h-[52px] rounded-full text-[14px] sm:text-[16px] font-semibold"
-      >
-        Generate Flashcards
-      </Button>
     </motion.div>
   );
 }
@@ -244,7 +229,7 @@ function SideCard({ side }: { side: "left" | "right" }) {
   return (
     <div
       className={[
-        "hidden h-[214px] w-[180px] rounded-md bg-[#6ca378] px-5 py-6 lg:block lg:h-[258px] lg:w-[180px]",
+        "hidden h-[214px] w-[180px] rounded-xl bg-[#6ca378] px-5 py-6 lg:block lg:h-[258px] lg:w-[180px]",
         side === "left"
           ? "origin-right scale-[0.98]"
           : "origin-left scale-[0.98]",
@@ -282,14 +267,14 @@ function GeneratedState({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={transitionProps}
-      className="pt-4 sm:pt-8"
+      className="pt-2"
     >
-      <div className="mx-auto flex max-w-[760px] items-center justify-center gap-4 sm:gap-[32px] lg:gap-[46px] px-4 sm:px-0">
+      <div className="mx-auto flex max-w-[760px] items-center justify-center gap-4 sm:gap-8 lg:gap-12 px-4 sm:px-0">
         <SideCard side="left" />
 
         <div 
           onClick={onFlip}
-          className="relative h-[280px] w-[210px] sm:h-[321px] sm:w-[241px] lg:h-[360px] lg:w-[290px] overflow-hidden rounded-md bg-[var(--primary-500)] px-4 sm:px-6 py-5 sm:py-7 text-white shadow-sm cursor-pointer transition-transform hover:scale-[1.02]"
+          className="relative h-[280px] w-[210px] sm:h-[321px] sm:w-[241px] lg:h-[360px] lg:w-[290px] overflow-hidden rounded-2xl bg-[var(--primary-500)] px-4 sm:px-6 py-5 sm:py-7 text-white shadow-md cursor-pointer transition-transform hover:scale-[1.02]"
         >
           <div className="relative z-10 flex h-full flex-col items-center text-center">
             <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full border-[3px] border-white">
@@ -314,12 +299,12 @@ function GeneratedState({
         <SideCard side="right" />
       </div>
 
-      <div className="flex items-center justify-center gap-6 sm:gap-10 pt-8 sm:pt-14">
+      <div className="flex items-center justify-center gap-6 sm:gap-10 pt-8 sm:pt-12">
         <button
           type="button"
           onClick={onPrev}
           disabled={currentIndex === 0}
-          className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)] touch-target disabled:opacity-50"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
           aria-label="Previous flashcard"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -328,7 +313,7 @@ function GeneratedState({
           type="button"
           onClick={onNext}
           disabled={currentIndex === flashcards.length - 1}
-          className="flex h-11 w-11 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[var(--primary-500)] text-[var(--primary-500)] transition hover:bg-[var(--primary-50)] touch-target disabled:opacity-50"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50"
           aria-label="Next flashcard"
         >
           <ArrowRight className="h-5 w-5" />
@@ -358,7 +343,6 @@ export default function FlashcardsPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Read file content
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
@@ -373,7 +357,6 @@ export default function FlashcardsPage() {
     if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
       reader.readAsText(file);
     } else {
-      // For other file types, just store metadata
       setSelectedDocument({
         name: getDisplayName(file.name),
         extension: getExtension(file.name),
@@ -403,8 +386,6 @@ export default function FlashcardsPage() {
         userId: user.id,
       });
 
-      // Parse the generated flashcards
-      // The AI returns them as text, we need to parse into structured format
       const parsedFlashcards = parseFlashcardsFromAI(result.flashcards);
       
       setGeneratedFlashcards(parsedFlashcards);
@@ -450,10 +431,10 @@ export default function FlashcardsPage() {
   const headerTitle =
     viewState === "generated" && selectedDocument
       ? selectedDocument.name
-      : "FlashCards";
+      : "Flashcards";
 
   return (
-    <div className="mx-auto w-full max-w-[1008px] pb-8">
+    <div className="mx-auto w-full max-w-4xl pb-8">
       <input
         ref={fileInputRef}
         type="file"
@@ -462,8 +443,18 @@ export default function FlashcardsPage() {
         onChange={handleFileChange}
       />
 
-      <div className="space-y-[42px] pt-8">
-        <PageHeader title={headerTitle} />
+      <div className="space-y-8 pt-2">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+              {headerTitle}
+            </h1>
+            {viewState !== "generated" && (
+              <p className="text-slate-500 mt-1 text-sm">Upload your notes and let AI turn them into study cards.</p>
+            )}
+          </div>
+          <FeatureHeader />
+        </div>
 
         <AnimatePresence mode="wait">
           {viewState === "generated" ? (
@@ -488,7 +479,7 @@ export default function FlashcardsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-[42px]"
+              className="space-y-8"
             >
               <Banner />
 
@@ -519,14 +510,8 @@ export default function FlashcardsPage() {
   );
 }
 
-// Helper function to parse AI-generated flashcards
 function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
   const flashcards: GeneratedFlashcard[] = [];
-  
-  // Try to parse common formats:
-  // Format 1: Q: ... A: ...
-  // Format 2: Front: ... Back: ...
-  // Format 3: Numbered lists
   
   const lines = aiResponse.split('\n').filter(line => line.trim());
   let currentFront = '';
@@ -536,7 +521,6 @@ function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
   for (const line of lines) {
     const trimmed = line.trim();
     
-    // Check for Q: or Question: prefix
     if (trimmed.match(/^Q\d*[:.)]/i) || trimmed.match(/^Question[:)]/i)) {
       if (currentFront && currentBack) {
         flashcards.push({
@@ -549,12 +533,10 @@ function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
       currentBack = '';
       isQuestion = false;
     }
-    // Check for A: or Answer: prefix
     else if (trimmed.match(/^A\d*[:.)]/i) || trimmed.match(/^Answer[:)]/i)) {
       currentBack = trimmed.replace(/^A\d*[:.)]\s*/i, '').replace(/^Answer[:)]\s*/i, '');
       isQuestion = true;
     }
-    // Check for Front: prefix
     else if (trimmed.match(/^Front[:)]/i)) {
       if (currentFront && currentBack) {
         flashcards.push({
@@ -566,17 +548,14 @@ function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
       currentFront = trimmed.replace(/^Front[:)]\s*/i, '');
       currentBack = '';
     }
-    // Check for Back: prefix
     else if (trimmed.match(/^Back[:)]/i)) {
       currentBack = trimmed.replace(/^Back[:)]\s*/i, '');
     }
-    // Accumulate content
     else if (!isQuestion && currentFront && !currentBack) {
       currentBack = trimmed;
     }
   }
   
-  // Don't forget the last card
   if (currentFront && currentBack) {
     flashcards.push({
       id: `card-${flashcards.length}`,
@@ -585,7 +564,6 @@ function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
     });
   }
   
-  // If no flashcards were parsed, create a fallback
   if (flashcards.length === 0) {
     flashcards.push({
       id: 'card-0',

@@ -609,6 +609,12 @@ export const materialApi = {
 
 // Reading Assistant
 export const readingApi = {
+  extractText: async (file: File): Promise<{ text: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return fetchFormData('/reading/extract', formData);
+  },
+
   analyse: async (file: File, userId: string, summaryType = 'concise', voice = 'Zephyr', speakerLabel = 'Reader', temperature = 1.0): Promise<ReadingAnalysisResponse> => {
     const formData = new FormData();
     formData.append('file', file);

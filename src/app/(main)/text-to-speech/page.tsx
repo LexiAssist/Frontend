@@ -15,16 +15,14 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuthStore } from '@/store/authStore';
 import { FeatureHeader } from '@/components/FeatureHeader';
-import { audioApi } from '@/services/api';
+import { audioApi, readingApi } from '@/services/api';
 
-// Voice options type
 interface VoiceOption {
   id: string;
   name: string;
   lang: string;
 }
 
-// Speed options
 const speedOptions = [
   { value: '0.5', label: '0.5x' },
   { value: '0.75', label: '0.75x' },
@@ -34,54 +32,60 @@ const speedOptions = [
   { value: '2', label: '2.0x' },
 ];
 
-// Reading options
 const readingOptions = [
   { value: 'word', label: 'Word by Word' },
   { value: 'line', label: 'Line by Line' },
   { value: 'paragraph', label: 'Paragraph' },
 ];
 
-// Tinted background colors
 const tintedColors = [
-  '#FFF9E6', // Light yellow (default)
-  '#FFF5E6', // Cream
-  '#F0F7F1', // Light sage
-  '#E8F4F8', // Light blue
-  '#F5E6FF', // Light purple
-  '#FFE6F0', // Light pink
-  '#E6F5FF', // Light cyan
-  '#F5F5DC', // Beige
-  '#F0E6D3', // Tan
-  '#E6D3C0', // Light brown
-  '#D3C0E6', // Lavender
-  '#C0E6D3', // Mint
-  '#E6C0D3', // Rose
-  '#C0D3E6', // Powder blue
-  '#D3E6C0', // Pale green
-  '#FFFFFF', // White
+  '#FFF9E6',
+  '#FFF5E6',
+  '#F0F7F1',
+  '#E8F4F8',
+  '#F5E6FF',
+  '#FFE6F0',
+  '#E6F5FF',
+  '#F5F5DC',
+  '#F0E6D3',
+  '#E6D3C0',
+  '#D3C0E6',
+  '#C0E6D3',
+  '#E6C0D3',
+  '#C0D3E6',
+  '#D3E6C0',
+  '#FFFFFF',
 ];
 
-// Highlight colors
 const highlightColors = [
-  '#C8B5FF', // Light purple (default)
-  '#FFB5B5', // Light red
-  '#B5FFB5', // Light green
-  '#B5D4FF', // Light blue
-  '#FFE4B5', // Light orange
-  '#FFB5E4', // Light pink
-  '#E4FFB5', // Light lime
-  '#B5FFE4', // Light cyan
-  '#FFD700', // Gold
-  '#FFA500', // Orange
-  '#87CEEB', // Sky blue
-  '#98FB98', // Pale green
-  '#DDA0DD', // Plum
-  '#F0E68C', // Khaki
-  '#FFB6C1', // Light pink
-  '#20B2AA', // Light sea green
+  '#C8B5FF',
+  '#FFB5B5',
+  '#B5FFB5',
+  '#B5D4FF',
+  '#FFE4B5',
+  '#FFB5E4',
+  '#E4FFB5',
+  '#B5FFE4',
+  '#FFD700',
+  '#FFA500',
+  '#87CEEB',
+  '#98FB98',
+  '#DDA0DD',
+  '#F0E68C',
+  '#FFB6C1',
+  '#20B2AA',
 ];
 
-// No sample document - user must upload their own file
+const HexPattern = () => (
+  <svg className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="hex" x="0" y="0" width="56" height="48" patternUnits="userSpaceOnUse">
+        <polygon points="14,2 42,2 56,26 42,46 14,46 0,26" fill="none" stroke="#3D6E4E" strokeWidth="1.5" />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#hex)" />
+  </svg>
+);
 
 export default function TextToSpeechPage() {
   const { user } = useAuthStore();
@@ -92,8 +96,7 @@ export default function TextToSpeechPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [words, setWords] = useState<string[]>([]);
-  
-  // Settings
+
   const [selectedVoice, setSelectedVoice] = useState<string>('en');
   const [speed, setSpeed] = useState<string>('1');
   const [readingMode, setReadingMode] = useState<string>('word');
@@ -102,8 +105,7 @@ export default function TextToSpeechPage() {
   const [tintedBgColor, setTintedBgColor] = useState('#FFF9E6');
   const [highlightEnabled, setHighlightEnabled] = useState(true);
   const [highlightColor, setHighlightColor] = useState('#C8B5FF');
-  
-  // Refs
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -115,17 +117,13 @@ export default function TextToSpeechPage() {
   const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
   const [lastTtsRequest, setLastTtsRequest] = useState<number>(0);
 
-  // Load available voices (gTTS supported languages with accents)
   useEffect(() => {
     const gttsVoices: VoiceOption[] = [
-      // English variants
       { id: 'en', name: 'English (US)', lang: 'en' },
       { id: 'en-uk', name: 'English (UK)', lang: 'en-uk' },
       { id: 'en-au', name: 'English (Australia)', lang: 'en-au' },
       { id: 'en-in', name: 'English (India)', lang: 'en-in' },
       { id: 'en-ca', name: 'English (Canada)', lang: 'en-ca' },
-      
-      // European languages
       { id: 'es', name: 'Spanish (Spain)', lang: 'es' },
       { id: 'es-us', name: 'Spanish (Mexico)', lang: 'es-us' },
       { id: 'fr', name: 'French (France)', lang: 'fr' },
@@ -150,8 +148,6 @@ export default function TextToSpeechPage() {
       { id: 'hr', name: 'Croatian', lang: 'hr' },
       { id: 'uk', name: 'Ukrainian', lang: 'uk' },
       { id: 'ca', name: 'Catalan', lang: 'ca' },
-      
-      // Asian languages
       { id: 'ja', name: 'Japanese', lang: 'ja' },
       { id: 'zh', name: 'Chinese (Simplified)', lang: 'zh' },
       { id: 'zh-tw', name: 'Chinese (Traditional)', lang: 'zh-tw' },
@@ -162,8 +158,6 @@ export default function TextToSpeechPage() {
       { id: 'ms', name: 'Malay', lang: 'ms' },
       { id: 'tl', name: 'Filipino', lang: 'tl' },
       { id: 'ta', name: 'Tamil', lang: 'ta' },
-      
-      // Middle Eastern & African
       { id: 'ar', name: 'Arabic', lang: 'ar' },
       { id: 'iw', name: 'Hebrew', lang: 'iw' },
       { id: 'fa', name: 'Persian', lang: 'fa' },
@@ -174,8 +168,6 @@ export default function TextToSpeechPage() {
       { id: 'ur', name: 'Urdu', lang: 'ur' },
       { id: 'sw', name: 'Swahili', lang: 'sw' },
       { id: 'af', name: 'Afrikaans', lang: 'af' },
-      
-      // Slavic & Baltic
       { id: 'ru', name: 'Russian', lang: 'ru' },
       { id: 'sr', name: 'Serbian', lang: 'sr' },
       { id: 'mk', name: 'Macedonian', lang: 'mk' },
@@ -185,27 +177,17 @@ export default function TextToSpeechPage() {
       { id: 'et', name: 'Estonian', lang: 'et' },
     ];
     setVoices(gttsVoices);
-    if (!selectedVoice) {
-      setSelectedVoice('en');
-    }
+    if (!selectedVoice) setSelectedVoice('en');
   }, []);
-  
-  // Cleanup audio URL on unmount
+
   useEffect(() => {
     return () => {
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
-      if (previewAudioUrl) {
-        URL.revokeObjectURL(previewAudioUrl);
-      }
-      if (previewAudio) {
-        previewAudio.pause();
-      }
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
+      if (previewAudio) previewAudio.pause();
     };
   }, [audioUrl, previewAudioUrl, previewAudio]);
 
-  // Invalidate cached preview audio when settings or text change
   useEffect(() => {
     if (previewAudio) {
       previewAudio.pause();
@@ -219,7 +201,6 @@ export default function TextToSpeechPage() {
     setPreviewingVoice(null);
   }, [selectedVoice, speed, extractedText]);
 
-  // Invalidate cached main audio when settings or text change
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -234,74 +215,49 @@ export default function TextToSpeechPage() {
     setCurrentWordIndex(-1);
   }, [selectedVoice, speed, extractedText]);
 
-  // Preview generated TTS audio
   const handlePreviewAudio = async () => {
     if (!extractedText) {
       toast.error('No text to preview');
       return;
     }
-    
-    // Rate limit: max 1 request per 3 seconds
     const now = Date.now();
     if (now - lastTtsRequest < 3000) {
       toast.info('Please wait a moment before generating audio again');
       return;
     }
-    
-    // If already playing preview, stop it
     if (previewAudio && !previewAudio.paused) {
       previewAudio.pause();
       previewAudio.currentTime = 0;
       setPreviewingVoice(null);
       return;
     }
-    
-    // Stop main audio if playing so preview doesn't overlap
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-
-    // If preview already generated, just play it
+    if (audioRef.current) audioRef.current.pause();
     if (previewAudioUrl && previewAudio) {
       previewAudio.play();
       setPreviewingVoice('preview');
       return;
     }
-    
+
     setPreviewingVoice('preview');
     setIsGenerating(true);
     setLastTtsRequest(now);
-    
+
     try {
-      // Generate TTS for a preview (first 500 characters)
       const previewText = extractedText.slice(0, 500);
-      
       const audioBlob = await audioApi.textToSpeech(previewText, selectedVoice, parseFloat(speed) < 1.0);
-      
-      // Clean up old preview URL before creating new one
-      if (previewAudioUrl) {
-        URL.revokeObjectURL(previewAudioUrl);
-      }
-      
+      if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
       const url = URL.createObjectURL(audioBlob);
       setPreviewAudioUrl(url);
-      
       const audio = new Audio(url);
       setPreviewAudio(audio);
-      
-      audio.onended = () => {
-        setPreviewingVoice(null);
-      };
-      
+      audio.onended = () => setPreviewingVoice(null);
       audio.onerror = () => {
         setPreviewingVoice(null);
         toast.error('Error playing preview');
       };
-      
       audio.playbackRate = parseFloat(speed);
       await audio.play();
       toast.success('Playing preview of document');
-      
     } catch (error: any) {
       console.error('Preview error:', error);
       if (error.response?.status === 429) {
@@ -317,7 +273,6 @@ export default function TextToSpeechPage() {
     }
   };
 
-  // Drag and drop handlers
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragging(true);
@@ -335,7 +290,6 @@ export default function TextToSpeechPage() {
   }, []);
 
   const extractTextFromFile = async (file: File): Promise<string> => {
-    // Only accept text files - PDF/DOCX require backend processing
     if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -351,28 +305,42 @@ export default function TextToSpeechPage() {
         reader.readAsText(file);
       });
     }
-    
-    // Reject other file types - they need backend processing
-    throw new Error('Only .txt files are supported for now. PDF/DOCX support coming soon.');
+    const isSupported =
+      file.type === 'application/pdf' ||
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.name.endsWith('.pdf') ||
+      file.name.endsWith('.doc') ||
+      file.name.endsWith('.docx');
+
+    if (isSupported) {
+      const result = await readingApi.extractText(file);
+      return result.text;
+    }
+
+    throw new Error('Unsupported file type. Accepted: .pdf, .doc, .docx, .txt');
   };
 
   const handleFileUpload = async (file: File) => {
-    // Only allow text files for now
-    const isTxtFile = file.type === 'text/plain' || file.name.endsWith('.txt');
-    
-    if (!isTxtFile) {
-      toast.error('Please upload a .txt file. PDF and DOC support coming soon.');
+    const isSupported =
+      file.type === 'text/plain' ||
+      file.type === 'application/pdf' ||
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.name.endsWith('.txt') ||
+      file.name.endsWith('.pdf') ||
+      file.name.endsWith('.doc') ||
+      file.name.endsWith('.docx');
+
+    if (!isSupported) {
+      toast.error('Please upload a .txt, .pdf, .doc, or .docx file');
       return;
     }
-
     if (file.size > 25 * 1024 * 1024) {
       toast.error('File size must be less than 25MB');
       return;
     }
-
     setUploadedFile(file);
-    
-    // Extract text from file
     try {
       const text = await extractTextFromFile(file);
       setExtractedText(text);
@@ -394,7 +362,7 @@ export default function TextToSpeechPage() {
 
   const handleSubmit = () => {
     if (!uploadedFile) {
-      toast.error('Please upload a .txt file first');
+      toast.error('Please upload a file first');
       return;
     }
     if (!extractedText || extractedText.trim().length === 0) {
@@ -424,48 +392,30 @@ export default function TextToSpeechPage() {
       toast.error('No text to speak. Please upload a file first.');
       return;
     }
-    
-    // Rate limit: max 1 request per 3 seconds
     const now = Date.now();
     if (now - lastTtsRequest < 3000) {
       toast.info('Please wait a moment before generating audio again');
       return;
     }
     setLastTtsRequest(now);
-    
-    // Stop current playback
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-
-    // Stop preview audio if playing so main audio doesn't overlap
     if (previewAudio) {
       previewAudio.pause();
       previewAudio.currentTime = 0;
       setPreviewingVoice(null);
     }
-    
     setIsGenerating(true);
-    
+
     try {
-      // Call backend TTS API through the Gateway
       const audioBlob = await audioApi.textToSpeech(extractedText, selectedVoice, parseFloat(speed) < 1.0);
-      
-      // Create audio URL from blob
       const url = URL.createObjectURL(audioBlob);
-      
-      // Clean up old URL
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
-      
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
       setAudioUrl(url);
-      
-      // Create and play audio
       const audio = new Audio(url);
       audioRef.current = audio;
-      
       audio.onplay = () => setIsPlaying(true);
       audio.onended = () => {
         setIsPlaying(false);
@@ -476,13 +426,9 @@ export default function TextToSpeechPage() {
         toast.error('Error playing audio');
         setIsPlaying(false);
       };
-      
-      // Play at selected speed
       audio.playbackRate = parseFloat(speed);
       await audio.play();
-      
       toast.success('Playing text-to-speech audio');
-      
     } catch (error: any) {
       console.error('TTS Error:', error);
       if (error.response?.status === 429) {
@@ -496,14 +442,10 @@ export default function TextToSpeechPage() {
       setIsGenerating(false);
     }
   };
-  
-  // Legacy function for compatibility
-  const startSpeech = () => {
-    generateAndPlaySpeech();
-  };
+
+  const startSpeech = () => generateAndPlaySpeech();
 
   const handleSkipBack = () => {
-    // Restart current audio
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
@@ -512,7 +454,6 @@ export default function TextToSpeechPage() {
   };
 
   const handleSkipForward = () => {
-    // Stop current audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -537,28 +478,21 @@ export default function TextToSpeechPage() {
   };
 
   const handleExportAudio = () => {
-    // Use main audio URL, or fallback to preview audio URL
     const urlToDownload = audioUrl || previewAudioUrl;
-    
     if (!urlToDownload) {
       toast.info('Please generate audio first by clicking Play or Preview');
       return;
     }
-    
     try {
-      // Generate filename
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       const baseName = documentTitle?.trim() || 'text-to-speech';
       const filename = `${baseName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '')}_${timestamp}.mp3`;
-      
-      // Download directly from the blob URL
       const link = document.createElement('a');
       link.href = urlToDownload;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
       toast.success(`Downloaded: ${filename}`);
     } catch (error) {
       console.error('Download error:', error);
@@ -566,25 +500,16 @@ export default function TextToSpeechPage() {
     }
   };
 
-  // Render text with highlighting
   const renderHighlightedText = () => {
-    if (!highlightEnabled || currentWordIndex < 0) {
-      return <span>{extractedText}</span>;
-    }
-
+    if (!highlightEnabled || currentWordIndex < 0) return <span>{extractedText}</span>;
     const allWords = extractedText.split(/(\s+)/);
     let wordCounter = 0;
-
     return (
       <>
         {allWords.map((word, index) => {
-          if (word.trim().length === 0) {
-            return <span key={index}>{word}</span>;
-          }
-          
+          if (word.trim().length === 0) return <span key={index}>{word}</span>;
           const isCurrentWord = wordCounter === currentWordIndex;
           wordCounter++;
-          
           return (
             <span
               key={index}
@@ -603,85 +528,50 @@ export default function TextToSpeechPage() {
     );
   };
 
-  // Hex pattern SVG background
-  const HexPattern = () => (
-    <svg
-      className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <pattern
-          id="hex"
-          x="0"
-          y="0"
-          width="56"
-          height="48"
-          patternUnits="userSpaceOnUse"
-        >
-          <polygon
-            points="14,2 42,2 56,26 42,46 14,46 0,26"
-            fill="none"
-            stroke="#3D6E4E"
-            strokeWidth="1.5"
-          />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#hex)" />
-    </svg>
-  );
-
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6 pt-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-[#1a1a1a]">
-            {currentStep === 'upload' ? `Hello, ${user?.name?.split(' ')[0] || 'Victoria'}!` : 'Text to speech Learning Hub'}
+    <div className="min-h-[calc(100vh-6rem)]">
+      <div className="flex items-center justify-between mb-8 pt-2">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+            {currentStep === 'upload' ? `Hello, ${user?.name?.split(' ')[0] || 'Victoria'}!` : 'Text to Speech'}
           </h1>
-          {currentStep === 'upload' && (
-            <p className="text-[#5f5f5f]">Pick a tool to get started with</p>
-          )}
+          <p className="text-slate-500 mt-1 text-sm">
+            {currentStep === 'upload' ? 'Pick a tool to get started with' : 'Turn text into sound and learn by listening.'}
+          </p>
         </div>
         <FeatureHeader />
       </div>
 
-      {/* Step 1: Upload */}
       {currentStep === 'upload' && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="space-y-6 w-full"
+          className="w-full space-y-6"
         >
-          {/* Hero Banner Card - Full Width */}
-          <div className="relative overflow-hidden border-0 rounded-2xl bg-[#EBF3FF] shadow-sm w-full">
+          <div className="relative overflow-hidden rounded-2xl bg-[#EBF3FF] shadow-sm">
             <HexPattern />
-            <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
-              <div className="flex-shrink-0 w-24 h-20 sm:w-32 sm:h-28 lg:w-40 lg:h-32">
+            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-12 px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
+              <div className="relative h-[120px] w-[160px] shrink-0 p-4">
                 <img
                   src="/images/reading assitant svg (lady and envelope).svg"
                   alt="Text to Speech Illustration"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="text-center sm:text-left">
-                <h2 className="text-lg sm:text-xl font-bold text-[#1a1a1a] mb-2">
-                  Text to speech Learning Hub
-                </h2>
-                <p className="text-sm sm:text-[15px] text-[#5f5f5f] leading-relaxed max-w-md">
+              <div className="w-full max-w-[498px] text-center sm:text-left">
+                <h2 className="text-[20px] sm:text-[24px] lg:text-[28px] font-semibold text-slate-900">Text to Speech</h2>
+                <p className="pt-4 sm:pt-5 lg:pt-6 text-[16px] sm:text-[18px] lg:text-[20px] text-slate-600">
                   Turn text into sound. Sit back, listen & watch the words light up as you learn.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Upload Zone - Full Width */}
           <motion.div
             whileTap={{ scale: 0.99 }}
             className={`rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6 gap-4 sm:gap-5 w-full ${
-              dragging
-                ? 'border-[#3D6E4E] bg-[#E8F3EA] scale-[1.01]'
-                : 'border-[#D4E8D7] bg-[#F0F7F1] hover:border-[#3D6E4E]'
+              dragging ? 'border-[#3D6E4E] bg-[#E8F3EA] scale-[1.01]' : 'border-[#D4E8D7] bg-[#F0F7F1] hover:border-[#3D6E4E] hover:bg-[#E8F3EA]'
             }`}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -691,7 +581,7 @@ export default function TextToSpeechPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,.txt,image/*"
+              accept=".pdf,.doc,.docx,.txt"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -705,351 +595,252 @@ export default function TextToSpeechPage() {
               <p className="text-[#3D6E4E] font-semibold text-sm sm:text-base">
                 <span className="font-bold">Click to upload</span> or drag and drop
               </p>
-              <p className="text-[#5f5f5f] text-xs sm:text-sm mt-2">
-                TXT files only (max 25MB)
-              </p>
+              <p className="text-slate-500 text-xs sm:text-sm mt-2">PDF, DOC, DOCX, or TXT (max 25MB)</p>
             </div>
           </motion.div>
 
-          {/* File Preview and Submit - Full Width */}
-          {uploadedFile && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4 w-full"
-            >
-              <p className="text-[#5f5f5f] text-sm font-medium">Document uploaded</p>
-              <div className="flex items-center gap-3 sm:gap-4 bg-white rounded-2xl p-6 shadow-sm border border-[#e5e7eb] w-full max-w-none">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-[#E8F3EA] flex items-center justify-center flex-shrink-0">
-                  <Icon name="document" size={20} className="text-[#3D6E4E] sm:w-6 sm:h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1a1a1a] truncate">
-                    {uploadedFile.name.replace(/\.[^/.]+$/, '')}
-                  </p>
-                  <p className="text-xs text-[#9ca3af]">
-                    {uploadedFile.name.split('.').pop()?.toUpperCase() || 'FILE'}
-                  </p>
+          <AnimatePresence>
+            {uploadedFile && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4 w-full"
+              >
+                <p className="text-slate-500 text-sm font-medium">Document uploaded</p>
+                <div className="flex items-center gap-4 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                  <div className="w-12 h-12 rounded-xl bg-[#E8F3EA] flex items-center justify-center flex-shrink-0">
+                    <Icon name="document" size={24} className="text-[#3D6E4E]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{uploadedFile.name.replace(/\.[^/.]+$/, '')}</p>
+                    <p className="text-xs text-slate-400">{uploadedFile.name.split('.').pop()?.toUpperCase() || 'FILE'}</p>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile();
+                    }}
+                    className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <Icon name="close" size={20} />
+                  </motion.button>
                 </div>
                 <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFile();
-                  }}
-                  className="p-2.5 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors touch-target"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSubmit}
+                  className="w-full bg-[#3D6E4E] text-white font-semibold py-3.5 px-6 rounded-xl hover:bg-[#2d5a3d] transition-colors shadow-lg shadow-[#3D6E4E]/20"
                 >
-                  <Icon name="close" size={18} />
+                  Submit Document
                 </motion.button>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={handleSubmit}
-                className="w-full bg-[#3D6E4E] text-white font-semibold py-3.5 sm:py-3 px-6 rounded-full hover:bg-[#2d5a3d] transition-colors shadow-lg shadow-[#3D6E4E]/20 active:scale-[0.98] touch-target"
-              >
-                Submit
-              </motion.button>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
 
-      {/* Step 2: Reading Interface */}
       {currentStep === 'reading' && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col lg:flex-row gap-4 sm:gap-6 relative"
+          className="flex flex-col lg:flex-row gap-6"
         >
-          {/* Main Content Area */}
           <div className="flex-1 min-w-0">
             <div
-              className="rounded-2xl p-6 transition-colors duration-300"
-              style={{
-                backgroundColor: tintedBgEnabled ? tintedBgColor : '#F8F9FA',
-              }}
+              className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+              style={{ backgroundColor: tintedBgEnabled ? tintedBgColor : '#ffffff' }}
             >
-              {/* Audio Controls Bar */}
-              <div className="flex items-center justify-between mb-6 bg-white rounded-xl p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#E8F3EA] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#E8F3EA] flex items-center justify-center">
                     <Icon name="document" size={20} className="text-[#3D6E4E]" />
                   </div>
-                  <span className="text-sm font-medium text-[#1a1a1a] truncate max-w-[200px]">
+                  <span className="text-sm font-medium text-slate-900 truncate max-w-[180px] sm:max-w-[240px]">
                     {uploadedFile?.name || `${documentTitle}.txt`}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleSkipBack}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <Icon name="skip-back" size={20} className="text-[#1a1a1a]" />
+                <div className="flex items-center gap-1">
+                  <button onClick={handleSkipBack} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-slate-700">
+                    <Icon name="skip-back" size={20} />
                   </button>
-                  <button
-                    onClick={handlePlayPause}
-                    disabled={isGenerating}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-                  >
+                  <button onClick={handlePlayPause} disabled={isGenerating} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors disabled:opacity-50 text-slate-900">
                     {isGenerating ? (
-                      <div className="w-5 h-5 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Icon name={isPlaying ? 'pause' : 'play'} size={20} className="text-[#1a1a1a]" />
+                      <Icon name={isPlaying ? 'pause' : 'play'} size={20} />
                     )}
                   </button>
-                  <button
-                    onClick={handleSkipForward}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <Icon name="skip-forward" size={20} className="text-[#1a1a1a]" />
+                  <button onClick={handleSkipForward} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-slate-700">
+                    <Icon name="skip-forward" size={20} />
                   </button>
-                  <button
-                    onClick={handleClose}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors ml-2"
-                  >
-                    <Icon name="close" size={20} className="text-[#1a1a1a]" />
+                  <button onClick={handleClose} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-slate-700 ml-1">
+                    <Icon name="close" size={20} />
                   </button>
                 </div>
               </div>
 
-              {/* Document Content */}
-              <div
-                className="prose prose-sm max-w-none transition-opacity duration-300"
-                style={{
-                  opacity: dimSurrounding && isPlaying ? 0.4 : 1,
-                }}
-              >
-                <h3 className="text-lg font-bold text-[#1a1a1a] mb-4">
-                  {documentTitle || 'No Document'}
-                </h3>
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-5">{documentTitle || 'Document'}</h3>
                 <div
-                  className="text-[15px] leading-relaxed text-[#1a1a1a] whitespace-pre-wrap"
-                  style={{
-                    opacity: dimSurrounding && isPlaying ? 0.3 : 1,
-                  }}
+                  className="text-[15px] leading-7 text-slate-900 whitespace-pre-wrap transition-opacity duration-300"
+                  style={{ opacity: dimSurrounding && isPlaying ? 0.35 : 1 }}
                 >
                   {extractedText ? renderHighlightedText() : (
-                    <span className="text-gray-400 italic">No content loaded. Please go back and upload a .txt file.</span>
+                    <span className="text-slate-400 italic">No content loaded. Please go back and upload a .txt file.</span>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Tools Panel - With proper isolation */}
           <div className="w-full lg:w-72 flex-shrink-0 relative" style={{ isolation: 'isolate' }}>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e5e7eb]">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-[#3D6E4E]">Tools</h3>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-base font-bold text-[#3D6E4E]">Tools</h3>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600">Voice Option</label>
+                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                  <SelectTrigger className="w-full bg-white border-slate-200 rounded-xl h-11 text-sm">
+                    <SelectValue placeholder="Select voice" />
+                  </SelectTrigger>
+                  <SelectContent side="bottom" align="start" sideOffset={4} className="max-h-64">
+                    {voices.map((voice) => (
+                      <SelectItem key={voice.id} value={voice.id}>{voice.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <button
+                onClick={handlePreviewAudio}
+                disabled={isGenerating}
+                className="w-full bg-white border-2 border-[#3D6E4E] text-[#3D6E4E] font-semibold py-2.5 px-4 rounded-xl hover:bg-[#E8F3EA] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isGenerating && previewingVoice === 'preview' ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : previewingVoice === 'preview' ? (
+                  <>
+                    <Icon name="pause" size={18} />
+                    Stop Preview
+                  </>
+                ) : (
+                  <>
+                    <Icon name="volume" size={18} />
+                    Preview Audio
+                  </>
+                )}
+              </button>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600">Speed</label>
+                <Select value={speed} onValueChange={setSpeed}>
+                  <SelectTrigger className="w-full bg-white border-slate-200 rounded-xl h-11 text-sm">
+                    <SelectValue placeholder="Select speed" />
+                  </SelectTrigger>
+                  <SelectContent side="bottom" align="start" sideOffset={4}>
+                    {speedOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600">Reading Options</label>
+                <Select value={readingMode} onValueChange={setReadingMode}>
+                  <SelectTrigger className="w-full bg-white border-slate-200 rounded-xl h-11 text-sm">
+                    <SelectValue placeholder="Select mode" />
+                  </SelectTrigger>
+                  <SelectContent side="bottom" align="start" sideOffset={4}>
+                    {readingOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm font-medium text-slate-600">Dim surrounding text</span>
+                <Switch checked={dimSurrounding} onCheckedChange={setDimSurrounding} className="data-[state=checked]:bg-[#3D6E4E]" />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm font-medium text-slate-600">Tinted background</span>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Icon name="bookmark" size={20} className="text-[#5f5f5f]" />
-                  </button>
-                  <button className="w-8 h-8 flex items-center justify-center bg-[#3D6E4E] rounded-full hover:bg-[#2d5a3d] transition-colors">
-                    <Icon name="chevron-right" size={16} className="text-white" />
-                  </button>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-7 h-7 rounded-full border-2 border-slate-200 shadow-sm" style={{ backgroundColor: tintedBgColor }} />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3 bg-white border border-slate-200 shadow-xl" align="end" side="bottom" sideOffset={4}>
+                      <div className="grid grid-cols-5 gap-2">
+                        {tintedColors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => {
+                              setTintedBgColor(color);
+                              setTintedBgEnabled(true);
+                            }}
+                            className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${tintedBgColor === color ? 'border-[#3D6E4E] ring-2 ring-[#3D6E4E]/20' : 'border-slate-200'}`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
+                        <span className="text-xs text-slate-500">Enable tint</span>
+                        <Switch checked={tintedBgEnabled} onCheckedChange={setTintedBgEnabled} className="data-[state=checked]:bg-[#3D6E4E]" />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {/* Voice Option */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#5f5f5f]">Voice Option</label>
-                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                    <SelectTrigger className="w-full bg-white border-gray-200 rounded-xl h-11 text-sm">
-                      <SelectValue placeholder="Select voice" />
-                    </SelectTrigger>
-                    <SelectContent side="bottom" align="start" sideOffset={4} className="max-h-64">
-                      {voices.length > 0 ? (
-                        voices.map((voice) => (
-                          <SelectItem key={voice.id} value={voice.id}>
-                            {voice.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <>
-                          <SelectItem value="en">English (US)</SelectItem>
-                          <SelectItem value="en-uk">English (UK)</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Preview Audio Button */}
-                <button
-                  onClick={handlePreviewAudio}
-                  disabled={isGenerating}
-                  className="w-full bg-white border-2 border-[#3D6E4E] text-[#3D6E4E] font-semibold py-2.5 px-4 rounded-xl hover:bg-[#E8F3EA] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isGenerating && previewingVoice === 'preview' ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
-                      Generating...
-                    </>
-                  ) : previewingVoice === 'preview' ? (
-                    <>
-                      <Icon name="pause" size={18} />
-                      Stop Preview
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="volume" size={18} />
-                      Preview Audio
-                    </>
-                  )}
-                </button>
-
-                {/* Speed */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#5f5f5f]">Speed</label>
-                  <Select value={speed} onValueChange={setSpeed}>
-                    <SelectTrigger className="w-full bg-white border-gray-200 rounded-xl h-11 text-sm">
-                      <SelectValue placeholder="Select speed" />
-                    </SelectTrigger>
-                    <SelectContent side="bottom" align="start" sideOffset={4}>
-                      {speedOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Reading Options */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[#5f5f5f]">Reading Options</label>
-                  <Select value={readingMode} onValueChange={setReadingMode}>
-                    <SelectTrigger className="w-full bg-white border-gray-200 rounded-xl h-11 text-sm">
-                      <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent side="bottom" align="start" sideOffset={4}>
-                      {readingOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Dim Surrounding Text Toggle */}
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm font-medium text-[#5f5f5f]">Dim Surrounding Text</span>
-                  <Switch
-                    checked={dimSurrounding}
-                    onCheckedChange={setDimSurrounding}
-                    className="data-[state=checked]:bg-[#3D6E4E]"
-                  />
-                </div>
-
-                {/* Tinted Background Colour */}
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm font-medium text-[#5f5f5f]">Tinted Background Colour</span>
-                  <div className="flex items-center gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          className="w-6 h-6 rounded-full border-2 border-gray-200 shadow-sm"
-                          style={{ backgroundColor: tintedBgColor }}
-                        />
-                      </PopoverTrigger>
-                      <PopoverContent 
-                        className="w-64 p-3 bg-white border border-gray-200 shadow-xl" 
-                        align="end"
-                        side="bottom"
-                        sideOffset={4}
-                      >
-                        <div className="grid grid-cols-5 gap-2">
-                          {tintedColors.map((color) => (
-                            <button
-                              key={color}
-                              onClick={() => {
-                                setTintedBgColor(color);
-                                setTintedBgEnabled(true);
-                              }}
-                              className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                                tintedBgColor === color ? 'border-[#3D6E4E] ring-2 ring-[#3D6E4E]/20' : 'border-gray-200'
-                              }`}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-gray-100">
-                          <span className="text-xs text-[#5f5f5f]">Enable tint</span>
-                          <Switch
-                            checked={tintedBgEnabled}
-                            onCheckedChange={setTintedBgEnabled}
-                            className="data-[state=checked]:bg-[#3D6E4E]"
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm font-medium text-slate-600">Highlight colour</span>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-7 h-7 rounded-full border-2 border-slate-200 shadow-sm" style={{ backgroundColor: highlightColor }} />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3 bg-white border border-slate-200 shadow-xl" align="end" side="bottom" sideOffset={4}>
+                      <div className="grid grid-cols-5 gap-2">
+                        {highlightColors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => {
+                              setHighlightColor(color);
+                              setHighlightEnabled(true);
+                            }}
+                            className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${highlightColor === color ? 'border-[#3D6E4E] ring-2 ring-[#3D6E4E]/20' : 'border-slate-200'}`}
+                            style={{ backgroundColor: color }}
                           />
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
+                        <span className="text-xs text-slate-500">Enable highlight</span>
+                        <Switch checked={highlightEnabled} onCheckedChange={setHighlightEnabled} className="data-[state=checked]:bg-[#3D6E4E]" />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-
-                {/* Highlight Colour */}
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm font-medium text-[#5f5f5f]">Highlight Colour</span>
-                  <div className="flex items-center gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          className="w-6 h-6 rounded-full border-2 border-gray-200 shadow-sm"
-                          style={{ backgroundColor: highlightColor }}
-                        />
-                      </PopoverTrigger>
-                      <PopoverContent 
-                        className="w-64 p-3 bg-white border border-gray-200 shadow-xl" 
-                        align="end"
-                        side="bottom"
-                        sideOffset={4}
-                      >
-                        <div className="grid grid-cols-5 gap-2">
-                          {highlightColors.map((color) => (
-                            <button
-                              key={color}
-                              onClick={() => {
-                                setHighlightColor(color);
-                                setHighlightEnabled(true);
-                              }}
-                              className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                                highlightColor === color ? 'border-[#3D6E4E] ring-2 ring-[#3D6E4E]/20' : 'border-gray-200'
-                              }`}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-gray-100">
-                          <span className="text-xs text-[#5f5f5f]">Enable highlight</span>
-                          <Switch
-                            checked={highlightEnabled}
-                            onCheckedChange={setHighlightEnabled}
-                            className="data-[state=checked]:bg-[#3D6E4E]"
-                          />
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Export Audio Button */}
-                <button
-                  onClick={handleExportAudio}
-                  disabled={!audioUrl && !previewAudioUrl}
-                  className={`w-full mt-4 font-semibold py-3 px-6 rounded-full transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    audioUrl || previewAudioUrl
-                      ? 'bg-[#3D6E4E] text-white hover:bg-[#2d5a3d] shadow-[#3D6E4E]/20'
-                      : 'bg-gray-300 text-gray-500'
-                  }`}
-                >
-                  <Icon name="download" size={18} />
-                  {audioUrl || previewAudioUrl ? 'Export Audio (MP3)' : 'Generate Audio First'}
-                </button>
               </div>
+
+              <button
+                onClick={handleExportAudio}
+                disabled={!audioUrl && !previewAudioUrl}
+                className={`w-full font-semibold py-3.5 px-6 rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  audioUrl || previewAudioUrl ? 'bg-[#3D6E4E] text-white hover:bg-[#2d5a3d] shadow-[#3D6E4E]/20' : 'bg-slate-200 text-slate-500'
+                }`}
+              >
+                <Icon name="download" size={18} />
+                {audioUrl || previewAudioUrl ? 'Export Audio (MP3)' : 'Generate Audio First'}
+              </button>
             </div>
           </div>
         </motion.div>
