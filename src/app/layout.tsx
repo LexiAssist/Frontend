@@ -5,6 +5,7 @@ import QueryProvider from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TokenRefreshProvider } from "@/components/providers/TokenRefreshProvider";
 import { ToastContainer } from "@/components/ui/Toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -35,7 +36,9 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="light" enableSystem>
           <TokenRefreshProvider>
             <QueryProvider>
-              {children}
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
               <ToastContainer />
             </QueryProvider>
           </TokenRefreshProvider>

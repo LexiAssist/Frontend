@@ -47,18 +47,70 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
   const { register } = useAuth();
+
+  // Client-side validation (Requirement 7.6)
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 8;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
+    
+    // Client-side validation (Requirement 7.6)
+    const errors: Record<string, string> = {};
+    
+    if (!validateEmail(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    
+    if (!validatePassword(password)) {
+      errors.password = "Password must be at least 8 characters long";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
       await register({ first_name: firstName, last_name: lastName, email, password });
-    } catch (err) {
-      setError("Registration failed. Please try again.");
+    } catch (err: any) {
+      // Handle specific error codes (Requirements 7.4, 7.5)
+      const errorMessage = err?.message || "";
+      
+      // HTTP 409 - Email already exists (Requirement 7.4)
+      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("already exists")) {
+        setError("An account with this email already exists");
+      }
+      // HTTP 400 - Validation errors (Requirement 7.5)
+      else if (errorMessage.includes("400") || errorMessage.toLowerCase().includes("validation")) {
+        // Try to parse field-specific errors if available
+        try {
+          const parsedError = JSON.parse(errorMessage);
+          if (parsedError.errors) {
+            setFieldErrors(parsedError.errors);
+          } else {
+            setError(errorMessage);
+          }
+        } catch {
+          setError(errorMessage);
+        }
+      }
+      else {
+        setError(errorMessage || "Registration failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -155,11 +207,24 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  // Clear field error on change
+                  if (fieldErrors.email) {
+                    setFieldErrors(prev => ({ ...prev, email: "" }));
+                  }
+                }}
                 placeholder="Enter your email"
-                className="w-full h-12 px-4 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
+                className={`w-full h-12 px-4 rounded-full border ${
+                  fieldErrors.email ? "border-red-500" : "border-[#D0D5DD]"
+                } bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 ${
+                  fieldErrors.email ? "focus:ring-red-500/20 focus:border-red-500" : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                } transition-all duration-200 md:text-sm`}
                 required
               />
+              {fieldErrors.email && (
+                <p className="text-sm text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
 
             {/* Password Input */}
@@ -175,9 +240,19 @@ export default function RegisterPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
-                  className="w-full h-12 px-4 pr-12 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    // Clear field error on change
+                    if (fieldErrors.password) {
+                      setFieldErrors(prev => ({ ...prev, password: "" }));
+                    }
+                  }}
+                  placeholder="Create a password (min 8 characters)"
+                  className={`w-full h-12 px-4 pr-12 rounded-full border ${
+                    fieldErrors.password ? "border-red-500" : "border-[#D0D5DD]"
+                  } bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 ${
+                    fieldErrors.password ? "focus:ring-red-500/20 focus:border-red-500" : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                  } transition-all duration-200 md:text-sm`}
                   required
                 />
                 <button
@@ -189,6 +264,12 @@ export default function RegisterPage() {
                   {showPassword ? <Icon name="eye-off" size={18} /> : <Icon name="eye" size={18} />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-sm text-red-600">{fieldErrors.password}</p>
+              )}
+              {!fieldErrors.password && password.length > 0 && password.length < 8 && (
+                <p className="text-sm text-amber-600">Password must be at least 8 characters</p>
+              )}
             </div>
 
             {/* Error Message */}

@@ -6,7 +6,7 @@ import { FeatureHeader } from '@/components/FeatureHeader';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
-import { useGenerateQuiz, useQuizzes } from '@/hooks/useQuizzes';
+import { useGenerateQuiz, useQuizzes, useCreateQuiz, useStartQuizAttempt, useSubmitAnswer, useCompleteQuizAttempt } from '@/hooks/useQuizzes';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface QuizQuestion {
@@ -27,6 +27,17 @@ interface GeneratedQuiz {
 }
 
 type ViewState = 'upload' | 'ready' | 'generated' | 'taking' | 'results' | 'textInput';
+
+function Header() {
+  return (
+    <header className="flex items-center justify-between mb-10">
+      <h1 className="text-[28px] font-bold tracking-tight text-[#1a1a1a]">
+        Quizzes
+      </h1>
+      <FeatureHeader />
+    </header>
+  );
+}
 
 function HeroBanner() {
   return (
@@ -65,7 +76,7 @@ function HeroBanner() {
         <div className="flex-1 max-w-md">
           <h2 className="text-2xl lg:text-[32px] font-bold text-white">Quizzes</h2>
           <p className="mt-3 text-sm lg:text-[15px] leading-relaxed text-white/95">
-            Upload a document or enter text and we&apos;ll automatically generate questions to test your understanding of the content.
+            Upload a document or enter text and we'll automatically generate questions to test your understanding of the content.
           </p>
         </div>
       </div>
@@ -250,27 +261,44 @@ function QuizDisplay({
 function QuizTaker({ 
   quiz, 
   onComplete, 
-  onExit 
+  onExit,
+  attemptId,
+  onSubmitAnswer,
 }: { 
   quiz: GeneratedQuiz;
   onComplete: (answers: Record<string, string>) => void;
   onExit: () => void;
+  attemptId: string | null;
+  onSubmitAnswer: (questionId: string, answer: string, timeTaken: number) => Promise<void>;
 }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
 
   const question = quiz.questions[currentQuestion];
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
 
-  const handleAnswer = () => {
-    if (!selectedOption) return;
+  const handleAnswer = async () => {
+    if (!selectedOption || !attemptId) return;
+    
+    const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+    
+    // Submit answer to backend (Requirement 14.4)
+    try {
+      await onSubmitAnswer(question.id, selectedOption, timeTaken);
+    } catch (error) {
+      console.error('Failed to submit answer:', error);
+      toast.error('Failed to submit answer');
+      return;
+    }
     
     setAnswers(prev => ({ ...prev, [question.id]: selectedOption }));
     
     if (currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setSelectedOption(null);
+      setQuestionStartTime(Date.now());
     } else {
       onComplete({ ...answers, [question.id]: selectedOption });
     }
@@ -466,10 +494,16 @@ export default function QuizzesPage() {
   const [uploadedFile, setUploadedFile] = useState<{ name: string; content: string } | null>(null);
   const [generatedQuiz, setGeneratedQuiz] = useState<GeneratedQuiz | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
+  const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
+  const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuthStore();
   const generateMutation = useGenerateQuiz();
+  const createQuizMutation = useCreateQuiz();
+  const startAttemptMutation = useStartQuizAttempt();
+  const submitAnswerMutation = useSubmitAnswer(currentAttemptId || '');
+  const completeAttemptMutation = useCompleteQuizAttempt();
   const { data: existingQuizzes } = useQuizzes(10, 0);
 
   const handleFileSelect = () => {
@@ -518,42 +552,167 @@ export default function QuizzesPage() {
       const result = await generateMutation.mutateAsync({
         content,
         userId: user.id,
+        quizType: 'multiple_choice',
+        numQuestions: 5,
       });
 
-      const parsedQuiz = parseQuizFromAI(result.quiz);
-      setGeneratedQuiz(parsedQuiz);
-      setViewState('generated');
+      console.log('[Quizzes] API response:', result);
+
+      // Transform API response to component format
+      // API returns { questions: [{question, options, correct_answer, explanation, topic}, ...] }
+      const questionsArray = result.questions;
       
-      toast.success('Quiz generated successfully!');
+      if (!Array.isArray(questionsArray) || questionsArray.length === 0) {
+        toast.warning('No questions were generated. Please try with different content.');
+        return;
+      }
+
+      // Map backend format to frontend format
+      const parsedQuiz: GeneratedQuiz = {
+        title: `Quiz - ${result.filename || 'Generated'}`,
+        description: `AI-generated ${result.quiz_type} quiz with ${questionsArray.length} questions`,
+        time_limit_minutes: Math.max(5, questionsArray.length * 2),
+        questions: questionsArray.map((q: any, idx: number) => ({
+          id: `q-${idx}`,
+          question_text: q.question,
+          question_type: 'multiple_choice' as const,
+          options: q.options ? [
+            { text: q.options.A, is_correct: q.correct_answer === 'A' },
+            { text: q.options.B, is_correct: q.correct_answer === 'B' },
+            { text: q.options.C, is_correct: q.correct_answer === 'C' },
+            { text: q.options.D, is_correct: q.correct_answer === 'D' },
+          ] : [],
+          correct_answer: q.options?.[q.correct_answer] || q.correct_answer,
+          explanation: q.explanation,
+          points: 10,
+        })),
+      };
+      
+      // Save the quiz to the backend (Requirement 14.2)
+      // We must save first to get actual database IDs for questions
+      try {
+        const savedQuiz = await createQuizMutation.mutateAsync({
+          title: parsedQuiz.title,
+          description: parsedQuiz.description,
+          time_limit_minutes: parsedQuiz.time_limit_minutes,
+          questions: parsedQuiz.questions.map((q, idx) => ({
+            question_text: q.question_text,
+            question_type: q.question_type,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            explanation: q.explanation,
+            points: q.points,
+            order_index: idx,
+          })),
+        });
+        
+        setSavedQuizId(savedQuiz.id);
+        
+        // Use the saved quiz data which has actual database IDs for questions
+        // This is critical for answer submission to work correctly
+        setGeneratedQuiz({
+          title: savedQuiz.title,
+          description: savedQuiz.description || parsedQuiz.description,
+          time_limit_minutes: savedQuiz.time_limit_minutes || parsedQuiz.time_limit_minutes,
+          questions: savedQuiz.questions.map((q) => ({
+            id: q.id,  // Use actual database ID
+            question_text: q.question_text,
+            question_type: q.question_type,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            explanation: q.explanation,
+            points: q.points,
+          })),
+        });
+        
+        toast.success(`Generated ${questionsArray.length} questions successfully!`);
+      } catch (saveError) {
+        console.error('Failed to save quiz:', saveError);
+        toast.warning('Quiz generated but not saved to backend');
+        // Fall back to using the parsed quiz (won't be able to submit answers)
+        setGeneratedQuiz(parsedQuiz);
+      }
+      
+      setViewState('generated');
     } catch (error) {
       console.error('Quiz generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate quiz');
     }
   };
 
-  const handleStartQuiz = () => {
-    setQuizAnswers({});
-    setViewState('taking');
+  const handleStartQuiz = async () => {
+    if (!savedQuizId) {
+      toast.error('Quiz not saved. Please regenerate.');
+      return;
+    }
+    
+    try {
+      // Start quiz attempt in backend (Requirement 14.3)
+      const attempt = await startAttemptMutation.mutateAsync(savedQuizId);
+      setCurrentAttemptId(attempt.id);
+      setQuizAnswers({});
+      setViewState('taking');
+    } catch (error) {
+      console.error('Failed to start quiz:', error);
+      toast.error('Failed to start quiz attempt');
+    }
   };
 
-  const handleCompleteQuiz = (answers: Record<string, string>) => {
+  const handleCompleteQuiz = async (answers: Record<string, string>) => {
+    if (!currentAttemptId) {
+      toast.error('No active quiz attempt');
+      return;
+    }
+    
     setQuizAnswers(answers);
-    setViewState('results');
+    
+    try {
+      // Submit all answers to backend (Requirement 14.4)
+      // Note: In a real implementation, answers would be submitted as they're answered
+      // For now, we'll submit them all at completion
+      
+      // Complete the quiz attempt (Requirement 14.5)
+      const result = await completeAttemptMutation.mutateAsync(currentAttemptId);
+      
+      // Display results (Requirement 14.6)
+      setViewState('results');
+      toast.success(`Quiz completed! Score: ${result.score}/${result.total_points}`);
+    } catch (error) {
+      console.error('Failed to complete quiz:', error);
+      toast.error('Failed to complete quiz');
+    }
   };
 
   const handleRetry = () => {
     setQuizAnswers({});
-    setViewState('taking');
+    setCurrentAttemptId(null);
+    setViewState('generated');
   };
 
   const handleNewQuiz = () => {
     setUploadedFile(null);
     setGeneratedQuiz(null);
     setQuizAnswers({});
+    setCurrentAttemptId(null);
+    setSavedQuizId(null);
     setViewState('upload');
+  };
+
+  const handleSubmitAnswer = async (questionId: string, answer: string, timeTaken: number) => {
+    if (!currentAttemptId) {
+      throw new Error('No active quiz attempt');
+    }
+    
+    await submitAnswerMutation.mutateAsync({
+      question_id: questionId,
+      answer: answer,
+      time_taken_seconds: timeTaken,
+    });
   };
 
   return (
     <div className="max-w-4xl">
+      <Header />
       <input
         ref={fileInputRef}
         type="file"
@@ -564,12 +723,10 @@ export default function QuizzesPage() {
 
       <div className="flex items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Quizzes</h1>
           {viewState === 'upload' && (
             <p className="text-slate-500 mt-1 text-sm">Test your knowledge with AI-generated questions.</p>
           )}
         </div>
-        <FeatureHeader />
       </div>
 
       <AnimatePresence mode="wait">
@@ -663,6 +820,8 @@ export default function QuizzesPage() {
               quiz={generatedQuiz}
               onComplete={handleCompleteQuiz}
               onExit={() => setViewState('generated')}
+              attemptId={currentAttemptId}
+              onSubmitAnswer={handleSubmitAnswer}
             />
           </motion.div>
         )}
@@ -685,77 +844,4 @@ export default function QuizzesPage() {
       </AnimatePresence>
     </div>
   );
-}
-
-function parseQuizFromAI(aiResponse: string): GeneratedQuiz {
-  const lines = aiResponse.split('\n').filter(line => line.trim());
-  
-  const questions: QuizQuestion[] = [];
-  let currentQuestion: Partial<QuizQuestion> = {};
-  let options: Array<{ text: string; is_correct: boolean }> = [];
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    
-    if (trimmed.match(/^\d+[:.)]/)) {
-      if (currentQuestion.question_text) {
-        if (options.length > 0) {
-          currentQuestion.options = options;
-        }
-        questions.push(currentQuestion as QuizQuestion);
-      }
-      
-      currentQuestion = {
-        id: `q-${questions.length}`,
-        question_text: trimmed.replace(/^\d+[:.)]\s*/, ''),
-        question_type: 'multiple_choice',
-        points: 10,
-      };
-      options = [];
-    }
-    else if (trimmed.match(/^[A-D][.)]/i) || trimmed.match(/^[-•]/)) {
-      const text = trimmed.replace(/^[A-D][.)]\s*/i, '').replace(/^[-•]\s*/, '');
-      options.push({ text, is_correct: false });
-    }
-    else if (trimmed.match(/correct|answer/i) && !trimmed.match(/^\d+/)) {
-      const answer = trimmed.replace(/.*correct.*:/i, '').replace(/.*answer.*:/i, '').trim();
-      currentQuestion.correct_answer = answer;
-      
-      options.forEach(opt => {
-        if (opt.text.toLowerCase().includes(answer.toLowerCase()) || 
-            answer.toLowerCase().includes(opt.text.toLowerCase())) {
-          opt.is_correct = true;
-        }
-      });
-    }
-  }
-  
-  if (currentQuestion.question_text) {
-    if (options.length > 0) {
-      currentQuestion.options = options;
-    }
-    questions.push(currentQuestion as QuizQuestion);
-  }
-  
-  if (questions.length === 0) {
-    questions.push({
-      id: 'q-0',
-      question_text: 'Sample question based on the provided content',
-      question_type: 'multiple_choice',
-      options: [
-        { text: 'Option A', is_correct: true },
-        { text: 'Option B', is_correct: false },
-        { text: 'Option C', is_correct: false },
-      ],
-      correct_answer: 'Option A',
-      points: 10,
-    });
-  }
-
-  return {
-    title: 'Generated Quiz',
-    description: 'AI-generated quiz based on your study material',
-    questions,
-    time_limit_minutes: Math.max(5, questions.length * 2),
-  };
 }

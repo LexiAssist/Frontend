@@ -13,13 +13,15 @@ import {
   Loader2,
   Sparkles,
   Plus,
+  MessageSquare,
 } from 'lucide-react';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import { useAuthStore } from '@/store/authStore';
-import { useAIChat } from '@/hooks/useAI';
-import { materialApi } from '@/services/api';
+import { useAIChat, useConversation } from '@/hooks/useAI';
+import { materialApi, aiApi } from '@/services/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FormattedMessage } from '@/components/chat/FormattedMessage';
 
 const starterCards = [
   {
@@ -71,6 +73,9 @@ export default function ChatAssistantPage() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [isTyping, setIsTyping] = useState(false);
+  const [useStreaming, setUseStreaming] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState('');
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +83,8 @@ export default function ChatAssistantPage() {
   
   const { user } = useAuthStore();
   const chatMutation = useAIChat();
+  
+  const { data: conversationData, isLoading: isLoadingConversation } = useConversation(conversationId);
 
   useEffect(() => {
     if (folderInputRef.current) {
@@ -85,13 +92,27 @@ export default function ChatAssistantPage() {
       folderInputRef.current.setAttribute('directory', '');
     }
   }, []);
+  
+  useEffect(() => {
+    if (conversationData && typeof conversationData === 'object' && 'messages' in conversationData) {
+      const data = conversationData as any;
+      if (data.messages && Array.isArray(data.messages)) {
+        const loadedMessages: Message[] = data.messages.map((msg: any, idx: number) => ({
+          id: msg.id || `loaded-${Date.now()}-${idx}`,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          sources: msg.sources,
+        }));
+        setMessages(loadedMessages);
+      }
+    }
+  }, [conversationData]);
 
-  // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages, isTyping, streamingMessage]);
 
-  // Auto-resize textarea
   useEffect(() => {
     const textarea = chatInputRef.current;
     if (textarea) {
@@ -100,17 +121,11 @@ export default function ChatAssistantPage() {
     }
   }, [prompt, messages.length]);
 
-  const openFilePicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  const openFolderPicker = () => {
-    folderInputRef.current?.click();
-  };
+  const openFilePicker = () => fileInputRef.current?.click();
+  const openFolderPicker = () => folderInputRef.current?.click();
 
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
-      // Upload file directly - backend handles everything
       const material = await materialApi.upload(file);
       toast.success(`Uploaded ${file.name}`);
       return material.id;
@@ -139,14 +154,9 @@ export default function ChatAssistantPage() {
       
       try {
         const materialId = await uploadFile(file);
-        
-        if (materialId) {
+        if (materialId && materialId.trim() !== '') {
           setUploadedFiles(prev => 
-            prev.map(f => 
-              f.id === tempId 
-                ? { ...f, id: materialId, status: 'processing' }
-                : f
-            )
+            prev.map(f => f.id === tempId ? { ...f, id: materialId, status: 'processing' } : f)
           );
         }
       } catch (error: any) {
@@ -162,13 +172,8 @@ export default function ChatAssistantPage() {
     if (files.length === 0) return;
 
     const validFiles = files.filter(f => 
-      f.type.includes('pdf') || 
-      f.type.includes('text') || 
-      f.type.includes('document') ||
-      f.name.endsWith('.pdf') ||
-      f.name.endsWith('.txt') ||
-      f.name.endsWith('.doc') ||
-      f.name.endsWith('.docx')
+      f.type.includes('pdf') || f.type.includes('text') || f.type.includes('document') ||
+      f.name.endsWith('.pdf') || f.name.endsWith('.txt') || f.name.endsWith('.doc') || f.name.endsWith('.docx')
     );
 
     if (validFiles.length === 0) {
@@ -191,14 +196,9 @@ export default function ChatAssistantPage() {
       
       try {
         const materialId = await uploadFile(file);
-        
-        if (materialId) {
+        if (materialId && materialId.trim() !== '') {
           setUploadedFiles(prev => 
-            prev.map(f => 
-              f.id === tempId 
-                ? { ...f, id: materialId, status: 'processing' }
-                : f
-            )
+            prev.map(f => f.id === tempId ? { ...f, id: materialId, status: 'processing' } : f)
           );
         }
       } catch (error: any) {
@@ -209,13 +209,8 @@ export default function ChatAssistantPage() {
     }
   };
 
-  const removeFile = (fileId: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
-  };
-
-  const clearAllFiles = () => {
-    setUploadedFiles([]);
-  };
+  const removeFile = (fileId: string) => setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+  const clearAllFiles = () => setUploadedFiles([]);
 
   const handleSubmit = async () => {
     if (!prompt.trim()) return;
@@ -225,7 +220,7 @@ export default function ChatAssistantPage() {
     }
 
     const userMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       role: 'user',
       content: prompt,
       timestamp: new Date(),
@@ -236,43 +231,102 @@ export default function ChatAssistantPage() {
     setIsTyping(true);
 
     try {
-      const materialIds = uploadedFiles
-        .filter(f => !f.id.startsWith('temp-'))
-        .map(f => f.id);
-
-      const response = await chatMutation.mutateAsync({
-        query: userMessage.content,
-        userId: user.id,
-        options: {
-          conversationId,
-          materialId: materialIds.length > 0 ? materialIds[0] : undefined,
-        },
-      });
-
-      if (response.conversation_id) {
-        setConversationId(response.conversation_id);
+      // Retrieve context chunks from the retrieval service
+      let contextChunks: string[] = [];
+      if (uploadedFiles.length > 0) {
+        try {
+          const retrievalResult = await aiApi.retrieveContext(
+            userMessage.content,
+            user.id,
+            5 // top_k
+          );
+          contextChunks = retrievalResult.results?.map((c: any) => c.chunk_text) || [];
+        } catch (err) {
+          console.warn('Failed to retrieve context:', err);
+        }
       }
 
-      let content = response.response;
-      if (isNoContextResponse(content) && uploadedFiles.length === 0) {
-        content = `I don't have any documents to reference yet. To get the most accurate answers, please upload your study materials using the attach button.
+      let useStreamingFallback = false;
+      if (useStreaming) {
+        try {
+          setStreamingMessage('');
+          
+          await aiApi.chatStream(
+            userMessage.content,
+            user.id,
+            {
+              conversationId,
+              contextChunks,
+            },
+            (token: string) => {
+              setStreamingMessage(prev => prev + token);
+            },
+            (response) => {
+              if (response.conversation_id) {
+                setConversationId(response.conversation_id);
+              }
 
-In the meantime, I can try to help with general knowledge questions, but my answers will be more helpful once I can reference your specific course materials.`;
+              let content = response.response;
+              if (isNoContextResponse(content) && uploadedFiles.length === 0) {
+                content = `I don't have any documents to reference yet. To get the most accurate answers, please upload your study materials using the attach button.\n\nIn the meantime, I can try to help with general knowledge questions, but my answers will be more helpful once I can reference your specific course materials.`;
+              }
+
+              const assistantMessage: Message = {
+                id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                role: 'assistant',
+                content: content,
+                timestamp: new Date(),
+                sources: response.sources,
+              };
+
+              setMessages(prev => [...prev, assistantMessage]);
+              setStreamingMessage('');
+              setIsTyping(false);
+            },
+            (error) => {
+              console.error('Chat stream error:', error);
+              useStreamingFallback = true;
+            }
+          );
+        } catch (error) {
+          console.warn('Streaming failed, falling back to standard chat:', error);
+          useStreamingFallback = true;
+        }
       }
+      
+      if (!useStreaming || useStreamingFallback) {
+        const response = await chatMutation.mutateAsync({
+          query: userMessage.content,
+          userId: user.id,
+          options: {
+            conversationId,
+            contextChunks,
+          },
+        });
 
-      const assistantMessage: Message = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: content,
-        timestamp: new Date(),
-        sources: response.sources,
-      };
+        if (response.conversation_id) {
+          setConversationId(response.conversation_id);
+        }
 
-      setMessages(prev => [...prev, assistantMessage]);
+        let content = response.response;
+        if (isNoContextResponse(content) && uploadedFiles.length === 0) {
+          content = `I don't have any documents to reference yet. To get the most accurate answers, please upload your study materials using the "Attach" button above.\n\nIn the meantime, I can try to help with general knowledge questions, but my answers will be more helpful once I can reference your specific course materials.`;
+        }
+
+        const assistantMessage: Message = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          role: 'assistant',
+          content: content,
+          timestamp: new Date(),
+          sources: response.sources,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsTyping(false);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       toast.error('Failed to get response. Please try again.');
-    } finally {
       setIsTyping(false);
     }
   };
@@ -346,11 +400,13 @@ In the meantime, I can try to help with general knowledge questions, but my answ
     if (uploadedFiles.length === 0) return null;
 
     return (
-      <div className={`flex flex-wrap gap-2 ${compact ? '' : 'px-4 py-3 bg-slate-50/80 border-t border-slate-100'}`}>
+      <div className={`flex flex-wrap gap-2 ${compact ? 'mb-2' : 'px-4 py-3 bg-slate-50/80 border-t border-slate-100'}`}>
         {uploadedFiles.map((file) => (
           <span
             key={file.id}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border ${
+              compact ? 'rounded-full' : 'rounded-lg'
+            } ${
               file.status === 'uploading'
                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                 : file.status === 'processing'
@@ -363,9 +419,9 @@ In the meantime, I can try to help with general knowledge questions, but my answ
             ) : (
               <FileText className="h-3 w-3" />
             )}
-            <span className="max-w-[140px] truncate">{file.name}</span>
-            {file.status === 'uploading' && <span className="text-[10px]">uploading…</span>}
-            {file.status === 'processing' && <span className="text-[10px]">processing…</span>}
+            <span className={compact ? "max-w-[120px] truncate" : "max-w-[140px] truncate"}>{file.name}</span>
+            {!compact && file.status === 'uploading' && <span className="text-[10px]">uploading…</span>}
+            {!compact && file.status === 'processing' && <span className="text-[10px]">processing…</span>}
             <button 
               onClick={() => removeFile(file.id)} 
               className="ml-0.5 hover:text-red-500 transition-colors rounded-sm"
@@ -375,7 +431,7 @@ In the meantime, I can try to help with general knowledge questions, but my answ
             </button>
           </span>
         ))}
-        {uploadedFiles.length > 0 && (
+        {!compact && uploadedFiles.length > 0 && (
           <button
             onClick={clearAllFiles}
             className="text-xs text-slate-400 hover:text-slate-600 px-1"
@@ -388,17 +444,26 @@ In the meantime, I can try to help with general knowledge questions, but my answ
   };
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-6rem)] w-full max-w-5xl flex-col">
+    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-6xl flex-col lg:h-screen overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 pb-4 pt-2 shrink-0">
+      <div className="flex items-center justify-between gap-3 pb-4 pt-2 lg:pb-6 lg:pt-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-[var(--primary-500)] flex items-center justify-center text-white">
             <Bot className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">StudyBuddy Chat</h1>
-            <p className="text-xs text-slate-500">
-              {conversationId ? 'Continuing conversation' : 'New conversation'}
+            <h1 className="text-lg font-semibold text-slate-900">LexiAssist Chat</h1>
+            <p className="text-sm text-slate-500">
+              {isLoadingConversation ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading conversation...
+                </span>
+              ) : conversationId ? (
+                'Continuing conversation'
+              ) : (
+                'New conversation'
+              )}
               {uploadedFiles.length > 0 && (
                 <span className="ml-2 text-[var(--primary-600)] font-medium">
                   • {uploadedFiles.length} document{uploadedFiles.length !== 1 ? 's' : ''} attached
@@ -407,7 +472,19 @@ In the meantime, I can try to help with general knowledge questions, but my answ
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setUseStreaming(!useStreaming)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              useStreaming
+                ? 'bg-[var(--primary-500)] text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+            title="Toggle streaming responses"
+          >
+            <MessageSquare className="w-3 h-3 inline mr-1" />
+            {useStreaming ? 'Streaming' : 'Standard'}
+          </button>
           {messages.length > 0 && (
             <button
               onClick={startNewChat}
@@ -423,7 +500,7 @@ In the meantime, I can try to help with general knowledge questions, but my answ
 
       {messages.length === 0 ? (
         /* Empty State */
-        <section className="flex flex-1 flex-col items-center justify-center pb-12">
+        <section className="flex flex-1 flex-col items-center justify-center pb-12 overflow-y-auto">
           <div className="flex w-full max-w-[720px] flex-col items-center">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -435,7 +512,7 @@ In the meantime, I can try to help with general knowledge questions, but my answ
             </motion.div>
 
             <h1 className="text-center text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-              Good afternoon, {user?.name?.split(' ')[0] || 'Student'}
+              Good afternoon, {user?.first_name || user?.name?.split(' ')[0] || 'Student'}
             </h1>
             <p className="mt-2 text-center text-lg text-slate-500">
               What would you like to learn today?
@@ -495,119 +572,3 @@ In the meantime, I can try to help with general knowledge questions, but my answ
             </div>
           </div>
         </section>
-      ) : (
-        /* Chat Interface */
-        <section className="flex flex-1 flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-            <AnimatePresence initial={false}>
-              {messages.map((message, index) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25, delay: index * 0.02 }}
-                  className={`flex gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-lg bg-[var(--primary-500)] flex items-center justify-center flex-shrink-0 mt-1">
-                      <Bot className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                  
-                  <div className={`max-w-[85%] sm:max-w-[75%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                    <div
-                      className={`px-4 py-3 leading-relaxed text-[15px] ${
-                        message.role === 'user'
-                          ? 'bg-slate-900 text-white rounded-2xl rounded-tr-md'
-                          : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-md shadow-sm'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                      
-                      {message.sources && message.sources.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-slate-100">
-                          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-2">Sources</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {message.sources.map((source, idx) => (
-                              <span key={idx} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200">
-                                {source}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <span className={`text-[11px] text-slate-400 px-1`}>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-
-                  {message.role === 'user' && (
-                    <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0 mt-1">
-                      <User className="w-4 h-4 text-slate-600" />
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-
-              {isTyping && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-3 justify-start"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-[var(--primary-500)] flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-md shadow-sm px-4 py-3">
-                    <div className="flex gap-1.5 items-center h-5">
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '120ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '240ms' }} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input area */}
-          <div className="border-t border-slate-100 bg-white p-4 shrink-0">
-            <div className="max-w-3xl mx-auto">
-              <UploadedFilesList compact />
-
-              <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm focus-within:shadow-md focus-within:border-slate-300 transition-all">
-                <div className="flex items-end gap-2 px-3 py-3">
-                  <AttachmentButton variant="compact" />
-                  <textarea
-                    ref={chatInputRef}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Message StudyBuddy…"
-                    rows={1}
-                    className="flex-1 resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 max-h-[160px] min-h-[24px]"
-                  />
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!prompt.trim() || chatMutation.isPending}
-                    className="mb-0.5 p-2 rounded-lg bg-[var(--primary-500)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-600)] transition-colors"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-2 text-center">
-                Press <kbd className="font-sans px-1 py-0.5 bg-slate-100 rounded text-slate-600 text-[10px]">Enter</kbd> to send, <kbd className="font-sans px-1 py-0.5 bg-slate-100 rounded text-slate-600 text-[10px]">Shift</kbd> + <kbd className="font-sans px-1 py-0.5 bg-slate-100 rounded text-slate-600 text-[10px]">Enter</kbd> for new line
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-    </div>
-  );
-}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
@@ -12,20 +12,20 @@ import {
   Wand2, 
   Copy, 
   Check, 
-  ChevronLeft,
   ChevronRight,
   ChevronDown,
   Type,
   AlignJustify,
   Palette,
-  Download,
-  Info,
   X,
+  History,
+  Trash2,
+  FileDown,
   FileText
 } from 'lucide-react';
 
 // Types
- type FontChoice = 'default' | 'opendyslexic' | 'roboto';
+type FontChoice = 'default' | 'opendyslexic' | 'roboto';
 type SpacingOption = 'letter' | 'word' | 'line';
 type BackgroundTint = 'none' | 'yellow' | 'cream' | 'beige' | 'tan' | 'peach' | 'sky' | 'mint' | 'lavender' | 'blue' | 'green' | 'sage' | 'pink' | 'rose' | 'warm' | 'cool';
 
@@ -48,19 +48,85 @@ const TINT_COLORS: { id: BackgroundTint; color: string }[] = [
   { id: 'cool', color: '#F0F8FF' },
 ];
 
-// Sample text content (educational example)
-const SAMPLE_TEXT = `Machine Learning: A Comprehensive Introduction
-
-Machine learning is a subset of artificial intelligence that enables computer systems to automatically learn and improve from experience without being explicitly programmed. The field has seen tremendous growth in recent years, transforming industries from healthcare to finance.
-
-Key Concepts and Applications
-
-At its core, machine learning involves algorithms that can identify patterns in data and make predictions or decisions based on those patterns. Supervised learning uses labeled training data to teach models, while unsupervised learning discovers hidden patterns in unlabeled data. Reinforcement learning, inspired by behavioral psychology, allows agents to learn optimal behaviors through trial and error.
-
-Applications are widespread and growing daily. Recommendation systems power platforms like Netflix and Spotify. Computer vision enables self-driving cars and medical image analysis. Natural language processing drives virtual assistants and translation services. As computational power increases and datasets grow, machine learning continues to push the boundaries of what computers can accomplish.`;
+// Audio Waveform Visualization Component
+const AudioWaveform = ({ 
+  level, 
+  isRecording, 
+  analyserRef 
+}: { 
+  level: number; 
+  isRecording: boolean;
+  analyserRef?: React.RefObject<AnalyserNode | null>;
+}) => {
+  const [frequencies, setFrequencies] = useState<number[]>(Array(12).fill(20));
+  const animationRef = useRef<number | null>(null);
+  
+  useEffect(() => {
+    if (!isRecording || !analyserRef?.current) {
+      setFrequencies(Array(12).fill(20));
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      return;
+    }
+    
+    const analyser = analyserRef.current;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    
+    const updateFrequencies = () => {
+      analyser.getByteFrequencyData(dataArray);
+      const bands = 12;
+      const newFrequencies = Array(bands).fill(0).map((_, i) => {
+        const startIndex = Math.floor((i / bands) * (dataArray.length / 2));
+        const endIndex = Math.floor(((i + 1) / bands) * (dataArray.length / 2));
+        let sum = 0;
+        for (let j = startIndex; j < endIndex; j++) {
+          sum += dataArray[j];
+        }
+        const avg = sum / (endIndex - startIndex);
+        return Math.max(10, Math.min(100, (avg / 255) * 100));
+      });
+      
+      setFrequencies(newFrequencies);
+      animationRef.current = requestAnimationFrame(updateFrequencies);
+    };
+    
+    updateFrequencies();
+    
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [isRecording, analyserRef]);
+  
+  const bars = 12;
+  return (
+    <div className="flex items-center justify-center gap-[3px] h-10">
+      {Array.from({ length: bars }).map((_, i) => {
+        const height = isRecording ? frequencies[i] || 20 : 20;
+        return (
+          <motion.div
+            key={i}
+            className="w-[3px] bg-gradient-to-t from-red-600 to-red-400 rounded-full"
+            animate={{
+              height: isRecording ? `${height}%` : '20%',
+              opacity: isRecording ? Math.max(0.4, height / 100) : 0.4,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 15,
+              mass: 0.5,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 export default function WritingAssistantPage() {
-  // State
+  // UI State
   const [toolsOpen, setToolsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [fontChoice, setFontChoice] = useState<FontChoice>('roboto');
@@ -79,18 +145,35 @@ export default function WritingAssistantPage() {
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  
+  // Audio visualization state
+  const [audioLevel, setAudioLevel] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  
+  // Stats
+  const wordCount = transcript?.trim() ? transcript.trim().split(/\s+/).length : 0;
+  const charCount = transcript?.length || 0;
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const sessionIdRef = useRef<string | undefined>(undefined);
+  
   // Refs for click outside handling
   const fontDropdownRef = useRef<HTMLDivElement>(null);
   const spacingDropdownRef = useRef<HTMLDivElement>(null);
   const tintPickerRef = useRef<HTMLDivElement>(null);
 
-  // Click outside handler
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (fontDropdownRef.current && !fontDropdownRef.current.contains(e.target as Node)) {
@@ -107,14 +190,23 @@ export default function WritingAssistantPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Copy to clipboard handler
   const handleCopy = () => {
-    navigator.clipboard.writeText(transcript || SAMPLE_TEXT);
+    if (!transcript) return;
+    navigator.clipboard.writeText(transcript);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+  
+  const handleClear = () => {
+    if (!transcript) return;
+    if (confirm('Are you sure you want to clear all text?')) {
+      setTranscript('');
+      setSessionId(undefined);
+      sessionIdRef.current = undefined;
+      toast.success('Text cleared');
+    }
+  };
 
-  // Get font family
   const getFontFamily = () => {
     switch (fontChoice) {
       case 'opendyslexic': return 'OpenDyslexic, sans-serif';
@@ -123,68 +215,114 @@ export default function WritingAssistantPage() {
     }
   };
 
-  // Get background color
   const getBackgroundColor = () => {
     if (backgroundTint === 'none') return '#ffffff';
     return TINT_COLORS.find(t => t.id === backgroundTint)?.color || '#ffffff';
   };
 
   const sendChunk = async (blob: Blob) => {
+    if (!user) return;
+    
     try {
-      const res = await writingApi.transcribe(blob, 'en', sessionId);
+      const currentSessionId = sessionIdRef.current;
+      const res = await writingApi.transcribe(blob, 'en', currentSessionId);
       const reader = res.body?.getReader();
-      if (!reader) return;
+      if (!reader) {
+        toast.error('Failed to start transcription');
+        return;
+      }
 
       const decoder = new TextDecoder();
       let done = false;
-      let newSid = sessionId;
+      let buffer = '';
+      let chunkText = '';
       
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         if (value) {
-          const chunkString = decoder.decode(value, { stream: true });
-          const messages = chunkString.split('\n\n');
-          for (const msg of messages) {
-             if (msg.includes('session_id:')) {
-                const match = msg.match(/session_id:\s*(.+)/);
-                if (match && !newSid) {
-                  newSid = match[1].trim();
-                  setSessionId(newSid);
-                }
-             } else if (msg.startsWith('data: ') && !msg.includes('[DONE]')) {
-                const text = msg.substring(6);
-                if (text.trim()) {
-                   setTranscript(prev => prev + text);
-                }
-             }
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || '';
+          
+          for (const event of events) {
+            if (!event.trim()) continue;
+            
+            const lines = event.split('\n');
+            let eventType = '';
+            let eventData = '';
+            
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                eventType = line.substring(7).trim();
+              } else if (line.startsWith('data: ')) {
+                eventData = line.substring(6).trim();
+              }
+            }
+            
+            if (eventType === 'session_id' && eventData && !sessionIdRef.current) {
+              setSessionId(eventData);
+              sessionIdRef.current = eventData;
+            }
+            
+            if (eventData && eventData !== '[DONE]' && eventType !== 'session_id') {
+              chunkText += eventData;
+            }
           }
         }
       }
+      
+      if (buffer.trim()) {
+        const lines = buffer.split('\n');
+        let eventType = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.substring(7).trim();
+          } else if (line.startsWith('data: ') && eventType !== 'session_id') {
+            const text = line.substring(6).trim();
+            if (text && text !== '[DONE]') chunkText += text;
+          }
+        }
+      }
+      
+      if (chunkText.trim()) {
+        setTranscript(prev => {
+          const separator = prev && !prev.endsWith(' ') ? ' ' : '';
+          return prev + separator + chunkText.trim();
+        });
+      }
     } catch(err) {
-      console.error(err);
+      console.error('Transcription error:', err);
+      toast.error('Failed to transcribe audio');
     }
   };
 
   const recordNextChunk = () => {
      if (!isRecordingRef.current || !streamRef.current) return;
      
-     const mr = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+     const mr = new MediaRecorder(streamRef.current, { 
+       mimeType: 'audio/webm;codecs=opus' 
+     });
+     
      mr.ondataavailable = async (e) => {
        if (e.data.size > 0) {
           await sendChunk(e.data);
        }
      };
+     
+     mr.onerror = (e) => {
+       console.error('MediaRecorder error:', e);
+       toast.error('Recording error occurred');
+       stopRecording();
+     };
+     
      mr.start();
+     mediaRecorderRef.current = mr;
      
      timeoutRef.current = setTimeout(() => {
-       if (mr.state === 'recording') {
-         mr.stop();
-       }
-       if (isRecordingRef.current) {
-         recordNextChunk();
-       }
-     }, 10000);
+       if (mr.state === 'recording') mr.stop();
+       if (isRecordingRef.current) recordNextChunk();
+     }, 5000); 
   };
 
   const startRecording = async () => {
@@ -197,6 +335,26 @@ export default function WritingAssistantPage() {
       streamRef.current = stream;
       isRecordingRef.current = true;
       setIsRecording(true);
+      
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const updateAudioLevel = () => {
+        if (!isRecordingRef.current) return;
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setAudioLevel(average / 128);
+        animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+      };
+      updateAudioLevel();
+      
       toast.success("Recording started");
       recordNextChunk();
     } catch (err) {
@@ -207,11 +365,28 @@ export default function WritingAssistantPage() {
   const stopRecording = () => {
     isRecordingRef.current = false;
     setIsRecording(false);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setAudioLevel(0);
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
+    toast.success('Recording stopped');
   };
 
   const handleGenerateNotes = async () => {
@@ -225,42 +400,129 @@ export default function WritingAssistantPage() {
       setTranscript(response.structured_notes);
       toast.success('Notes processed and structured');
     } catch(err) {
+      console.error('Note generation error:', err);
       toast.error('Failed to generate structured notes');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const renderText = () => {
-    if (transcript) {
-       return <>{transcript}</>;
+  const handleDownloadMarkdown = () => {
+    if (!transcript) {
+      toast.error('No content to download');
+      return;
     }
-    const parts = SAMPLE_TEXT.split('without being explicitly programmed');
-    return (
-      <>
-        {parts[0]}
-        <span className="bg-amber-200 px-1 rounded">without being explicitly programmed</span>
-        {parts[1]}
-      </>
-    );
+    const blob = new Blob([transcript], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `notes_${new Date().toISOString().split('T')[0]}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Markdown downloaded');
   };
 
-  const activeTintColor = TINT_COLORS.find(t => t.id === backgroundTint)?.color;
+  const handleDownloadPDF = () => {
+    if (!transcript) {
+      toast.error('No content to download');
+      return;
+    }
+    toast.info('PDF export coming soon. Use markdown export for now.');
+  };
+
+  const handleViewHistory = async () => {
+    if (!user) {
+      toast.error('You must be logged in to view history');
+      return;
+    }
+    setShowHistory(true);
+    setIsLoadingHistory(true);
+    try {
+      const sessions = await writingApi.getHistory(user.id);
+      setHistory(sessions);
+    } catch (err) {
+      console.error('Failed to load history:', err);
+      toast.error('Failed to load history');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleLoadSession = (session: any) => {
+    setTranscript(session.structured_notes || session.raw_text);
+    setSessionId(session.session_id);
+    setShowHistory(false);
+    toast.success('Session loaded');
+  };
+
+  const renderText = () => {
+    if (!transcript || transcript.trim() === '') {
+      return (
+        <div className="flex flex-col items-center justify-center h-[200px] text-slate-400">
+          <div className={`p-6 rounded-full mb-5 transition-all duration-500 ${isRecording ? 'bg-red-50 animate-pulse' : 'bg-slate-100'}`}>
+            <Mic className={`w-10 h-10 transition-all duration-500 ${isRecording ? 'text-red-400' : 'text-slate-300'}`} />
+          </div>
+          <p className="text-center text-sm font-medium">
+            {isRecording 
+              ? "Listening... Your words will appear here as you speak." 
+              : "Click 'Start Recording' to transcribe your lecture or notes."}
+          </p>
+          <p className="text-center text-xs text-slate-400 mt-2">
+            Speak clearly for best results
+          </p>
+        </div>
+      );
+    }
+    
+    const lines = transcript.split('\n');
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => {
+          if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold mt-4 mb-2 text-slate-900">{line.substring(2)}</h1>;
+          if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold mt-3 mb-2 text-slate-900">{line.substring(3)}</h2>;
+          if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-semibold mt-2 mb-1 text-slate-900">{line.substring(4)}</h3>;
+          if (line.startsWith('- ') || line.startsWith('* ')) return <li key={idx} className="ml-4 text-slate-800">{line.substring(2)}</li>;
+          if (/^\d+\.\s/.test(line)) return <li key={idx} className="ml-4 text-slate-800">{line.replace(/^\d+\.\s/, '')}</li>;
+          if (line.includes('**')) {
+            const parts = line.split('**');
+            return (
+              <p key={idx} className="text-slate-800">
+                {parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold text-slate-900">{part}</strong> : part)}
+              </p>
+            );
+          }
+          if (line.trim()) return <p key={idx} className="text-slate-800">{line}</p>;
+          return <br key={idx} />;
+        })}
+      </div>
+    );
+  };
 
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="min-h-full pb-12"
+      className="min-h-[calc(100vh-6rem)] pb-12"
     >
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-8">
+      <div className="flex items-center justify-between gap-4 mb-8 pt-2">
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Writing Assistant</h1>
           <p className="text-slate-500 mt-1 text-sm">Dictate, refine, and structure your thoughts effortlessly.</p>
         </div>
-        <FeatureHeader />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleViewHistory}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            <History className="w-4 h-4" />
+            History
+          </button>
+          <FeatureHeader />
+        </div>
       </div>
 
       {/* Editor + Tools Layout */}
@@ -270,47 +532,51 @@ export default function WritingAssistantPage() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-white">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100">
-                  <Info className="w-3.5 h-3.5" />
-                  Low confidence word detected
-                </span>
-              </div>
-
               <div className="flex items-center gap-3">
                 {isRecording ? (
-                  <button 
-                    onClick={stopRecording} 
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 text-sm font-medium border border-red-100 hover:bg-red-100 transition-colors"
-                  >
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                    Stop Recording
-                  </button>
+                  <div className="flex items-center gap-4 bg-gradient-to-r from-red-50 to-orange-50 px-5 py-2 rounded-full border border-red-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-2.5 w-2.5 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                      </span>
+                      <AudioWaveform level={audioLevel} isRecording={isRecording} analyserRef={analyserRef} />
+                    </div>
+                    <div className="h-6 w-px bg-red-200 mx-1"></div>
+                    <button 
+                      onClick={stopRecording} 
+                      className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-1.5 font-semibold text-sm rounded-full flex items-center gap-2 transition-all shadow-md active:scale-95"
+                    >
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                      Stop
+                    </button>
+                  </div>
                 ) : (
                   <button 
                     onClick={startRecording}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#3D6E4E] text-white text-sm font-semibold hover:bg-[#345e43] transition-all shadow-md active:scale-95"
                   >
                     <Mic className="w-4 h-4" />
                     Start Recording
                   </button>
                 )}
-
-                <button 
-                  onClick={handleGenerateNotes}
-                  disabled={!transcript || isProcessing}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3D6E4E] text-white text-sm font-medium hover:bg-[#345e43] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Wand2 className="w-4 h-4" />
-                  {isProcessing ? 'Structuring…' : 'Clean & Structure'}
-                </button>
               </div>
+
+              <button 
+                onClick={handleGenerateNotes}
+                disabled={!transcript || isProcessing}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                {isProcessing ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4" />
+                )}
+                {isProcessing ? 'Structuring…' : 'Clean & Structure'}
+              </button>
             </div>
 
-            {/* Document Content */}
+            {/* Text Content */}
             <div 
               className="px-6 sm:px-10 py-8 sm:py-10 min-h-[420px] transition-colors duration-200"
               style={{ backgroundColor: getBackgroundColor() }}
@@ -327,7 +593,6 @@ export default function WritingAssistantPage() {
                   textRendering: 'optimizeLegibility'
                 }}
               >
-                <h2 className="text-xl font-semibold text-slate-900 mb-6 tracking-tight">Early Life and Artistic Failure</h2>
                 <div className="text-slate-800 text-[15px] leading-7 whitespace-pre-line">
                   {renderText()}
                 </div>
@@ -335,21 +600,40 @@ export default function WritingAssistantPage() {
             </div>
 
             {/* Footer actions */}
-            <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-white">
-              <div className="text-xs text-slate-500">
-                {transcript ? `${transcript.length} characters` : `${SAMPLE_TEXT.length} characters`}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-white">
+              <div className="flex items-center gap-4 text-sm text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  {wordCount} words
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  {charCount} characters
+                </span>
               </div>
-              <button
-                onClick={handleCopy}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                  copied 
-                    ? 'bg-[#3D6E4E] text-white border-[#3D6E4E]' 
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Copied' : 'Copy to Clipboard'}
-              </button>
+              <div className="flex items-center gap-2">
+                {transcript && (
+                  <button
+                    onClick={handleClear}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Clear
+                  </button>
+                )}
+                <button
+                  onClick={handleCopy}
+                  disabled={!transcript}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    copied 
+                      ? 'bg-[#3D6E4E] text-white border-[#3D6E4E]' 
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -557,12 +841,20 @@ export default function WritingAssistantPage() {
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
               <button
+                onClick={handleDownloadMarkdown}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
               >
-                <Download className="w-4 h-4" />
-                Export Document
+                <FileDown className="w-4 h-4" />
+                Export as Markdown
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Export as PDF
               </button>
             </div>
           </div>
@@ -587,6 +879,61 @@ export default function WritingAssistantPage() {
           />
         )}
       </div>
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-[#3D6E4E]" />
+                <h2 className="text-xl font-bold text-slate-900">Note History</h2>
+              </div>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#3D6E4E]"></div>
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <History className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                  <p>No previous sessions found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((session) => (
+                    <div
+                      key={session.session_id}
+                      className="border border-slate-200 rounded-xl p-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => handleLoadSession(session)}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-slate-900">
+                          {session.subject || 'Untitled Session'}
+                        </h3>
+                        <span className="text-xs text-slate-500 font-medium">
+                          {new Date(session.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 line-clamp-2">
+                        {session.structured_notes || session.raw_text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -16,7 +16,7 @@ import { FeatureHeader } from '@/components/FeatureHeader';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
-import { useGenerateFlashcards } from '@/hooks/useFlashcards';
+import { useGenerateFlashcards, useCreateFlashcardDeck } from '@/hooks/useFlashcards';
 import { flashcardApi } from '@/services/api';
 
 type ViewState = "upload" | "ready" | "generated" | "list" | "textInput";
@@ -250,7 +250,9 @@ function GeneratedState({
   onNext, 
   onPrev, 
   onFlip, 
-  isFlipped 
+  isFlipped,
+  onSaveDeck,
+  isSaving
 }: { 
   flashcards: GeneratedFlashcard[];
   currentIndex: number;
@@ -258,6 +260,8 @@ function GeneratedState({
   onPrev: () => void;
   onFlip: () => void;
   isFlipped: boolean;
+  onSaveDeck: () => void;
+  isSaving: boolean;
 }) {
   const currentCard = flashcards[currentIndex];
 
@@ -319,6 +323,17 @@ function GeneratedState({
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Save Deck Button */}
+      <div className="flex justify-center pt-6">
+        <Button
+          onClick={onSaveDeck}
+          isLoading={isSaving}
+          className="px-8"
+        >
+          Save Flashcard Deck
+        </Button>
+      </div>
     </motion.div>
   );
 }
@@ -332,245 +347,4 @@ export default function FlashcardsPage() {
   const [isFlipped, setIsFlipped] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { user } = useAuthStore();
-  const generateMutation = useGenerateFlashcards();
-
-  const handleOpenPicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setSelectedDocument({
-        name: getDisplayName(file.name),
-        extension: getExtension(file.name),
-        content: content,
-      });
-      setViewState("ready");
-    };
-    
-    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-      reader.readAsText(file);
-    } else {
-      setSelectedDocument({
-        name: getDisplayName(file.name),
-        extension: getExtension(file.name),
-        content: `Generate flashcards from the document: ${file.name}`,
-      });
-      setViewState("ready");
-    }
-    
-    event.target.value = "";
-  };
-
-  const resetUpload = () => {
-    setSelectedDocument(null);
-    setInputText('');
-    setViewState("upload");
-  };
-
-  const handleGenerate = useCallback(async (content: string) => {
-    if (!user?.id) {
-      toast.error('Please log in to generate flashcards');
-      return;
-    }
-
-    try {
-      const result = await generateMutation.mutateAsync({
-        content,
-        userId: user.id,
-      });
-
-      const parsedFlashcards = parseFlashcardsFromAI(result.flashcards);
-      
-      setGeneratedFlashcards(parsedFlashcards);
-      setCurrentCardIndex(0);
-      setIsFlipped(false);
-      setViewState("generated");
-      
-      toast.success(`Generated ${parsedFlashcards.length} flashcards!`);
-    } catch (error) {
-      console.error('Generation error:', error);
-    }
-  }, [user, generateMutation]);
-
-  const handleTextSubmit = (text: string) => {
-    setInputText(text);
-    handleGenerate(text);
-  };
-
-  const handleDocumentSubmit = () => {
-    if (selectedDocument?.content) {
-      handleGenerate(selectedDocument.content);
-    }
-  };
-
-  const handleNextCard = () => {
-    if (currentCardIndex < generatedFlashcards.length - 1) {
-      setCurrentCardIndex(prev => prev + 1);
-      setIsFlipped(false);
-    }
-  };
-
-  const handlePrevCard = () => {
-    if (currentCardIndex > 0) {
-      setCurrentCardIndex(prev => prev - 1);
-      setIsFlipped(false);
-    }
-  };
-
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
-
-  const headerTitle =
-    viewState === "generated" && selectedDocument
-      ? selectedDocument.name
-      : "Flashcards";
-
-  return (
-    <div className="mx-auto w-full max-w-4xl pb-8">
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept=".pdf,.doc,.docx,.txt"
-        onChange={handleFileChange}
-      />
-
-      <div className="space-y-8 pt-2">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
-              {headerTitle}
-            </h1>
-            {viewState !== "generated" && (
-              <p className="text-slate-500 mt-1 text-sm">Upload your notes and let AI turn them into study cards.</p>
-            )}
-          </div>
-          <FeatureHeader />
-        </div>
-
-        <AnimatePresence mode="wait">
-          {viewState === "generated" ? (
-            <motion.div
-              key="generated"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <GeneratedState 
-                flashcards={generatedFlashcards}
-                currentIndex={currentCardIndex}
-                onNext={handleNextCard}
-                onPrev={handlePrevCard}
-                onFlip={handleFlip}
-                isFlipped={isFlipped}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key={viewState}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-8"
-            >
-              <Banner />
-
-              {viewState === "upload" ? (
-                <UploadDropzone 
-                  onChooseFile={handleOpenPicker} 
-                  onTextInput={() => setViewState('textInput')}
-                />
-              ) : viewState === "textInput" ? (
-                <TextInputState
-                  onSubmit={handleTextSubmit}
-                  onCancel={() => setViewState('upload')}
-                  isLoading={generateMutation.isPending}
-                />
-              ) : selectedDocument ? (
-                <ReadyState
-                  document={selectedDocument}
-                  onCancel={resetUpload}
-                  onSubmit={handleDocumentSubmit}
-                  isLoading={generateMutation.isPending}
-                />
-              ) : null}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-function parseFlashcardsFromAI(aiResponse: string): GeneratedFlashcard[] {
-  const flashcards: GeneratedFlashcard[] = [];
-  
-  const lines = aiResponse.split('\n').filter(line => line.trim());
-  let currentFront = '';
-  let currentBack = '';
-  let isQuestion = true;
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    
-    if (trimmed.match(/^Q\d*[:.)]/i) || trimmed.match(/^Question[:)]/i)) {
-      if (currentFront && currentBack) {
-        flashcards.push({
-          id: `card-${flashcards.length}`,
-          front: currentFront,
-          back: currentBack,
-        });
-      }
-      currentFront = trimmed.replace(/^Q\d*[:.)]\s*/i, '').replace(/^Question[:)]\s*/i, '');
-      currentBack = '';
-      isQuestion = false;
-    }
-    else if (trimmed.match(/^A\d*[:.)]/i) || trimmed.match(/^Answer[:)]/i)) {
-      currentBack = trimmed.replace(/^A\d*[:.)]\s*/i, '').replace(/^Answer[:)]\s*/i, '');
-      isQuestion = true;
-    }
-    else if (trimmed.match(/^Front[:)]/i)) {
-      if (currentFront && currentBack) {
-        flashcards.push({
-          id: `card-${flashcards.length}`,
-          front: currentFront,
-          back: currentBack,
-        });
-      }
-      currentFront = trimmed.replace(/^Front[:)]\s*/i, '');
-      currentBack = '';
-    }
-    else if (trimmed.match(/^Back[:)]/i)) {
-      currentBack = trimmed.replace(/^Back[:)]\s*/i, '');
-    }
-    else if (!isQuestion && currentFront && !currentBack) {
-      currentBack = trimmed;
-    }
-  }
-  
-  if (currentFront && currentBack) {
-    flashcards.push({
-      id: `card-${flashcards.length}`,
-      front: currentFront,
-      back: currentBack,
-    });
-  }
-  
-  if (flashcards.length === 0) {
-    flashcards.push({
-      id: 'card-0',
-      front: 'Generated Content',
-      back: aiResponse,
-    });
-  }
-  
-  return flashcards;
-}
+  const { user } =

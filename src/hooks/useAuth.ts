@@ -20,7 +20,7 @@ export function useUser() {
 }
 
 // Hook for login
-export function useLogin() {
+export function useLogin(redirectUrl?: string) {
   const router = useRouter();
   const { login } = useAuthStore();
   const queryClient = useQueryClient();
@@ -40,10 +40,14 @@ export function useLogin() {
       queryClient.setQueryData(authKeys.user(), data.user);
       
       toast.success('Welcome back!');
-      router.push('/dashboard');
+      
+      // Redirect to original destination or dashboard (Requirement 3.3)
+      const destination = redirectUrl || '/dashboard';
+      router.push(destination);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Login failed');
+      // Don't show toast here - let the component handle specific error messages
+      throw error;
     },
   });
 }
@@ -84,7 +88,8 @@ export function useRegister() {
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      // Don't show toast here - let the component handle specific error messages (Requirements 7.4, 7.5)
+      throw error;
     },
   });
 }
@@ -120,8 +125,8 @@ export function useResendVerification(userId: string) {
 }
 
 // Unified auth hook for components
-export function useAuth() {
-  const loginMutation = useLogin();
+export function useAuth(redirectUrl?: string) {
+  const loginMutation = useLogin(redirectUrl);
   const registerMutation = useRegister();
   const logoutMutation = useLogout();
 

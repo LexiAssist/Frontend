@@ -49,8 +49,13 @@ export function useCreateQuiz() {
 // Hook to generate a quiz from content
 export function useGenerateQuiz() {
   return useMutation({
-    mutationFn: ({ content, userId }: { content: string; userId: string }) =>
-      quizApi.generateFromContent(content, userId),
+    mutationFn: ({ content, userId, quizType, numQuestions }: { 
+      content: string; 
+      userId: string;
+      quizType?: 'multiple_choice' | 'theory';
+      numQuestions?: number;
+    }) =>
+      quizApi.generateFromContent(content, userId, quizType, numQuestions),
     onError: (error: any) => {
       toast.error(error.message || 'Failed to generate quiz');
     },

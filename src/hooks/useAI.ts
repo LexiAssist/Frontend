@@ -1,6 +1,5 @@
-import { useMutation } from '@tanstack/react-query';
-import { aiApi } from '@/services/api';
-import { toast } from 'sonner';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { aiApi, audioApi } from '@/services/api';
 
 // Hook for AI Chat
 export function useAIChat() {
@@ -22,9 +21,15 @@ export function useAIChat() {
       materialId: options?.materialId,
       contextChunks: options?.contextChunks,
     }),
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to get AI response');
-    },
+  });
+}
+
+// Hook for loading previous conversation (Requirement 17.4)
+export function useConversation(conversationId: string | undefined) {
+  return useQuery({
+    queryKey: ['conversation', conversationId],
+    queryFn: () => conversationId ? aiApi.getConversation(conversationId) : null,
+    enabled: !!conversationId,
   });
 }
 
@@ -40,9 +45,6 @@ export function useGenerateSummary() {
       userId: string; 
       options?: Parameters<typeof aiApi.generateSummary>[2];
     }) => aiApi.generateSummary(content, userId, options),
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to generate summary');
-    },
   });
 }
 
@@ -58,8 +60,14 @@ export function useRetrieveContext() {
       userId: string; 
       topK?: number;
     }) => aiApi.retrieveContext(query, userId, topK),
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to retrieve context');
-    },
+  });
+}
+
+// Hook for fetching supported TTS languages (Requirement 18.6)
+export function useTTSLanguages() {
+  return useQuery({
+    queryKey: ['tts-languages'],
+    queryFn: () => audioApi.getLanguages(),
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
   });
 }

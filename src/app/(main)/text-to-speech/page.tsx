@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useAuthStore } from '@/store/authStore';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import { audioApi, readingApi } from '@/services/api';
+import { useTTSLanguages } from '@/hooks/useAI';
 
 interface VoiceOption {
   id: string;
@@ -116,70 +117,113 @@ export default function TextToSpeechPage() {
   const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
   const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
   const [lastTtsRequest, setLastTtsRequest] = useState<number>(0);
-
+  
+  // Fetch supported languages from backend (Requirement 18.6)
+  const { data: languagesData, isLoading: isLoadingLanguages } = useTTSLanguages();
+  
+  // Check audio service health on mount
   useEffect(() => {
-    const gttsVoices: VoiceOption[] = [
-      { id: 'en', name: 'English (US)', lang: 'en' },
-      { id: 'en-uk', name: 'English (UK)', lang: 'en-uk' },
-      { id: 'en-au', name: 'English (Australia)', lang: 'en-au' },
-      { id: 'en-in', name: 'English (India)', lang: 'en-in' },
-      { id: 'en-ca', name: 'English (Canada)', lang: 'en-ca' },
-      { id: 'es', name: 'Spanish (Spain)', lang: 'es' },
-      { id: 'es-us', name: 'Spanish (Mexico)', lang: 'es-us' },
-      { id: 'fr', name: 'French (France)', lang: 'fr' },
-      { id: 'fr-ca', name: 'French (Canada)', lang: 'fr-ca' },
-      { id: 'de', name: 'German', lang: 'de' },
-      { id: 'it', name: 'Italian', lang: 'it' },
-      { id: 'pt', name: 'Portuguese (Portugal)', lang: 'pt' },
-      { id: 'pt-br', name: 'Portuguese (Brazil)', lang: 'pt-br' },
-      { id: 'nl', name: 'Dutch', lang: 'nl' },
-      { id: 'pl', name: 'Polish', lang: 'pl' },
-      { id: 'tr', name: 'Turkish', lang: 'tr' },
-      { id: 'sv', name: 'Swedish', lang: 'sv' },
-      { id: 'cs', name: 'Czech', lang: 'cs' },
-      { id: 'el', name: 'Greek', lang: 'el' },
-      { id: 'hu', name: 'Hungarian', lang: 'hu' },
-      { id: 'ro', name: 'Romanian', lang: 'ro' },
-      { id: 'da', name: 'Danish', lang: 'da' },
-      { id: 'fi', name: 'Finnish', lang: 'fi' },
-      { id: 'no', name: 'Norwegian', lang: 'no' },
-      { id: 'sk', name: 'Slovak', lang: 'sk' },
-      { id: 'bg', name: 'Bulgarian', lang: 'bg' },
-      { id: 'hr', name: 'Croatian', lang: 'hr' },
-      { id: 'uk', name: 'Ukrainian', lang: 'uk' },
-      { id: 'ca', name: 'Catalan', lang: 'ca' },
-      { id: 'ja', name: 'Japanese', lang: 'ja' },
-      { id: 'zh', name: 'Chinese (Simplified)', lang: 'zh' },
-      { id: 'zh-tw', name: 'Chinese (Traditional)', lang: 'zh-tw' },
-      { id: 'ko', name: 'Korean', lang: 'ko' },
-      { id: 'th', name: 'Thai', lang: 'th' },
-      { id: 'vi', name: 'Vietnamese', lang: 'vi' },
-      { id: 'id', name: 'Indonesian', lang: 'id' },
-      { id: 'ms', name: 'Malay', lang: 'ms' },
-      { id: 'tl', name: 'Filipino', lang: 'tl' },
-      { id: 'ta', name: 'Tamil', lang: 'ta' },
-      { id: 'ar', name: 'Arabic', lang: 'ar' },
-      { id: 'iw', name: 'Hebrew', lang: 'iw' },
-      { id: 'fa', name: 'Persian', lang: 'fa' },
-      { id: 'hi', name: 'Hindi', lang: 'hi' },
-      { id: 'bn', name: 'Bengali', lang: 'bn' },
-      { id: 'mr', name: 'Marathi', lang: 'mr' },
-      { id: 'te', name: 'Telugu', lang: 'te' },
-      { id: 'ur', name: 'Urdu', lang: 'ur' },
-      { id: 'sw', name: 'Swahili', lang: 'sw' },
-      { id: 'af', name: 'Afrikaans', lang: 'af' },
-      { id: 'ru', name: 'Russian', lang: 'ru' },
-      { id: 'sr', name: 'Serbian', lang: 'sr' },
-      { id: 'mk', name: 'Macedonian', lang: 'mk' },
-      { id: 'sl', name: 'Slovenian', lang: 'sl' },
-      { id: 'lt', name: 'Lithuanian', lang: 'lt' },
-      { id: 'lv', name: 'Latvian', lang: 'lv' },
-      { id: 'et', name: 'Estonian', lang: 'et' },
-    ];
-    setVoices(gttsVoices);
-    if (!selectedVoice) setSelectedVoice('en');
+    const checkHealth = async () => {
+      const isHealthy = await audioApi.healthCheck();
+      if (!isHealthy) {
+        console.warn('[TTS] Audio service health check failed');
+      }
+    };
+    checkHealth();
   }, []);
 
+  useEffect(() => {
+    // Use backend languages if available (Requirement 18.6)
+    if (languagesData && typeof languagesData === 'object' && 'supported_languages' in languagesData) {
+      const data = languagesData as any;
+      if (data.supported_languages) {
+        const backendVoices: VoiceOption[] = Object.entries(data.supported_languages).map(([code, name]) => ({
+          id: code,
+          name: name as string,
+          lang: code,
+        }));
+        setVoices(backendVoices);
+        if (!selectedVoice && backendVoices.length > 0) {
+          setSelectedVoice(backendVoices[0].id);
+        }
+      }
+    } else {
+      // Fallback to hardcoded list if backend is unavailable
+      const gttsVoices: VoiceOption[] = [
+        // English variants
+        { id: 'en', name: 'English (US)', lang: 'en' },
+        { id: 'en-uk', name: 'English (UK)', lang: 'en-uk' },
+        { id: 'en-au', name: 'English (Australia)', lang: 'en-au' },
+        { id: 'en-in', name: 'English (India)', lang: 'en-in' },
+        { id: 'en-ca', name: 'English (Canada)', lang: 'en-ca' },
+        
+        // European languages
+        { id: 'es', name: 'Spanish (Spain)', lang: 'es' },
+        { id: 'es-us', name: 'Spanish (Mexico)', lang: 'es-us' },
+        { id: 'fr', name: 'French (France)', lang: 'fr' },
+        { id: 'fr-ca', name: 'French (Canada)', lang: 'fr-ca' },
+        { id: 'de', name: 'German', lang: 'de' },
+        { id: 'it', name: 'Italian', lang: 'it' },
+        { id: 'pt', name: 'Portuguese (Portugal)', lang: 'pt' },
+        { id: 'pt-br', name: 'Portuguese (Brazil)', lang: 'pt-br' },
+        { id: 'nl', name: 'Dutch', lang: 'nl' },
+        { id: 'pl', name: 'Polish', lang: 'pl' },
+        { id: 'tr', name: 'Turkish', lang: 'tr' },
+        { id: 'sv', name: 'Swedish', lang: 'sv' },
+        { id: 'cs', name: 'Czech', lang: 'cs' },
+        { id: 'el', name: 'Greek', lang: 'el' },
+        { id: 'hu', name: 'Hungarian', lang: 'hu' },
+        { id: 'ro', name: 'Romanian', lang: 'ro' },
+        { id: 'da', name: 'Danish', lang: 'da' },
+        { id: 'fi', name: 'Finnish', lang: 'fi' },
+        { id: 'no', name: 'Norwegian', lang: 'no' },
+        { id: 'sk', name: 'Slovak', lang: 'sk' },
+        { id: 'bg', name: 'Bulgarian', lang: 'bg' },
+        { id: 'hr', name: 'Croatian', lang: 'hr' },
+        { id: 'uk', name: 'Ukrainian', lang: 'uk' },
+        { id: 'ca', name: 'Catalan', lang: 'ca' },
+        
+        // Asian languages
+        { id: 'ja', name: 'Japanese', lang: 'ja' },
+        { id: 'zh', name: 'Chinese (Simplified)', lang: 'zh' },
+        { id: 'zh-tw', name: 'Chinese (Traditional)', lang: 'zh-tw' },
+        { id: 'ko', name: 'Korean', lang: 'ko' },
+        { id: 'th', name: 'Thai', lang: 'th' },
+        { id: 'vi', name: 'Vietnamese', lang: 'vi' },
+        { id: 'id', name: 'Indonesian', lang: 'id' },
+        { id: 'ms', name: 'Malay', lang: 'ms' },
+        { id: 'tl', name: 'Filipino', lang: 'tl' },
+        { id: 'ta', name: 'Tamil', lang: 'ta' },
+        
+        // Middle Eastern & African
+        { id: 'ar', name: 'Arabic', lang: 'ar' },
+        { id: 'iw', name: 'Hebrew', lang: 'iw' },
+        { id: 'fa', name: 'Persian', lang: 'fa' },
+        { id: 'hi', name: 'Hindi', lang: 'hi' },
+        { id: 'bn', name: 'Bengali', lang: 'bn' },
+        { id: 'mr', name: 'Marathi', lang: 'mr' },
+        { id: 'te', name: 'Telugu', lang: 'te' },
+        { id: 'ur', name: 'Urdu', lang: 'ur' },
+        { id: 'sw', name: 'Swahili', lang: 'sw' },
+        { id: 'af', name: 'Afrikaans', lang: 'af' },
+        
+        // Slavic & Baltic
+        { id: 'ru', name: 'Russian', lang: 'ru' },
+        { id: 'sr', name: 'Serbian', lang: 'sr' },
+        { id: 'mk', name: 'Macedonian', lang: 'mk' },
+        { id: 'sl', name: 'Slovenian', lang: 'sl' },
+        { id: 'lt', name: 'Lithuanian', lang: 'lt' },
+        { id: 'lv', name: 'Latvian', lang: 'lv' },
+        { id: 'et', name: 'Estonian', lang: 'et' },
+      ];
+      setVoices(gttsVoices);
+      if (!selectedVoice) {
+        setSelectedVoice('en');
+      }
+    }
+  }, [languagesData, selectedVoice]);
+  
+  // Cleanup audio URL on unmount
   useEffect(() => {
     return () => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -260,12 +304,15 @@ export default function TextToSpeechPage() {
       toast.success('Playing preview of document');
     } catch (error: any) {
       console.error('Preview error:', error);
-      if (error.response?.status === 429) {
+      const errorMessage = error?.message || 'Unknown error';
+      if (errorMessage.includes('Rate limit') || error?.response?.status === 429) {
         toast.error('Rate limit exceeded. Please wait a few seconds.');
-      } else if (error.response?.status === 401) {
+      } else if (error?.response?.status === 401) {
         toast.error('Authentication failed. Please log in again.');
+      } else if (errorMessage.includes('empty')) {
+        toast.error('TTS service returned empty audio. Please check the service logs.');
       } else {
-        toast.error('Failed to generate preview. Please try again.');
+        toast.error(`TTS failed: ${errorMessage}`);
       }
       setPreviewingVoice(null);
     } finally {
@@ -533,7 +580,7 @@ export default function TextToSpeechPage() {
       <div className="flex items-center justify-between mb-8 pt-2">
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
-            {currentStep === 'upload' ? `Hello, ${user?.name?.split(' ')[0] || 'Victoria'}!` : 'Text to Speech'}
+            {currentStep === 'upload' ? `Hello, ${user?.first_name || user?.name?.split(' ')[0] || 'Student'}!` : 'Text to Speech'}
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
             {currentStep === 'upload' ? 'Pick a tool to get started with' : 'Turn text into sound and learn by listening.'}
@@ -701,42 +748,54 @@ export default function TextToSpeechPage() {
                 <h3 className="text-base font-bold text-[#3D6E4E]">Tools</h3>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-600">Voice Option</label>
-                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                  <SelectTrigger className="w-full bg-white border-slate-200 rounded-xl h-11 text-sm">
-                    <SelectValue placeholder="Select voice" />
-                  </SelectTrigger>
-                  <SelectContent side="bottom" align="start" sideOffset={4} className="max-h-64">
-                    {voices.map((voice) => (
-                      <SelectItem key={voice.id} value={voice.id}>{voice.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-600">Voice Option</label>
+                  <Select value={selectedVoice} onValueChange={setSelectedVoice} disabled={isLoadingLanguages}>
+                    <SelectTrigger className="w-full bg-white border-slate-200 rounded-xl h-11 text-sm">
+                      <SelectValue placeholder={isLoadingLanguages ? "Loading languages..." : "Select voice"} />
+                    </SelectTrigger>
+                    <SelectContent side="bottom" align="start" sideOffset={4} className="max-h-64">
+                      {voices.length > 0 ? (
+                        voices.map((voice) => (
+                          <SelectItem key={voice.id} value={voice.id}>
+                            {voice.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="en">English (US)</SelectItem>
+                          <SelectItem value="en-uk">English (UK)</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <button
-                onClick={handlePreviewAudio}
-                disabled={isGenerating}
-                className="w-full bg-white border-2 border-[#3D6E4E] text-[#3D6E4E] font-semibold py-2.5 px-4 rounded-xl hover:bg-[#E8F3EA] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isGenerating && previewingVoice === 'preview' ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
-                    Generating...
-                  </>
-                ) : previewingVoice === 'preview' ? (
-                  <>
-                    <Icon name="pause" size={18} />
-                    Stop Preview
-                  </>
-                ) : (
-                  <>
-                    <Icon name="volume" size={18} />
-                    Preview Audio
-                  </>
-                )}
-              </button>
+                <button
+                  onClick={handlePreviewAudio}
+                  disabled={isGenerating}
+                  className="w-full bg-white border-2 border-[#3D6E4E] text-[#3D6E4E] font-semibold py-2.5 px-4 rounded-xl hover:bg-[#E8F3EA] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isGenerating && previewingVoice === 'preview' ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-[#3D6E4E] border-t-transparent rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : previewingVoice === 'preview' ? (
+                    <>
+                      <Icon name="pause" size={18} />
+                      Stop Preview
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="volume" size={18} />
+                      Preview Audio
+                    </>
+                  )}
+                </button>
+              </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-600">Speed</label>

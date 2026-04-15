@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Icon } from "@/components/Icon";
 import Logo from "@/components/auth/Logo";
@@ -41,13 +42,27 @@ function SocialLoginButton({
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+  const errorParam = searchParams.get('error');
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login } = useAuth();
+  const { login } = useAuth(redirectUrl || undefined);
+  
+  // Show error message based on URL error param
+  useEffect(() => {
+    if (errorParam === 'session_expired') {
+      setError('Your session has expired. Please log in again.');
+    } else if (errorParam === 'cleared') {
+      setError('Authentication was reset. Please log in again.');
+    }
+  }, [errorParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +71,22 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
-    } catch (err) {
-      setError("Invalid email or password. Please try again.");
+    } catch (err: any) {
+      // Handle specific error cases (Requirements 3.4, 3.5)
+      const errorMessage = err?.message || err?.response?.data?.message || '';
+      
+      // Check for 401 - Invalid credentials (Requirement 3.4)
+      if (errorMessage.includes('401') || errorMessage.toLowerCase().includes('invalid') || errorMessage.toLowerCase().includes('incorrect')) {
+        setError("Invalid email or password. Please try again.");
+      }
+      // Check for 403 - Email not verified (Requirement 3.5)
+      else if (errorMessage.includes('403') || errorMessage.toLowerCase().includes('not verified') || errorMessage.toLowerCase().includes('verify')) {
+        setError("Email verification required. Please check your email for the verification code.");
+      }
+      // Generic error
+      else {
+        setError(errorMessage || "Login failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

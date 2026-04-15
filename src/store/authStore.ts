@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 import { authApi } from '@/services/api';
+import { wsClient } from '@/services/websocket';
 
 export interface AuthState {
   // State
@@ -59,21 +60,31 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       logout: async () => {
-        try {
-          // Call backend logout to invalidate tokens
-          await authApi.logout();
-        } catch (error) {
-          console.error('Logout error:', error);
-        } finally {
-          // Clear local state regardless of API success
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            accessToken: null,
-            refreshToken: null,
-            tokenExpiresAt: null,
-          });
+        const { accessToken } = get();
+        
+        // Disconnect WebSocket first to prevent auth errors
+        wsClient.disconnect();
+        
+        // Clear state immediately
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          accessToken: null,
+          refreshToken: null,
+          tokenExpiresAt: null,
+        });
+
+        // Only try to call logout API if we have a token
+        if (accessToken) {
+          try {
+            await Promise.race([
+              authApi.logout(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+            ]);
+          } catch (error) {
+            console.log('Logout API call failed (token may be expired), local state cleared');
+          }
         }
       },
 
@@ -145,6 +156,17 @@ export function getAuthHeaders() {
   return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
 }
 
+// Emergency clear auth - can be called from console: window.clearAuth()
+export function clearAuthEmergency() {
+  localStorage.removeItem('lexi-auth-storage');
+  window.location.href = '/login?error=cleared';
+}
+
+// Attach to window for emergency access
+if (typeof window !== 'undefined') {
+  (window as any).clearAuth = clearAuthEmergency;
+}
+
 // Helper to check auth status on app load
 export async function initializeAuth() {
   const store = useAuthStore.getState();
@@ -160,14 +182,17 @@ export async function initializeAuth() {
       // Token expired but we have refresh token
       const refreshed = await store.refreshAccessToken();
       if (!refreshed) {
+        wsClient.disconnect();
         store.setUser(null);
       }
     } else {
       // No tokens, user is not authenticated
+      wsClient.disconnect();
       store.setUser(null);
     }
   } catch (error) {
     console.error('Auth initialization error:', error);
+    wsClient.disconnect();
     store.setUser(null);
   } finally {
     store.setLoading(false);

@@ -48,8 +48,6 @@ export function useCreateFlashcardDeck() {
 
 // Hook to generate flashcards from content
 export function useGenerateFlashcards() {
-  const { accessToken } = useAuthStore();
-  
   return useMutation({
     mutationFn: ({ content, userId }: { content: string; userId: string }) =>
       flashcardApi.generateFromContent(content, userId),

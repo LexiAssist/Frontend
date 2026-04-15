@@ -1,97 +1,55 @@
 // Mock API service for development without backend
-import type { User, LoginCredentials, RegisterCredentials, AuthResponse } from '@/types';
+// Note: Mock mode is now strictly isolated to the settings page.
+// Core features (Auth, Materials, Flashcards) require real backend services.
 
 const MOCK_DELAY = 500;
-
-const mockUser: User = {
-  id: '1',
-  name: 'Test User',
-  email: 'test@lexiassist.com',
-  avatar: '',
-  role: 'student',
-};
-
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Check if the application is running in mock mode
+ * @returns true if mock mode is enabled via environment variables
+ */
 export const isMockMode = (): boolean => {
   return process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || 
          process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
 };
 
-export const mockAuthApi = {
-  async login(credentials: LoginCredentials): Promise<{ data: AuthResponse }> {
+/**
+ * Mock Settings API
+ * Used exclusively for the Settings Page and Dark Mode testing.
+ */
+export const mockSettingsApi = {
+  async getPreferences() {
     await delay(MOCK_DELAY);
-    
-    // Accept any credentials for development
     return {
       data: {
-        user: {
-          id: '1',
-          name: credentials.email.split('@')[0],
-          email: credentials.email,
-          avatar: '',
-          role: 'student',
-        },
-        access_token: 'mock-jwt-token',
-        refresh_token: 'mock-refresh-token',
-        token_type: 'bearer',
-        expires_at: new Date(Date.now() + 3600_000).toISOString(),
-      },
+        theme: 'dark',
+        notificationsEnabled: true,
+        language: 'en',
+      }
     };
   },
-
-  async register(credentials: RegisterCredentials): Promise<{ data: AuthResponse }> {
+  
+  async updateTheme(theme: 'light' | 'dark' | 'system') {
     await delay(MOCK_DELAY);
-
-    return {
-      data: {
-        user: {
-          id: '2',
-          name: credentials.name,
-          email: credentials.email,
-          avatar: '',
-          role: 'student',
-        },
-        access_token: 'mock-jwt-token',
-        refresh_token: 'mock-refresh-token',
-        token_type: 'bearer',
-        expires_at: new Date(Date.now() + 3600_000).toISOString(),
-      },
-    };
-  },
-
-  async logout(): Promise<void> {
-    await delay(MOCK_DELAY);
-  },
-
-  async getCurrentUser(): Promise<{ data: User }> {
-    await delay(MOCK_DELAY);
-    
-    // Simulate getting user from stored token
-    return { data: mockUser };
-  },
+    return { data: { theme } };
+  }
 };
 
-// Mock API for materials
-export const mockMaterialsApi = {
-  async getMaterials() {
-    await delay(MOCK_DELAY);
-    return {
-      data: [
-        { id: '1', title: 'Sample Document.pdf', type: 'pdf', createdAt: new Date().toISOString() },
-      ],
-    };
-  },
-};
+/**
+ * @deprecated Use real API services instead
+ * Mock mode is no longer supported for core features.
+ */
+export const mockAuthApi = null;
 
-// Mock API for flashcards
-export const mockFlashcardsApi = {
-  async getFlashcards() {
-    await delay(MOCK_DELAY);
-    return {
-      data: [
-        { id: '1', front: 'What is photosynthesis?', back: 'The process by which plants convert light energy into chemical energy.', deckId: '1' },
-      ],
-    };
-  },
-};
+/**
+ * @deprecated Use real API services instead
+ * Mock mode is no longer supported for core features.
+ */
+export const mockMaterialsApi = null;
+
+/**
+ * @deprecated Use real API services instead
+ * Mock mode is no longer supported for core features.
+ */
+export const mockFlashcardsApi = null;

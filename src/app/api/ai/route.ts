@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/env';
-import { mockApi } from '@/lib/mockApi';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || !env.NEXT_PUBLIC_AI_PROXY_URL;
 
 /**
  * AI Proxy Route
@@ -12,13 +9,6 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true' || !env.NEXT_PU
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // Use mock API if enabled or backend URL not set
-    if (USE_MOCK) {
-      console.log('[MOCK] AI generate:', body.type);
-      const result = mockApi.generateContent(body.prompt, body.type);
-      return NextResponse.json(result);
-    }
     
     // Forward to AI service
     const response = await fetch(`${env.NEXT_PUBLIC_AI_PROXY_URL}/api/ai/generate`, {
@@ -56,12 +46,6 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Use mock API if enabled or backend URL not set
-    if (USE_MOCK) {
-      console.log('[MOCK] Get AI models');
-      return NextResponse.json({ models: mockApi.getModels() });
-    }
-    
     const response = await fetch(`${env.NEXT_PUBLIC_AI_PROXY_URL}/api/ai/models`, {
       headers: {
         'x-lexi-internal-caller': 'frontend-proxy',
