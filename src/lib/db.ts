@@ -12,7 +12,7 @@ const pool = new Pool({
 });
 
 // Create the Prisma adapter using the pool
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(pool as any);
 
 // Initialize PrismaClient with the adapter
 export const db = globalForPrisma.prisma ?? new PrismaClient({

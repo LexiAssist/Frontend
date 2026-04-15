@@ -1,6 +1,9 @@
 // Mock API service for development without backend
-// This file is kept minimal - only for checking mock mode status
-// All actual API calls should go through the real backend services
+// Note: Mock mode is now strictly isolated to the settings page.
+// Core features (Auth, Materials, Flashcards) require real backend services.
+
+const MOCK_DELAY = 500;
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Check if the application is running in mock mode
@@ -12,19 +15,41 @@ export const isMockMode = (): boolean => {
 };
 
 /**
+ * Mock Settings API
+ * Used exclusively for the Settings Page and Dark Mode testing.
+ */
+export const mockSettingsApi = {
+  async getPreferences() {
+    await delay(MOCK_DELAY);
+    return {
+      data: {
+        theme: 'dark',
+        notificationsEnabled: true,
+        language: 'en',
+      }
+    };
+  },
+  
+  async updateTheme(theme: 'light' | 'dark' | 'system') {
+    await delay(MOCK_DELAY);
+    return { data: { theme } };
+  }
+};
+
+/**
  * @deprecated Use real API services instead
- * Mock mode is no longer supported - all features require backend services
+ * Mock mode is no longer supported for core features.
  */
 export const mockAuthApi = null;
 
 /**
  * @deprecated Use real API services instead
- * Mock mode is no longer supported - all features require backend services
+ * Mock mode is no longer supported for core features.
  */
 export const mockMaterialsApi = null;
 
 /**
  * @deprecated Use real API services instead
- * Mock mode is no longer supported - all features require backend services
+ * Mock mode is no longer supported for core features.
  */
 export const mockFlashcardsApi = null;

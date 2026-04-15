@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { TokenRefreshProvider } from "@/components/providers/TokenRefreshProvider";
 import { ToastContainer } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-const inter = Inter({ subsets: ["latin"] });
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "LexiAssist | AI-Powered Learning for Everyone",
@@ -28,14 +32,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
+      <body className={`${roboto.className} bg-slate-50 text-slate-900 antialiased`}>
         <ThemeProvider defaultTheme="light" enableSystem>
-          <QueryProvider>
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-            <ToastContainer />
-          </QueryProvider>
+          <TokenRefreshProvider>
+            <QueryProvider>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+              <ToastContainer />
+            </QueryProvider>
+          </TokenRefreshProvider>
         </ThemeProvider>
       </body>
     </html>

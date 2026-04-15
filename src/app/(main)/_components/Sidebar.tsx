@@ -214,7 +214,7 @@ export default function Sidebar() {
 
   const desktopSidebar = (
     <aside
-      className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-72 flex-col px-4 py-6 text-white"
+      className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[300px] flex-col px-4 py-6 text-white"
       style={{ backgroundColor: sidebarGreen }}
     >
       <div className="px-2 pb-6">

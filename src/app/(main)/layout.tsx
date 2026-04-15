@@ -34,7 +34,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-500)] mb-4" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -50,14 +50,14 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   // Requirement 6.3: Allow authenticated users to proceed
   return (
     <SyncProvider>
-      <div className="min-h-screen bg-white">
+      <div className="flex h-screen overflow-hidden bg-white">
         {/* Sidebar - includes mobile header and bottom nav */}
         <Sidebar />
         
         {/* Main Content */}
-        <main className="relative min-h-screen w-full z-0 lg:pl-72">
-          {/* Mobile: Add padding for fixed header and safe areas */}
-          <div className="relative min-h-screen pt-24 sm:pt-28 lg:pt-8 pb-safe lg:pb-0 py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 xl:px-10">
+        <main className="flex flex-col flex-1 overflow-hidden relative z-0 lg:pl-[300px]">
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto pt-24 sm:pt-28 lg:pt-8 pb-safe lg:pb-0 px-4 sm:px-6 lg:px-8 xl:px-10">
             <div className="max-w-6xl mx-auto animate-page-enter">
               {children}
             </div>
