@@ -808,7 +808,7 @@ export default function WritingAssistantPage() {
                   <span className="capitalize">{backgroundTint === 'none' ? 'No tint' : backgroundTint}</span>
                   <div 
                     className="w-4 h-4 rounded-full border border-slate-200"
-                    style={{ backgroundColor: activeTintColor || '#ffffff' }}
+                    style={{ backgroundColor: getBackgroundColor() }}
                   />
                 </button>
 

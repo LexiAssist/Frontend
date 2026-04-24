@@ -18,11 +18,14 @@ class WebSocketClient {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private connectTimeout: NodeJS.Timeout | null = null;
+  private connectionTimeout: NodeJS.Timeout | null = null;
   private eventHandlers: Set<EventHandler> = new Set();
   private url: string;
   private isIntentionallyClosed = false;
   private lastToken: string | null = null;
   private connectionStartTime: number = 0;
+  private hasEverConnected = false;
+  private lastErrorLog = 0;
 
   constructor() {
     this.url = '';
@@ -32,9 +35,14 @@ class WebSocketClient {
     if (typeof window === 'undefined') {
       return '';
     }
+    // Use env variable if available, otherwise derive from current host
+    const envUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (envUrl) {
+      return envUrl;
+    }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsPort = '8085';
-    return `${protocol}//localhost:${wsPort}/api/v1/sync`;
+    const wsPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+    return `${protocol}//${window.location.hostname}:${wsPort}/api/v1/sync`;
   }
 
   connect() {
@@ -81,10 +89,24 @@ class WebSocketClient {
 
     try {
       const wsUrl = `${this.url}?token=${encodeURIComponent(token)}`;
-      
+
       this.ws = new WebSocket(wsUrl);
 
+      // Set a connection timeout so we don't hang forever if server is down
+      this.connectionTimeout = setTimeout(() => {
+        if (this.ws?.readyState === WebSocket.CONNECTING) {
+          this.ws.close();
+          this.ws = null;
+          this.handleConnectionFailure('Connection timeout — backend may be unavailable');
+        }
+      }, 5000);
+
       this.ws.onopen = () => {
+        if (this.connectionTimeout) {
+          clearTimeout(this.connectionTimeout);
+          this.connectionTimeout = null;
+        }
+        this.hasEverConnected = true;
         this.reconnectAttempts = 0;
         this.reconnectDelay = 1000;
         this.startHeartbeat();
@@ -97,7 +119,7 @@ class WebSocketClient {
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           if (message.type === 'pong') {
             return;
           }
@@ -109,7 +131,11 @@ class WebSocketClient {
       };
 
       this.ws.onerror = () => {
-        // Silently handle errors - onclose will handle reconnection
+        // Connection error — onclose will handle cleanup
+        // Only log if we've connected before, to avoid spam when backend is down
+        if (this.hasEverConnected) {
+          this.throttledLog('[WebSocket] Connection error');
+        }
         this.notifyHandlers({
           type: 'connection',
           data: { status: 'error' },
@@ -117,17 +143,24 @@ class WebSocketClient {
       };
 
       this.ws.onclose = (event) => {
+        if (this.connectionTimeout) {
+          clearTimeout(this.connectionTimeout);
+          this.connectionTimeout = null;
+        }
         this.stopHeartbeat();
         this.ws = null;
-        
-        // Check if this was a quick disconnect (likely React StrictMode)
+
         const connectionDuration = Date.now() - this.connectionStartTime;
         const wasQuickDisconnect = connectionDuration < 500;
-        
-        this.notifyHandlers({
-          type: 'connection',
-          data: { status: 'disconnected' },
-        });
+
+        // Only notify disconnected if we were actually connected before,
+        // or if this was a quick disconnect (React StrictMode)
+        if (this.hasEverConnected || wasQuickDisconnect) {
+          this.notifyHandlers({
+            type: 'connection',
+            data: { status: 'disconnected' },
+          });
+        }
 
         // Don't reconnect if intentionally closed
         if (this.isIntentionallyClosed) {
@@ -152,15 +185,43 @@ class WebSocketClient {
     }
   }
 
+  private handleConnectionFailure(reason: string) {
+    this.throttledLog(`[WebSocket] ${reason}`);
+    this.notifyHandlers({
+      type: 'connection',
+      data: { status: 'error' },
+    });
+
+    if (!this.isIntentionallyClosed) {
+      const { accessToken, isTokenExpired } = useAuthStore.getState();
+      if (accessToken && !isTokenExpired()) {
+        this.scheduleReconnect();
+      }
+    }
+  }
+
+  private throttledLog(message: string) {
+    const now = Date.now();
+    if (now - this.lastErrorLog > 30000) {
+      console.warn(message);
+      this.lastErrorLog = now;
+    }
+  }
+
   disconnect() {
     this.isIntentionallyClosed = true;
     this.stopHeartbeat();
-    
+
     if (this.connectTimeout) {
       clearTimeout(this.connectTimeout);
       this.connectTimeout = null;
     }
-    
+
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -171,10 +232,13 @@ class WebSocketClient {
       this.ws = null;
     }
     this.lastToken = null;
+    this.hasEverConnected = false;
+    this.reconnectAttempts = 0;
   }
 
   private scheduleReconnect(delay?: number) {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.throttledLog('[WebSocket] Max reconnection attempts reached. Giving up until next connect() call.');
       return;
     }
 
@@ -185,7 +249,7 @@ class WebSocketClient {
     }
 
     const reconnectDelay = delay ?? Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts), 8000);
-    
+
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectAttempts++;
       this.connect();
@@ -194,7 +258,7 @@ class WebSocketClient {
 
   private startHeartbeat() {
     this.stopHeartbeat();
-    
+
     this.heartbeatInterval = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ type: 'ping' }));
@@ -221,7 +285,7 @@ class WebSocketClient {
 
   subscribe(handler: EventHandler) {
     this.eventHandlers.add(handler);
-    
+
     return () => {
       this.eventHandlers.delete(handler);
     };

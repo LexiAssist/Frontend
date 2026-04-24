@@ -572,3 +572,118 @@ export default function ChatAssistantPage() {
             </div>
           </div>
         </section>
+      ) : (
+        /* Chat Interface */
+        <section className="flex flex-1 flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+            <AnimatePresence initial={false}>
+              {messages.map((message, index) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25, delay: index * 0.02 }}
+                  className={`flex gap-3 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  {message.role === 'assistant' && (
+                    <div className="w-7 h-7 rounded-lg bg-[var(--primary-500)] flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                  
+                  <div className={`max-w-[85%] sm:max-w-[75%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                    <div
+                      className={`px-4 py-3 leading-relaxed text-[15px] ${
+                        message.role === 'user'
+                          ? 'bg-slate-900 text-white rounded-2xl rounded-tr-md'
+                          : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-md shadow-sm'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      
+                      {message.sources && message.sources.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-2">Sources</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {message.sources.map((source, idx) => (
+                              <span key={idx} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200">
+                                {source}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <span className={`text-[11px] text-slate-400 px-1`}>
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  {message.role === 'user' && (
+                    <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0 mt-1">
+                      <User className="w-4 h-4 text-slate-600" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+
+              {isTyping && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3 justify-start"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-[var(--primary-500)] flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-md shadow-sm px-4 py-3">
+                    <div className="flex gap-1.5 items-center h-5">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '120ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '240ms' }} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input area */}
+          <div className="border-t border-slate-100 bg-white p-4 shrink-0">
+            <div className="max-w-3xl mx-auto">
+              <UploadedFilesList compact />
+              <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm focus-within:shadow-md focus-within:border-slate-300 transition-all">
+                <div className="flex items-end gap-2 px-3 py-3">
+                  <AttachmentButton variant="compact" />
+                  <textarea
+                    ref={chatInputRef}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Message StudyBuddy…"
+                    rows={1}
+                    className="flex-1 resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 max-h-[160px] min-h-[24px]"
+                  />
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!prompt.trim() || chatMutation.isPending}
+                    className="mb-0.5 p-2 rounded-lg bg-[var(--primary-500)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-600)] transition-colors"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2 text-center">
+                Press <kbd className="font-sans px-1 py-0.5 bg-slate-100 rounded text-slate-600 text-[10px]">Enter</kbd> to send, <kbd className="font-sans px-1 py-0.5 bg-slate-100 rounded text-slate-600 text-[10px]">Shift</kbd> + <kbd className="font-sans px-1 py-0.5 bg-slate-100 rounded text-slate-600 text-[10px]">Enter</kbd> for new line
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

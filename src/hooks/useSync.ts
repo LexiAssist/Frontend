@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { wsClient, type WebSocketEvent } from '@/services/websocket';
 import { toast } from 'react-hot-toast';
@@ -14,19 +14,36 @@ export function useSync(): SyncState {
   const { accessToken, isTokenExpired } = useAuthStore();
   const [isConnected, setIsConnected] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const wasConnectedRef = useRef(false);
+  const warnedRef = useRef(false);
 
   useEffect(() => {
     // Subscribe to connection events
     const unsubscribe = wsClient.subscribe((event: WebSocketEvent) => {
       switch (event.type) {
-        case 'connection':
-          setIsConnected(event.data.status === 'connected');
-          if (event.data.status === 'connected') {
+        case 'connection': {
+          const nowConnected = event.data.status === 'connected';
+          setIsConnected(nowConnected);
+
+          if (nowConnected) {
+            wasConnectedRef.current = true;
+            warnedRef.current = false;
             toast.success('Connected to real-time updates');
           } else if (event.data.status === 'disconnected') {
-            toast.error('Disconnected from real-time updates');
+            // Only show disconnect toast if we were actually connected before
+            if (wasConnectedRef.current) {
+              toast.error('Disconnected from real-time updates');
+              wasConnectedRef.current = false;
+            }
+          } else if (event.data.status === 'error') {
+            // Show a single warning if connection keeps failing and backend seems down
+            if (!warnedRef.current) {
+              toast.error('Real-time updates unavailable — backend may be offline');
+              warnedRef.current = true;
+            }
           }
           break;
+        }
 
         case 'sync':
         case 'update':
@@ -57,6 +74,7 @@ export function useSync(): SyncState {
     } else {
       wsClient.disconnect();
       setIsConnected(false);
+      wasConnectedRef.current = false;
     }
 
     return () => {
