@@ -8,7 +8,6 @@ export default function StudyBuddy() {
         alt="Study Buddy Illustration"
         fill
         className="object-contain"
-        unoptimized
       />
     </div>
   );

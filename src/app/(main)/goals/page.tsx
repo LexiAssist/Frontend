@@ -121,12 +121,12 @@ export default function GoalsPage() {
                 <div className="w-full bg-slate-100 rounded-full h-2 mb-4">
                   <div 
                     className="bg-[var(--primary-500)] h-2 rounded-full" 
-                    style={{ width: `${Math.min(100, Math.max(0, (goal.current_value / goal.target_value) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.max(0, ((goal.current_value ?? 0) / (goal.target_value ?? 1)) * 100))}%` }}
                   />
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  {renderGoalStatus(goal.status)}
+                  {renderGoalStatus(goal.status ?? '')}
                   {goal.status === 'in_progress' && (
                     <button 
                       onClick={() => completeGoal(goal.id)}

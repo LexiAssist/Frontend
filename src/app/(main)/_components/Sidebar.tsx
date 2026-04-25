@@ -57,7 +57,6 @@ function LexiAssistMark({ className = '' }: { className?: string }) {
         width={266}
         height={70}
         className="h-auto w-[140px] sm:w-[170px] object-contain mix-blend-screen"
-        unoptimized
         priority
       />
     </div>

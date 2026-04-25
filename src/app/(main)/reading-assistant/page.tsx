@@ -414,14 +414,14 @@ export default function ReadingAssistantPage() {
             </CardContent>
           </Card>
 
-          <motion.div 
+          <motion.button
             whileTap={{ scale: 0.99 }}
-            className="rounded-2xl border-2 border-dashed border-[#D4E8D7] bg-[#F0F7F1] transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6 gap-4 sm:gap-5 hover:border-[#3D6E4E] hover:bg-[#E8F3EA]"
+            className="rounded-2xl border-2 border-dashed border-[#D4E8D7] bg-[#F0F7F1] transition-all duration-200 cursor-pointer flex flex-col items-center justify-center py-12 sm:py-16 px-4 sm:px-6 gap-4 sm:gap-5 hover:border-[#3D6E4E] hover:bg-[#E8F3EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3D6E4E] focus-visible:ring-offset-2"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f); }}
             onClick={() => fileRef.current?.click()}
+            type="button"
           >
-            <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#3D6E4E] flex items-center justify-center text-white shadow-lg transition-transform duration-200 active:scale-95">
               <Upload className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
@@ -433,7 +433,8 @@ export default function ReadingAssistantPage() {
                 PDF, DOC, TXT, or Image files (max 25MB)
               </p>
             </div>
-          </motion.div>
+          </motion.button>
+          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
         </motion.div>
       )}
 

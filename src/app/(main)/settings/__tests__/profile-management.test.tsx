@@ -9,6 +9,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/services/api';
 import type { User } from '@/types';
+import { setupQueryTest } from '@/__tests__/test-utils';
 
 // Mock the API
 vi.mock('@/services/api', () => ({
@@ -17,7 +18,9 @@ vi.mock('@/services/api', () => ({
     changePassword: vi.fn(),
   },
   notificationApi: {
+    getPreferences: vi.fn(),
     updatePreferences: vi.fn(),
+    getReminders: vi.fn(),
   },
 }));
 
@@ -50,8 +53,18 @@ vi.mock('@/hooks/useMockMode', () => ({
 }));
 
 describe('Profile Management', () => {
+  let wrapper: any;
+  let cleanup: () => Promise<void>;
+
   beforeEach(() => {
+    const setup = setupQueryTest();
+    wrapper = setup.wrapper;
+    cleanup = setup.cleanup;
     vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await cleanup();
   });
 
   it('should update profile with partial data (Requirement 10.3)', async () => {
@@ -143,7 +156,9 @@ describe('Profile Management', () => {
     const success = await result.current.saveProfile(profileData);
 
     expect(success).toBe(false);
-    expect(result.current.profileState.error).toBe(errorMessage);
+    await waitFor(() => {
+      expect(result.current.profileState.error).toBe(errorMessage);
+    });
   });
 
   it('should change password successfully (Requirement 10.6)', async () => {
@@ -155,7 +170,9 @@ describe('Profile Management', () => {
 
     expect(success).toBe(true);
     expect(authApi.changePassword).toHaveBeenCalledWith('oldPassword123', 'newPassword456');
-    expect(result.current.passwordState.success).toBe(true);
+    await waitFor(() => {
+      expect(result.current.passwordState.success).toBe(true);
+    });
   });
 
   it('should handle change password errors', async () => {
@@ -167,6 +184,8 @@ describe('Profile Management', () => {
     const success = await result.current.changePassword('wrongPassword', 'newPassword456');
 
     expect(success).toBe(false);
-    expect(result.current.passwordState.error).toBe(errorMessage);
+    await waitFor(() => {
+      expect(result.current.passwordState.error).toBe(errorMessage);
+    });
   });
 });

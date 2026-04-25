@@ -10,7 +10,7 @@ export interface User {
   role: 'student' | 'instructor' | 'admin';
   school?: string;
   department?: string;
-  academic_level?: 'undergraduate' | 'postgraduate' | 'doctoral' | 'staff';
+  academic_level?: 'undergraduate' | 'postgraduate' | 'doctoral' | 'staff' | 'graduate';
   level?: string; // Alias for academic_level
   timezone?: string;
   email_verified?: boolean;

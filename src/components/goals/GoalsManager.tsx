@@ -51,7 +51,7 @@ function GoalCard({
   isCompleting: boolean;
 }) {
   const Icon = Target;
-  const progress = goal.target_score ? Math.min(100, ((goal.current_score || 0) / goal.target_score) * 100) : 0;
+  const progress = goal.target_value ? Math.min(100, ((goal.current_value || 0) / goal.target_value) * 100) : 0;
   const isCompleted = goal.is_completed || goal.status === "completed";
 
   return (
@@ -90,7 +90,7 @@ function GoalCard({
           <div className="mt-3">
             <div className="flex items-center justify-between text-sm mb-1">
               <span className="text-slate-600">
-                {goal.current_score || 0} / {goal.target_score || 0}
+                {goal.current_value || 0} / {goal.target_value || 0}
               </span>
               <span className="font-medium text-slate-900">{Math.round(progress)}%</span>
             </div>

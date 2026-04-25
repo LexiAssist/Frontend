@@ -3,11 +3,11 @@
  * Tests for Requirements 17.1-17.7
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAIChat, useConversation } from '@/hooks/useAI';
 import { aiApi } from '@/services/api';
+import { setupQueryTest } from '@/__tests__/test-utils';
 
 // Mock the API
 vi.mock('@/services/api', () => ({
@@ -37,21 +37,21 @@ vi.mock('sonner', () => ({
 }));
 
 describe('Chat Assistant Integration', () => {
-  let queryClient: QueryClient;
+  let queryClient: any;
+  let wrapper: any;
+  let cleanup: () => Promise<void>;
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
+    const setup = setupQueryTest();
+    queryClient = setup.queryClient;
+    wrapper = setup.wrapper;
+    cleanup = setup.cleanup;
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  afterEach(async () => {
+    await cleanup();
+  });
 
   describe('Requirement 17.1: Chat API function', () => {
     it('should send POST request to /api/v1/ai/chat with correct parameters', async () => {
@@ -162,7 +162,6 @@ describe('Chat Assistant Integration', () => {
         const testTokens = ['Hello', ' ', 'world', '!'];
         for (const token of testTokens) {
           onToken(token);
-          tokens.push(token);
         }
 
         // Simulate completion
@@ -190,7 +189,7 @@ describe('Chat Assistant Integration', () => {
         }
       );
 
-      expect(tokens).toEqual(['Hello', ' ', 'world', '!', 'Hello', ' ', 'world', '!']);
+      expect(tokens).toEqual(['Hello', ' ', 'world', '!']);
       expect(completeResponse).toMatchObject({
         response: 'Hello world!',
         conversation_id: 'conv-123',

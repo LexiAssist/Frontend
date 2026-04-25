@@ -100,8 +100,12 @@ const nextConfig: NextConfig = {
   
   // Allow images from any source (if needed)
   images: {
-    unoptimized: true,
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
   },
   
   // Disable strict mode in development for better debugging

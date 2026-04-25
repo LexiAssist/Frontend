@@ -73,6 +73,10 @@ interface UseSettingsReturn {
     password: FormState;
     delete: FormState;
   };
+
+  isMockModeEnabled: boolean;
+  toggleMockMode: () => void;
+  isMockLoading: boolean;
 }
 
 type FormKey = "profile" | "notifications" | "privacy" | "password" | "delete";
@@ -410,6 +414,9 @@ export function useSettings(): UseSettingsReturn {
     isLoadingNotifications,
     isLoadingReminders,
     formStates,
+    isMockModeEnabled: false,
+    toggleMockMode: () => {},
+    isMockLoading: false,
   };
 }
 

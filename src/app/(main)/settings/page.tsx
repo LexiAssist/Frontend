@@ -518,8 +518,9 @@ function SessionManagement() {
     if (session.device_name) return session.device_name;
     
     const browser = getBrowserInfo(session);
-    const deviceType = session.device_type || 
-      (session.user_agent.toLowerCase().includes('mobile') ? 'Mobile' : 'Desktop');
+    const deviceType = (session.device_type || 
+      (session.user_agent.toLowerCase().includes('mobile') ? 'Mobile' : 'Desktop'))
+      .replace(/\b\w/g, l => l.toUpperCase()); // Capitalize first letter
     
     return `${browser} on ${deviceType}`;
   };

@@ -537,7 +537,7 @@ interface LanguagesResponse {
   supported_languages: Record<string, string>;
 }
 
-interface StudyStats {
+export interface StudyStats {
   current_streak: number;
   total_study_days: number;
   total_study_minutes: number;
@@ -546,13 +546,13 @@ interface StudyStats {
   last_study_date: string;
 }
 
-interface StudyStreak {
+export interface StudyStreak {
   current_streak: number;
   longest_streak: number;
   last_study_date: string;
 }
 
-interface TopicMastery {
+export interface TopicMastery {
   topic: string;
   mastery_score: number;
   last_reviewed: string;
@@ -571,9 +571,10 @@ export interface LearningGoal {
   title: string;
   description?: string;
   target_date?: string;
-  target_score?: number;
-  current_score?: number;
-  is_completed: boolean;
+  target_value: number;
+  current_value: number;
+  goal_type?: 'study_time' | 'quiz_score' | 'streak' | 'course_completion';
+  is_completed?: boolean;
   completed_at?: string;
   status?: 'in_progress' | 'completed' | 'failed';
   course_id?: string;
@@ -586,6 +587,8 @@ export interface CreateGoalData {
   description?: string;
   target_date?: string;
   target_score?: number;
+  target_value?: number;
+  goal_type?: 'study_time' | 'quiz_score' | 'streak' | 'course_completion';
   course_id?: string;
 }
 

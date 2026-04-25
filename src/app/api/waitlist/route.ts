@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { sendWaitlistConfirmation } from '@/lib/mailer';
+
+export const dynamic = 'force-dynamic';
+
+// Lazy import db to avoid Prisma initialization during build
+async function getDb() {
+  const { db } = await import('@/lib/db');
+  return db;
+}
 
 // POST /api/waitlist - Add a new entry to the waitlist
 export async function POST(request: NextRequest) {
   try {
+    const db = await getDb();
     const body = await request.json();
     const { name, email } = body;
 
@@ -84,6 +92,7 @@ export async function POST(request: NextRequest) {
 // GET /api/waitlist - Get all waitlist entries (for admin purposes)
 export async function GET(request: NextRequest) {
   try {
+    const db = await getDb();
     // Optional: Add authentication check here for admin access
     // For now, we'll return a limited set of data
     
