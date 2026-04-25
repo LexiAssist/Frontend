@@ -4,6 +4,7 @@
  * Uses native fetch with automatic token refresh via TokenManager
  */
 
+import { env } from '@/env';
 import { useAuthStore } from '@/store/authStore';
 import { tokenManager } from './tokenManager';
 import { wsClient } from '@/services/websocket';
@@ -842,7 +843,7 @@ export const flashcardApi = {
 export const quizApi = {
   getAll: async (limit = 20, offset = 0): Promise<Quiz[]> => {
     const headers = await getAuthHeaders();
-    const response = await fetch(`/api/quiz?limit=${limit}&offset=${offset}`, {
+    const response = await fetch(`/api/v1/quiz?limit=${limit}&offset=${offset}`, {
       headers,
     });
     
@@ -860,7 +861,7 @@ export const quizApi = {
   
   create: async (data: CreateQuizData): Promise<Quiz> => {
     const headers = await getAuthHeaders();
-    const response = await fetch('/api/quiz', {
+    const response = await fetch('/api/v1/quiz', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1282,7 +1283,7 @@ export const materialApi = {
     console.log('[Upload] Sanitized filename:', sanitizedFilename);
     
     // Call ingestion service directly (not through gateway)
-    const response = await fetch('http://localhost:5002/process-from-storage', {
+    const response = await fetch(`${env.NEXT_PUBLIC_INGESTION_URL}/process-from-storage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
