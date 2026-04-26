@@ -4,22 +4,33 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
+import { APIError } from "@/lib/errorHandler";
 import { Icon } from "@/components/Icon";
 import Logo from "@/components/auth/Logo";
 import Image from "next/image";
 
-// Social Login Button Component - improved consistency
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
 function SocialLoginButton({
   provider,
-  label
+  label,
 }: {
   provider: "google" | "linkedin";
   label: string;
 }) {
-  const iconSrc = provider === "google"
-    ? "/images/google-icon-logo-svgrepo-com.svg"
-    : "/images/linkedin-svgrepo-com.svg";
+  const iconSrc =
+    provider === "google"
+      ? "/images/google-icon-logo-svgrepo-com.svg"
+      : "/images/linkedin-svgrepo-com.svg";
 
   return (
     <button
@@ -36,72 +47,67 @@ function SocialLoginButton({
         />
       </div>
       <span className="whitespace-nowrap hidden sm:inline">{label}</span>
-      <span className="whitespace-nowrap sm:hidden">{provider === 'google' ? 'Google' : 'LinkedIn'}</span>
+      <span className="whitespace-nowrap sm:hidden">
+        {provider === "google" ? "Google" : "LinkedIn"}
+      </span>
     </button>
   );
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect');
-  const errorParam = searchParams.get('error');
-  
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const redirectUrl = searchParams.get("redirect");
+  const errorParam = searchParams.get("error");
+
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [serverError, setServerError] = useState("");
 
   const { login } = useAuth(redirectUrl || undefined);
-  
-  // Show error message based on URL error param
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
   useEffect(() => {
-    if (errorParam === 'session_expired') {
-      setError('Your session has expired. Please log in again.');
-    } else if (errorParam === 'cleared') {
-      setError('Authentication was reset. Please log in again.');
+    if (errorParam === "session_expired") {
+      setServerError("Your session has expired. Please log in again.");
+    } else if (errorParam === "cleared") {
+      setServerError("Authentication was reset. Please log in again.");
     }
   }, [errorParam]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
+  const onSubmit = async (data: LoginFormData) => {
+    setServerError("");
     try {
-      await login({ email, password });
-    } catch (err: any) {
-      // Handle specific error cases (Requirements 3.4, 3.5)
-      const errorMessage = err?.message || err?.response?.data?.message || '';
-      
-      // Check for 401 - Invalid credentials (Requirement 3.4)
-      if (errorMessage.includes('401') || errorMessage.toLowerCase().includes('invalid') || errorMessage.toLowerCase().includes('incorrect')) {
-        setError("Invalid email or password. Please try again.");
+      await login(data);
+    } catch (err) {
+      if (err instanceof APIError) {
+        if (err.statusCode === 401) {
+          setServerError("Invalid email or password. Please try again.");
+        } else if (err.statusCode === 403) {
+          setServerError(
+            "Email verification required. Please check your email for the verification code."
+          );
+        } else {
+          setServerError(err.message || "Login failed. Please try again.");
+        }
+      } else {
+        setServerError("Login failed. Please try again.");
       }
-      // Check for 403 - Email not verified (Requirement 3.5)
-      else if (errorMessage.includes('403') || errorMessage.toLowerCase().includes('not verified') || errorMessage.toLowerCase().includes('verify')) {
-        setError("Email verification required. Please check your email for the verification code.");
-      }
-      // Generic error
-      else {
-        setError(errorMessage || "Login failed. Please try again.");
-      }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen w-full flex bg-white">
-      {/* Left Panel - Image Asset Space */}
+      {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#ECF3EE] relative overflow-hidden">
-        {/* Logo */}
         <div className="absolute top-8 left-8 z-10">
           <Logo />
         </div>
-
-        {/* Image Asset Container - Full coverage */}
         <div className="absolute inset-0">
           <Image
             src="/images/girl on a laptop.svg"
@@ -113,27 +119,22 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel - Form */}
+      {/* Right Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="w-full max-w-120 space-y-6 sm:space-y-8">
-          {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center">
             <Logo />
           </div>
 
-          {/* Header */}
           <div className="space-y-2 text-center lg:text-left">
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-[#272A28]">
               Welcome Back
             </h1>
-            <p className="text-[#555C56]">
-              Log into your account
-            </p>
+            <p className="text-[#555C56]">Log into your account</p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Input */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* Email */}
             <div className="space-y-2">
               <label
                 htmlFor="email"
@@ -144,15 +145,18 @@ export default function LoginPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
                 placeholder="Enter your email"
                 className="w-full h-12 px-4 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
-                required
               />
+              {errors.email && (
+                <p className="text-sm text-red-600 mt-1">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
-            {/* Password Input */}
+            {/* Password */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label
@@ -172,11 +176,9 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register("password")}
                   placeholder="Enter your password"
                   className="w-full h-12 px-4 pr-12 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
-                  required
                 />
                 <button
                   type="button"
@@ -184,25 +186,34 @@ export default function LoginPage() {
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-[#667185] hover:text-[#101928] transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <Icon name="eye-off" size={18} /> : <Icon name="eye" size={18} />}
+                  {showPassword ? (
+                    <Icon name="eye-off" size={18} />
+                  ) : (
+                    <Icon name="eye" size={18} />
+                  )}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-sm text-red-600 mt-1">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
-            {/* Error Message */}
-            {error && (
+            {/* Server Error */}
+            {serverError && (
               <div className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
-                {error}
+                {serverError}
               </div>
             )}
 
-            {/* Login Button */}
+            {/* Submit */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="w-full h-12 bg-[#377749] hover:bg-[#2d6340] active:bg-[#265538] text-white font-semibold rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm hover:shadow-md active:scale-[0.98]"
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 "Login"
@@ -220,7 +231,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Social Login Buttons */}
+          {/* Social */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <SocialLoginButton provider="google" label="Google" />
             <SocialLoginButton provider="linkedin" label="LinkedIn" />
