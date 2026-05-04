@@ -17,7 +17,10 @@ const nextConfig: NextConfig = {
   
   // Proxy all API calls to the Go backend
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const apiUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+    if (!apiUrl) {
+      throw new Error('NEXT_PUBLIC_API_GATEWAY_URL is required but not set');
+    }
     return [
       // API routes are handled by Next.js App Router (defined in src/app/api/)
       // Only proxy unmatched paths to gateway
@@ -93,19 +96,53 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(self), geolocation=()',
           },
+          ...(!isDevelopment ? [{
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          }] : []),
         ],
       },
     ];
   },
   
-  // Allow images from any source (if needed)
+  // Image optimization remote patterns — built dynamically from env vars at build time
   images: {
-    remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
-    ],
+    remotePatterns: (() => {
+      const patterns: { protocol: 'http' | 'https'; hostname: string; port?: string; pathname?: string }[] = [];
+
+      // Derive pattern from API gateway URL (for API-served avatars/assets)
+      const apiUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+      if (apiUrl) {
+        try {
+          const url = new URL(apiUrl);
+          patterns.push({
+            protocol: url.protocol.replace(':', '') as 'http' | 'https',
+            hostname: url.hostname,
+            ...(url.port ? { port: url.port } : {}),
+          });
+        } catch {
+          /* ignore invalid URL */
+        }
+      }
+
+      // Optional external CDN for user uploads (S3, CloudFront, etc.)
+      const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL;
+      if (cdnUrl) {
+        try {
+          const url = new URL(cdnUrl);
+          patterns.push({
+            protocol: url.protocol.replace(':', '') as 'http' | 'https',
+            hostname: url.hostname,
+            ...(url.port ? { port: url.port } : {}),
+            ...(url.pathname && url.pathname !== '/' ? { pathname: `${url.pathname}/**` } : {}),
+          });
+        } catch {
+          /* ignore invalid URL */
+        }
+      }
+
+      return patterns;
+    })(),
   },
   
   // Disable strict mode in development for better debugging

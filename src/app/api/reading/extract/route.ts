@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const backendFormData = new FormData();
     backendFormData.append('file', file);
 
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
 
     console.log('[Reading Extract API] Sending request to:', `${backendUrl}/api/v1/reading/extract`);
     console.log('[Reading Extract API] File:', file.name, file.type, file.size);

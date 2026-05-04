@@ -21,7 +21,7 @@ const envSchema = z.object({
   }),
   NEXT_PUBLIC_USE_MOCK_API: z.enum(['true', 'false']).default('false'),
   NEXT_PUBLIC_MOCK_MODE: z.enum(['true', 'false']).optional(),
-  NEXT_PUBLIC_INGESTION_URL: z.string().url().default('http://localhost:5002'),
+  NEXT_PUBLIC_INGESTION_URL: z.string().url(),
 
   // Server-side only variables
   DATABASE_URL: z.string().optional(),

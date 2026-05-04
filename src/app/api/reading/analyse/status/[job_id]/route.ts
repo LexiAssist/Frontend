@@ -22,7 +22,7 @@ export async function GET(
   }
   
   try {
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
     
     const headers: HeadersInit = {};
     if (authHeader) {

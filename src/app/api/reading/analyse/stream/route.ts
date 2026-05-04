@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     backendFormData.append('summary_type', summaryType);
     backendFormData.append('voice', voice);
     
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
     
     console.log('[Reading Stream API] Starting SSE stream to:', `${backendUrl}/api/v1/reading/analyse/stream`);
     console.log('[Reading Stream API] User ID:', userId);

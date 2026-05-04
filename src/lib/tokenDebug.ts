@@ -69,7 +69,12 @@ export async function refreshToken() {
   }
   
   try {
-    const response = await fetch('http://localhost:8080/api/v1/auth/refresh', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+    if (!apiUrl) {
+      console.error('❌ NEXT_PUBLIC_API_GATEWAY_URL not configured');
+      return false;
+    }
+    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),

@@ -270,14 +270,14 @@ class APIClient {
  * Main API client instance for backend services
  */
 export const apiClient = new APIClient(
-  env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080'
+  env.NEXT_PUBLIC_API_GATEWAY_URL
 );
 
 /**
  * AI-specific API client with extended timeout
  */
 export const aiClient = new APIClient(
-  env.NEXT_PUBLIC_AI_PROXY_URL || 'http://localhost:8000'
+  env.NEXT_PUBLIC_AI_PROXY_URL
 );
 
 /**

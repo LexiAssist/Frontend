@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     backendFormData.append('speaker_label', speakerLabel);
     backendFormData.append('temperature', temperature);
     
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
     
     console.log('[Reading API] Sending request to:', `${backendUrl}/api/v1/reading/analyse`);
     console.log('[Reading API] User ID:', userId);
