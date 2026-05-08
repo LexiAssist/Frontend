@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TokenRefreshProvider } from "@/components/providers/TokenRefreshProvider";
 import { ToastContainer } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -43,6 +44,7 @@ export default function RootLayout({
             </QueryProvider>
           </TokenRefreshProvider>
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
