@@ -22,7 +22,7 @@ export async function GET(
   }
   
   try {
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
     
     const headers: HeadersInit = {};
     if (authHeader) {
@@ -51,10 +51,11 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading Status API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }

@@ -8,7 +8,6 @@ export default function WritingAssistant() {
         alt="Writing Assistant Illustration"
         fill
         className="object-contain"
-        unoptimized
       />
     </div>
   );

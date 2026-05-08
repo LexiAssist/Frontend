@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   User,
   Bell,
@@ -288,24 +288,18 @@ function NotificationSettings() {
     isLoadingNotifications 
   } = useSettings();
   
-  const [settings, setSettings] = useState({
-    emailNotifications: true,
-    pushNotifications: false,
-    weeklyDigest: true,
-    marketingEmails: false,
-  });
+  const [localOverrides, setLocalOverrides] = useState<Partial<typeof notificationSettings>>({});
 
-  // Load settings from API when available
-  useEffect(() => {
-    if (notificationSettings) {
-      setSettings({
-        emailNotifications: notificationSettings.emailNotifications ?? true,
-        pushNotifications: notificationSettings.pushNotifications ?? false,
-        weeklyDigest: notificationSettings.weeklyDigest ?? true,
-        marketingEmails: notificationSettings.marketingEmails ?? false,
-      });
-    }
-  }, [notificationSettings]);
+  // Derive effective settings from API data with local overrides
+  const settings = useMemo(() => {
+    const base = notificationSettings ?? {
+      emailNotifications: true,
+      pushNotifications: false,
+      weeklyDigest: true,
+      marketingEmails: false,
+    };
+    return { ...base, ...localOverrides };
+  }, [notificationSettings, localOverrides]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,7 +310,7 @@ function NotificationSettings() {
   };
 
   const handleToggle = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+    setLocalOverrides((prev) => ({ ...prev, [key]: !settings[key] }));
   };
 
   if (isLoadingNotifications) {
@@ -518,8 +512,9 @@ function SessionManagement() {
     if (session.device_name) return session.device_name;
     
     const browser = getBrowserInfo(session);
-    const deviceType = session.device_type || 
-      (session.user_agent.toLowerCase().includes('mobile') ? 'Mobile' : 'Desktop');
+    const deviceType = (session.device_type || 
+      (session.user_agent.toLowerCase().includes('mobile') ? 'Mobile' : 'Desktop'))
+      .replace(/\b\w/g, l => l.toUpperCase()); // Capitalize first letter
     
     return `${browser} on ${deviceType}`;
   };

@@ -7,6 +7,7 @@
 
 import { env } from '@/env';
 import { useAuthStore } from '@/store/authStore';
+import { tokenManager } from '@/services/tokenManager';
 import { APIError, getUserFriendlyMessage } from '@/lib/errorHandler';
 
 // Types for API responses
@@ -42,64 +43,9 @@ class APIClient {
   private baseURL: string;
   private defaultTimeout: number = 30000; // 30 seconds
   private aiTimeout: number = 300000; // 5 minutes
-  private isRefreshing: boolean = false;
-  private refreshSubscribers: Array<(token: string | null) => void> = [];
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-  }
-
-  /**
-   * Subscribe to token refresh completion
-   */
-  private subscribeTokenRefresh(callback: (token: string | null) => void): void {
-    this.refreshSubscribers.push(callback);
-  }
-
-  /**
-   * Notify all subscribers when token refresh completes
-   */
-  private onTokenRefreshed(token: string | null): void {
-    this.refreshSubscribers.forEach(cb => cb(token));
-    this.refreshSubscribers = [];
-  }
-
-  /**
-   * Check if token is expired or expiring soon (within 5 minutes)
-   */
-  private isTokenExpired(): boolean {
-    const { tokenExpiresAt } = useAuthStore.getState();
-    if (!tokenExpiresAt) return true;
-    
-    const expiresAt = new Date(tokenExpiresAt);
-    const now = new Date();
-    const fiveMinutes = 5 * 60 * 1000;
-    
-    return expiresAt.getTime() - now.getTime() < fiveMinutes;
-  }
-
-  /**
-   * Refresh access token using refresh token
-   */
-  private async refreshToken(): Promise<boolean> {
-    const { refreshToken, refreshAccessToken } = useAuthStore.getState();
-    
-    if (!refreshToken) return false;
-    
-    try {
-      return await refreshAccessToken();
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      
-      // Redirect to login page with intended destination URL (Requirement 4.6)
-      if (typeof window !== 'undefined') {
-        const currentPath = window.location.pathname + window.location.search;
-        const loginUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
-        window.location.href = loginUrl;
-      }
-      
-      return false;
-    }
   }
 
   /**
@@ -118,56 +64,33 @@ class APIClient {
     const maxRetries = options.retries !== undefined ? options.retries : 3;
     const retryDelay = options.retryDelay || 1000;
 
-    // Skip token refresh for auth endpoints
-    const isAuthEndpoint = endpoint.includes('/auth/login') || 
-                          endpoint.includes('/auth/register') || 
-                          endpoint.includes('/auth/refresh');
+    const isAuthEndpoint = endpoint.includes('/auth/login') ||
+                           endpoint.includes('/auth/register') ||
+                           endpoint.includes('/auth/refresh');
 
-    // Handle token refresh if needed
+    // Single source of truth for token — delegates to tokenManager
+    let accessToken: string | null = null;
     if (!isAuthEndpoint) {
-      const { accessToken } = useAuthStore.getState();
-      
-      if (accessToken && this.isTokenExpired()) {
-        if (!this.isRefreshing) {
-          this.isRefreshing = true;
-          const refreshed = await this.refreshToken();
-          this.isRefreshing = false;
-          
-          if (refreshed) {
-            const { accessToken: newToken } = useAuthStore.getState();
-            this.onTokenRefreshed(newToken);
-          } else {
-            this.onTokenRefreshed(null);
-            throw new Error('Session expired. Please log in again.');
-          }
-        } else {
-          // Wait for ongoing refresh
-          await new Promise<void>((resolve, reject) => {
-            this.subscribeTokenRefresh((token) => {
-              if (token) {
-                resolve();
-              } else {
-                reject(new Error('Session expired. Please log in again.'));
-              }
-            });
-          });
+      accessToken = await tokenManager.getValidToken();
+      if (!accessToken) {
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname + window.location.search;
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
         }
+        throw new APIError('Session expired. Please log in again.', 401, 'SESSION_EXPIRED');
       }
     }
 
-    // Add auth header
-    const { accessToken } = useAuthStore.getState();
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string>),
     };
-    
-    if (accessToken && !isAuthEndpoint) {
+
+    if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Retry logic with exponential backoff
     let lastError: Error | null = null;
-    
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const controller = new AbortController();
@@ -181,41 +104,28 @@ class APIClient {
 
         clearTimeout(timeoutId);
 
-        // Handle 401 - try token refresh once
+        // Handle 401 — delegate refresh to tokenManager, retry once
         if (response.status === 401 && !isAuthEndpoint && attempt === 0) {
-          const refreshed = await this.refreshToken();
+          const refreshed = await tokenManager.handleUnauthorized();
           if (refreshed) {
-            // Retry with new token
-            const { accessToken: newToken } = useAuthStore.getState();
+            const newToken = useAuthStore.getState().accessToken;
             headers['Authorization'] = `Bearer ${newToken}`;
             continue;
           } else {
-            throw new Error('Session expired. Please log in again.');
+            throw new APIError('Session expired. Please log in again.', 401, 'SESSION_EXPIRED');
           }
         }
 
-        // Handle other errors
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          
-          // Extract retry-after header for rate limiting (Requirement 21.5)
           const retryAfter = response.headers.get('retry-after');
           const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : undefined;
-          
-          const errorMessage = errorData.message || 
-                              errorData.error || 
-                              getUserFriendlyMessage(response.status, retryAfterSeconds);
-          
-          throw new APIError(
-            errorMessage,
-            response.status,
-            errorData.code,
-            errorData.errors,
-            retryAfterSeconds
-          );
+          const errorMessage = errorData.message || errorData.error ||
+                               getUserFriendlyMessage(response.status, retryAfterSeconds);
+
+          throw new APIError(errorMessage, response.status, errorData.code, errorData.errors, retryAfterSeconds);
         }
 
-        // Parse response
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           return await response.json();
@@ -224,26 +134,18 @@ class APIClient {
         }
       } catch (error) {
         lastError = error as Error;
-        
-        // Handle abort (timeout)
+
         if (error instanceof Error && error.name === 'AbortError') {
           lastError = new APIError('Request timed out. Please try again.', 0, 'TIMEOUT_ERROR');
         }
-        
-        // Don't retry on client errors (4xx) except 401
+
         if (error instanceof APIError && error.statusCode && error.statusCode >= 400 && error.statusCode < 500 && error.statusCode !== 401) {
           throw error;
         }
-        
-        // Don't retry on last attempt
-        if (attempt === maxRetries) {
-          throw error;
-        }
-        
-        // Exponential backoff
-        await new Promise(resolve => 
-          setTimeout(resolve, retryDelay * Math.pow(2, attempt))
-        );
+
+        if (attempt === maxRetries) throw error;
+
+        await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
       }
     }
 
@@ -368,14 +270,14 @@ class APIClient {
  * Main API client instance for backend services
  */
 export const apiClient = new APIClient(
-  env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080'
+  env.NEXT_PUBLIC_API_GATEWAY_URL
 );
 
 /**
  * AI-specific API client with extended timeout
  */
 export const aiClient = new APIClient(
-  env.NEXT_PUBLIC_AI_PROXY_URL || 'http://localhost:8000'
+  env.NEXT_PUBLIC_AI_PROXY_URL
 );
 
 /**

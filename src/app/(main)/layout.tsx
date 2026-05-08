@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Sidebar from './_components/Sidebar';
 import { SyncProvider } from '@/components/SyncProvider';
@@ -11,26 +11,22 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     // Requirement 6.3: Check authentication state
     // Requirement 6.5: Check token validity
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        // Requirement 6.2: Redirect to login with original URL as query parameter
-        const redirectUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-        router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
-      } else {
-        // User is authenticated, allow access
-        setIsChecking(false);
-      }
+    if (!isLoading && !isAuthenticated && !hasRedirected.current) {
+      // Requirement 6.2: Redirect to login with original URL as query parameter
+      hasRedirected.current = true;
+      const redirectUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+      router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
     }
   }, [isAuthenticated, isLoading, router, pathname, searchParams]);
 
   // Show loading state while checking authentication
   // This satisfies the requirement to show loading state while checking auth
-  if (isLoading || isChecking) {
+  if (isLoading || (!isAuthenticated && !hasRedirected.current)) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">

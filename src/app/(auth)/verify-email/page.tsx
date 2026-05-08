@@ -21,32 +21,31 @@ export default function VerifyEmailPage() {
   const verifyMutation = useVerifyEmail();
   const resendMutation = useResendVerification(userId || '');
 
-  // Countdown timer for resend
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
-    }
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setCanResend(true);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Handle input change
   const handleChange = (index: number, value: string) => {
-    // Only allow numbers
     if (!/^\d*$/.test(value)) return;
     
     const newCode = [...code];
-    newCode[index] = value.slice(-1); // Only take last character
+    newCode[index] = value.slice(-1);
     setCode(newCode);
     setError("");
 
-    // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when all digits entered
     if (index === 5 && value) {
       const fullCode = [...newCode.slice(0, 5), value.slice(-1)].join("");
       if (fullCode.length === 6) {
@@ -55,14 +54,12 @@ export default function VerifyEmailPage() {
     }
   };
 
-  // Handle key down for backspace navigation
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  // Handle paste
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").slice(0, 6).replace(/\D/g, "");
@@ -82,7 +79,7 @@ export default function VerifyEmailPage() {
 
     try {
       await verifyMutation.mutateAsync({ userId, code: fullCode });
-    } catch (err) {
+    } catch {
       setError("Invalid verification code. Please try again.");
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -94,15 +91,12 @@ export default function VerifyEmailPage() {
     
     try {
       await resendMutation.mutateAsync();
-      // Clear the input fields for new OTP
       setCode(["", "", "", "", "", ""]);
       setError("");
-      // Reset countdown
       setCountdown(60);
       setCanResend(false);
-      // Focus first input
       inputRefs.current[0]?.focus();
-    } catch (err) {
+    } catch {
       setError("Failed to resend code. Please try again.");
     }
   };
@@ -117,7 +111,6 @@ export default function VerifyEmailPage() {
     handleVerify(fullCode);
   };
 
-  // Redirect if no userId
   useEffect(() => {
     if (!userId) {
       router.push("/register");
@@ -130,14 +123,11 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="min-h-screen w-full flex bg-white">
-      {/* Left Panel - Image Asset Space */}
+      {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#ECF3EE] relative overflow-hidden">
-        {/* Logo */}
         <div className="absolute top-8 left-8 z-10">
           <Logo />
         </div>
-
-        {/* Image Asset Container - Full coverage */}
         <div className="absolute inset-0">
           <Image
             src="/images/girl on a laptop.svg"
@@ -149,10 +139,9 @@ export default function VerifyEmailPage() {
         </div>
       </div>
 
-      {/* Right Panel - Form */}
+      {/* Right Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
-          {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center">
             <Logo />
           </div>
@@ -161,18 +150,8 @@ export default function VerifyEmailPage() {
           <div className="space-y-2 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start gap-2 mb-4">
               <div className="w-12 h-12 bg-[#377749]/10 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-[#377749]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
+                <svg className="w-6 h-6 text-[#377749]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
             </div>
@@ -186,7 +165,6 @@ export default function VerifyEmailPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Code Input */}
             <div className="space-y-4">
               <label className="block text-sm font-medium text-[#101928] text-center lg:text-left">
                 Verification Code
@@ -210,14 +188,12 @@ export default function VerifyEmailPage() {
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
 
-            {/* Verify Button */}
             <button
               type="submit"
               disabled={verifyMutation.isPending || code.join("").length !== 6}
@@ -231,11 +207,9 @@ export default function VerifyEmailPage() {
             </button>
           </form>
 
-          {/* Resend Code */}
+          {/* Resend */}
           <div className="text-center space-y-2">
-            <p className="text-sm text-[#555C56]">
-              Didn&apos;t receive the code?
-            </p>
+            <p className="text-sm text-[#555C56]">Didn&apos;t receive the code?</p>
             <button
               onClick={handleResend}
               disabled={!canResend || resendMutation.isPending}
@@ -252,10 +226,7 @@ export default function VerifyEmailPage() {
           {/* Back to Register */}
           <div className="flex items-center justify-center gap-2 text-sm pt-4 border-t border-[#E5E7EB]">
             <span className="text-[#555C56]">Wrong email?</span>
-            <Link
-              href="/register"
-              className="font-semibold text-[#3C8350] hover:text-[#377749] transition-colors"
-            >
+            <Link href="/register" className="font-semibold text-[#3C8350] hover:text-[#377749] transition-colors">
               Register again
             </Link>
           </div>

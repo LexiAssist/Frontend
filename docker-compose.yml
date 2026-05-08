@@ -33,35 +33,35 @@ services:
   # Backend Service (Go) - UNCOMMENT WHEN READY
   # ==========================================
   # lexiassist-backend:
-  #   build:
-  #     context: ../your-go-backend  # Path to your Go backend
-  #     dockerfile: Dockerfile
-  #   container_name: lexiassist-backend
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - PORT=8080
-  #     - DATABASE_URL=postgresql://user:pass@db:5432/lexiassist
-  #   networks:
-  #     - lexiassist-network
-  #   restart: unless-stopped
+    build:
+      context: ../your-go-backend  # Path to your Go backend
+      dockerfile: Dockerfile
+    container_name: lexiassist-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgresql://user:pass@db:5432/lexiassist
+    networks:
+      - lexiassist-network
+    restart: unless-stopped
 
-  # ==========================================
-  # Database (PostgreSQL) - OPTIONAL
-  # ==========================================
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: lexiassist-db
-  #   environment:
-  #     - POSTGRES_USER=lexiuser
-  #     - POSTGRES_PASSWORD=yourpassword
-  #     - POSTGRES_DB=lexiassist
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   networks:
-  #     - lexiassist-network
+  ==========================================
+  Database (PostgreSQL) - OPTIONAL
+  ==========================================
+  db:
+    image: postgres:15-alpine
+    container_name: lexiassist-db
+    environment:
+      - POSTGRES_USER=lexiuser
+      - POSTGRES_PASSWORD=yourpassword
+      - POSTGRES_DB=lexiassist
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - lexiassist-network
 
 networks:
   lexiassist-network:

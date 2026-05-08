@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
 import { FeatureHeader } from '@/components/FeatureHeader';
 import { audioApi, readingApi } from '@/services/api';
@@ -600,9 +601,11 @@ export default function TextToSpeechPage() {
             <HexPattern />
             <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-12 px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
               <div className="relative h-[120px] w-[160px] shrink-0 p-4">
-                <img
+                <Image
                   src="/images/reading assitant svg (lady and envelope).svg"
                   alt="Text to Speech Illustration"
+                  width={225}
+                  height={168}
                   className="w-full h-full object-contain"
                 />
               </div>

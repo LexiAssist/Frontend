@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const backendFormData = new FormData();
     backendFormData.append('file', file);
 
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
 
     console.log('[Reading Extract API] Sending request to:', `${backendUrl}/api/v1/reading/extract`);
     console.log('[Reading Extract API] File:', file.name, file.type, file.size);
@@ -59,11 +59,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading Extract API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }
 }
+

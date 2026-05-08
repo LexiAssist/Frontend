@@ -3,9 +3,8 @@
  * Tests for Requirements 19.1-19.7
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
   useStudyStats, 
   useStudyStreak, 
@@ -16,6 +15,7 @@ import {
 } from '@/hooks/useAnalytics';
 import { analyticsApi } from '@/services/api';
 import type { StudyStats, StudyStreak, TopicMastery, LearningGoal, CreateGoalData } from '@/services/api';
+import { setupQueryTest } from '@/__tests__/test-utils';
 
 // Mock the API
 vi.mock('@/services/api', () => ({
@@ -48,21 +48,21 @@ vi.mock('sonner', () => ({
 }));
 
 describe('Analytics and Goals Integration', () => {
-  let queryClient: QueryClient;
+  let queryClient: any;
+  let wrapper: any;
+  let cleanup: () => Promise<void>;
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
+    const setup = setupQueryTest();
+    queryClient = setup.queryClient;
+    wrapper = setup.wrapper;
+    cleanup = setup.cleanup;
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  afterEach(async () => {
+    await cleanup();
+  });
 
   describe('Requirement 19.1: Fetch study statistics', () => {
     it('should send GET request to /api/v1/analytics/study-stats', async () => {
@@ -227,6 +227,7 @@ describe('Analytics and Goals Integration', () => {
         user_id: 'user-123',
         ...goalData,
         current_value: 0,
+        target_value: 60,
         status: 'in_progress',
         created_at: '2024-01-15',
         updated_at: '2024-01-15',
@@ -239,7 +240,7 @@ describe('Analytics and Goals Integration', () => {
       result.current.mutate(goalData);
 
       await waitFor(() => {
-        expect(analyticsApi.createGoal).toHaveBeenCalledWith(goalData);
+        expect(analyticsApi.createGoal).toHaveBeenCalledWith(goalData, expect.any(Object));
       });
     });
 
@@ -287,7 +288,7 @@ describe('Analytics and Goals Integration', () => {
       result.current.mutate(goalId);
 
       await waitFor(() => {
-        expect(analyticsApi.completeGoal).toHaveBeenCalledWith(goalId);
+        expect(analyticsApi.completeGoal).toHaveBeenCalledWith(goalId, expect.any(Object));
       });
     });
   });

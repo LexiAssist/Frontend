@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     backendFormData.append('speaker_label', speakerLabel);
     backendFormData.append('temperature', temperature);
     
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
     
     console.log('[Reading API] Sending request to:', `${backendUrl}/api/v1/reading/analyse`);
     console.log('[Reading API] User ID:', userId);
@@ -93,11 +93,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }
 }
+

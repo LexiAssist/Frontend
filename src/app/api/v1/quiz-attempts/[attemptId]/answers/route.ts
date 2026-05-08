@@ -33,10 +33,11 @@ export async function POST(
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Submit answer error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to submit answer';
     return NextResponse.json(
-      { message: error.message || 'Failed to submit answer', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }

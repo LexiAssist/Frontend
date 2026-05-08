@@ -21,10 +21,11 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Get goals error:', error);
+  } catch (error) {
+    console.error('Failed to fetch goals', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch goals';
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch goals', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
@@ -54,11 +55,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Create goal error:', error);
+  } catch (error) {
+    console.error('Failed to create goal', error);
+    const message = error instanceof Error ? error.message : 'Failed to create goal';
     return NextResponse.json(
-      { message: error.message || 'Failed to create goal', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

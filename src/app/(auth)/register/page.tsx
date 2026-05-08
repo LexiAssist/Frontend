@@ -2,22 +2,35 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
+import { APIError } from "@/lib/errorHandler";
 import { Icon } from "@/components/Icon";
 import Logo from "@/components/auth/Logo";
 import Image from "next/image";
 
-// Social Login Button Component - improved consistency
-function SocialLoginButton({ 
-  provider, 
-  label 
-}: { 
-  provider: "google" | "linkedin"; 
+const registerSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters long"),
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
+
+function SocialLoginButton({
+  provider,
+  label,
+}: {
+  provider: "google" | "linkedin";
   label: string;
 }) {
-  const iconSrc = provider === "google" 
-    ? "/images/google-icon-logo-svgrepo-com.svg" 
-    : "/images/linkedin-svgrepo-com.svg";
+  const iconSrc =
+    provider === "google"
+      ? "/images/google-icon-logo-svgrepo-com.svg"
+      : "/images/linkedin-svgrepo-com.svg";
 
   return (
     <button
@@ -25,107 +38,65 @@ function SocialLoginButton({
       className="flex items-center justify-center gap-3 h-12 px-4 sm:px-6 bg-white border border-[#D0D5DD] rounded-full hover:bg-gray-50 hover:border-[#377749]/30 hover:shadow-sm active:scale-[0.98] transition-all duration-200 text-sm font-medium text-[#374151]"
     >
       <div className="relative w-5 h-5 shrink-0">
-        <Image 
-          src={iconSrc} 
-          alt={`${label} icon`} 
+        <Image
+          src={iconSrc}
+          alt={`${label} icon`}
           width={20}
           height={20}
           className="object-contain"
         />
       </div>
       <span className="whitespace-nowrap hidden sm:inline">{label}</span>
-      <span className="whitespace-nowrap sm:hidden">{provider === 'google' ? 'Google' : 'LinkedIn'}</span>
+      <span className="whitespace-nowrap sm:hidden">
+        {provider === "google" ? "Google" : "LinkedIn"}
+      </span>
     </button>
   );
 }
 
 export default function RegisterPage() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  
-  const { register } = useAuth();
+  const [serverError, setServerError] = useState("");
 
-  // Client-side validation (Requirement 7.6)
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const { register: registerUser } = useAuth();
 
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 8;
-  };
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setFieldErrors({});
-    
-    // Client-side validation (Requirement 7.6)
-    const errors: Record<string, string> = {};
-    
-    if (!validateEmail(email)) {
-      errors.email = "Please enter a valid email address";
-    }
-    
-    if (!validatePassword(password)) {
-      errors.password = "Password must be at least 8 characters long";
-    }
-    
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-    
-    setIsLoading(true);
+  const passwordValue = watch("password", "");
 
+  const onSubmit = async (data: RegisterFormData) => {
+    setServerError("");
     try {
-      await register({ first_name: firstName, last_name: lastName, email, password });
-    } catch (err: any) {
-      // Handle specific error codes (Requirements 7.4, 7.5)
-      const errorMessage = err?.message || "";
-      
-      // HTTP 409 - Email already exists (Requirement 7.4)
-      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("already exists")) {
-        setError("An account with this email already exists");
-      }
-      // HTTP 400 - Validation errors (Requirement 7.5)
-      else if (errorMessage.includes("400") || errorMessage.toLowerCase().includes("validation")) {
-        // Try to parse field-specific errors if available
-        try {
-          const parsedError = JSON.parse(errorMessage);
-          if (parsedError.errors) {
-            setFieldErrors(parsedError.errors);
-          } else {
-            setError(errorMessage);
-          }
-        } catch {
-          setError(errorMessage);
+      await registerUser(data);
+    } catch (err) {
+      if (err instanceof APIError) {
+        if (err.statusCode === 409) {
+          setServerError("An account with this email already exists.");
+        } else if (err.statusCode === 400) {
+          setServerError(err.message || "Please check your details and try again.");
+        } else {
+          setServerError(err.message || "Registration failed. Please try again.");
         }
+      } else {
+        setServerError("Registration failed. Please try again.");
       }
-      else {
-        setError(errorMessage || "Registration failed. Please try again.");
-      }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen w-full flex bg-white">
-      {/* Left Panel - Image Asset Space */}
+      {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#ECF3EE] relative items-center justify-center p-8">
-        {/* Logo */}
         <div className="absolute top-8 left-8 z-10">
           <Logo />
         </div>
-        
-        {/* Image Asset Container */}
         <div className="absolute inset-0">
           <Image
             src="/images/Girl out the window.svg"
@@ -137,68 +108,65 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right Panel - Form */}
+      {/* Right Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="w-full max-w-120 space-y-6 sm:space-y-8">
-          {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center">
             <Logo />
           </div>
 
-          {/* Header */}
           <div className="space-y-2 text-center lg:text-left">
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-[#272A28]">
               Welcome to LexiAssist!
             </h1>
-            <p className="text-[#555C56]">
-              Register your account
-            </p>
+            <p className="text-[#555C56]">Register your account</p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* First Name Input */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* First Name */}
             <div className="space-y-2">
-              <label 
-                htmlFor="firstName" 
+              <label
+                htmlFor="first_name"
                 className="block text-sm font-medium text-[#101928]"
               >
                 First Name
               </label>
               <input
-                id="firstName"
+                id="first_name"
                 type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                {...register("first_name")}
                 placeholder="Enter your first name"
                 className="w-full h-12 px-4 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
-                required
               />
+              {errors.first_name && (
+                <p className="text-sm text-red-600 mt-1">{errors.first_name.message}</p>
+              )}
             </div>
 
-            {/* Last Name Input */}
+            {/* Last Name */}
             <div className="space-y-2">
-              <label 
-                htmlFor="lastName" 
+              <label
+                htmlFor="last_name"
                 className="block text-sm font-medium text-[#101928]"
               >
                 Last Name
               </label>
               <input
-                id="lastName"
+                id="last_name"
                 type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                {...register("last_name")}
                 placeholder="Enter your last name"
                 className="w-full h-12 px-4 rounded-full border border-[#D0D5DD] bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 focus:ring-[#377749]/20 focus:border-[#377749] transition-all duration-200 md:text-sm"
-                required
               />
+              {errors.last_name && (
+                <p className="text-sm text-red-600 mt-1">{errors.last_name.message}</p>
+              )}
             </div>
 
-            {/* Email Input */}
+            {/* Email */}
             <div className="space-y-2">
-              <label 
-                htmlFor="email" 
+              <label
+                htmlFor="email"
                 className="block text-sm font-medium text-[#101928]"
               >
                 Email
@@ -206,31 +174,25 @@ export default function RegisterPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  // Clear field error on change
-                  if (fieldErrors.email) {
-                    setFieldErrors(prev => ({ ...prev, email: "" }));
-                  }
-                }}
+                {...register("email")}
                 placeholder="Enter your email"
                 className={`w-full h-12 px-4 rounded-full border ${
-                  fieldErrors.email ? "border-red-500" : "border-[#D0D5DD]"
+                  errors.email ? "border-red-500" : "border-[#D0D5DD]"
                 } bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 ${
-                  fieldErrors.email ? "focus:ring-red-500/20 focus:border-red-500" : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                  errors.email
+                    ? "focus:ring-red-500/20 focus:border-red-500"
+                    : "focus:ring-[#377749]/20 focus:border-[#377749]"
                 } transition-all duration-200 md:text-sm`}
-                required
               />
-              {fieldErrors.email && (
-                <p className="text-sm text-red-600">{fieldErrors.email}</p>
+              {errors.email && (
+                <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
               )}
             </div>
 
-            {/* Password Input */}
+            {/* Password */}
             <div className="space-y-2">
-              <label 
-                htmlFor="password" 
+              <label
+                htmlFor="password"
                 className="block text-sm font-medium text-[#101928]"
               >
                 Password
@@ -239,21 +201,15 @@ export default function RegisterPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    // Clear field error on change
-                    if (fieldErrors.password) {
-                      setFieldErrors(prev => ({ ...prev, password: "" }));
-                    }
-                  }}
+                  {...register("password")}
                   placeholder="Create a password (min 8 characters)"
                   className={`w-full h-12 px-4 pr-12 rounded-full border ${
-                    fieldErrors.password ? "border-red-500" : "border-[#D0D5DD]"
+                    errors.password ? "border-red-500" : "border-[#D0D5DD]"
                   } bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 ${
-                    fieldErrors.password ? "focus:ring-red-500/20 focus:border-red-500" : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                    errors.password
+                      ? "focus:ring-red-500/20 focus:border-red-500"
+                      : "focus:ring-[#377749]/20 focus:border-[#377749]"
                   } transition-all duration-200 md:text-sm`}
-                  required
                 />
                 <button
                   type="button"
@@ -261,31 +217,38 @@ export default function RegisterPage() {
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-[#667185] hover:text-[#101928] transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <Icon name="eye-off" size={18} /> : <Icon name="eye" size={18} />}
+                  {showPassword ? (
+                    <Icon name="eye-off" size={18} />
+                  ) : (
+                    <Icon name="eye" size={18} />
+                  )}
                 </button>
               </div>
-              {fieldErrors.password && (
-                <p className="text-sm text-red-600">{fieldErrors.password}</p>
-              )}
-              {!fieldErrors.password && password.length > 0 && password.length < 8 && (
-                <p className="text-sm text-amber-600">Password must be at least 8 characters</p>
+              {errors.password ? (
+                <p className="text-sm text-red-600 mt-1">{errors.password.message}</p>
+              ) : (
+                passwordValue.length > 0 && passwordValue.length < 8 && (
+                  <p className="text-sm text-amber-600">
+                    Password must be at least 8 characters
+                  </p>
+                )
               )}
             </div>
 
-            {/* Error Message */}
-            {error && (
+            {/* Server Error */}
+            {serverError && (
               <div className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
-                {error}
+                {serverError}
               </div>
             )}
 
-            {/* Sign Up Button */}
+            {/* Submit */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="w-full h-12 bg-[#377749] hover:bg-[#2d6340] active:bg-[#265538] text-white font-semibold rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm hover:shadow-md active:scale-[0.98]"
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 "Sign Up"
@@ -303,7 +266,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Social Login Buttons */}
+          {/* Social */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <SocialLoginButton provider="google" label="Google" />
             <SocialLoginButton provider="linkedin" label="LinkedIn" />
@@ -312,8 +275,8 @@ export default function RegisterPage() {
           {/* Login Link */}
           <div className="flex items-center justify-center gap-2 text-sm">
             <span className="text-[#555C56]">Already have an account?</span>
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="font-semibold text-[#3C8350] hover:text-[#377749] transition-colors"
             >
               Sign in

@@ -31,11 +31,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error) {
     console.error('AI chat error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to get AI response';
     return NextResponse.json(
-      { message: error.message || 'Failed to get AI response', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

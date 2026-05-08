@@ -1,11 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import SettingsPage from '../page';
 import * as authHooks from '@/hooks/useAuth';
 import * as settingsHook from '@/hooks/useSettings';
 import { useAuthStore } from '@/store/authStore';
+import { setupQueryTest } from '@/__tests__/test-utils';
 
 // Mock the hooks
 vi.mock('@/hooks/useAuth');
@@ -15,9 +16,9 @@ vi.mock('@/store/authStore');
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
   },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 const mockSessions = [
@@ -64,16 +65,15 @@ const mockSessions = [
 ];
 
 describe('Session Management', () => {
-  let queryClient: QueryClient;
+  let queryClient: any;
+  let QueryWrapper: any;
+  let cleanup: () => Promise<void>;
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
-
+    const setup = setupQueryTest();
+    queryClient = setup.queryClient;
+    QueryWrapper = setup.wrapper;
+    cleanup = setup.cleanup;
     // Mock auth store
     vi.mocked(useAuthStore).mockReturnValue({
       user: {
@@ -112,22 +112,43 @@ describe('Session Management', () => {
       passwordState: { isLoading: false, error: null, success: false },
       deleteState: { isLoading: false, error: null, success: false },
       resetFormState: vi.fn(),
+      notificationSettings: null,
+      privacySettings: null,
+      reminders: [],
+      createReminder: vi.fn(),
+      updateReminder: vi.fn(),
+      deleteReminder: vi.fn(),
+      refreshReminders: vi.fn(),
+      isLoadingNotifications: false,
+      isLoadingReminders: false,
+      formStates: {
+        profile: { isLoading: false, error: null, success: false },
+        notifications: { isLoading: false, error: null, success: false },
+        privacy: { isLoading: false, error: null, success: false },
+        password: { isLoading: false, error: null, success: false },
+        delete: { isLoading: false, error: null, success: false },
+      },
       isMockModeEnabled: false,
       toggleMockMode: vi.fn(),
       isMockLoading: false,
     });
   });
 
+  afterEach(async () => {
+    await cleanup();
+  });
+
   const renderWithProviders = (component: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>
+      <QueryWrapper>
         {component}
-      </QueryClientProvider>
+      </QueryWrapper>
     );
   };
 
   describe('Session List Display', () => {
-    it('should display loading state while fetching sessions', () => {
+
+  it('should display loading state while fetching sessions', async () => {
       vi.mocked(authHooks.useSessions).mockReturnValue({
         data: undefined,
         isLoading: true,
@@ -149,7 +170,7 @@ describe('Session Management', () => {
 
       // Click on Account tab to show session management
       const accountTab = screen.getByRole('button', { name: /account/i });
-      userEvent.click(accountTab);
+      await userEvent.click(accountTab);
 
       expect(screen.getByText('Active Sessions')).toBeInTheDocument();
       // Should show loading skeletons

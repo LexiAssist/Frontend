@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { quizApi } from '@/services/api';
 import { toast } from 'sonner';
+import type { ApiError } from '@/types/errors';
 
 // Keys for query caching
 export const quizKeys = {
@@ -40,7 +41,7 @@ export function useCreateQuiz() {
       queryClient.invalidateQueries({ queryKey: quizKeys.lists() });
       toast.success('Quiz created successfully!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to create quiz');
     },
   });
@@ -56,7 +57,7 @@ export function useGenerateQuiz() {
       numQuestions?: number;
     }) =>
       quizApi.generateFromContent(content, userId, quizType, numQuestions),
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to generate quiz');
     },
   });
@@ -71,7 +72,7 @@ export function useStartQuizAttempt() {
     onSuccess: (data) => {
       queryClient.setQueryData(quizKeys.attempt(data.id), data);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to start quiz');
     },
   });
@@ -82,7 +83,7 @@ export function useSubmitAnswer(attemptId: string) {
   return useMutation({
     mutationFn: (data: Parameters<typeof quizApi.submitAnswer>[1]) =>
       quizApi.submitAnswer(attemptId, data),
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to submit answer');
     },
   });
@@ -95,7 +96,7 @@ export function useCompleteQuizAttempt() {
     onSuccess: (data) => {
       toast.success(`Quiz completed! Score: ${data.score}/${data.total_points}`);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to complete quiz');
     },
   });

@@ -25,11 +25,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Record study session error:', error);
+  } catch (error) {
+    console.error('Failed to record study session', error);
+    const message = error instanceof Error ? error.message : 'Failed to record study session';
     return NextResponse.json(
-      { message: error.message || 'Failed to record study session', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

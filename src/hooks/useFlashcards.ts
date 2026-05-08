@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flashcardApi } from '@/services/api';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/store/authStore';
+import type { ApiError } from '@/types/errors';
 
 // Keys for query caching
 export const flashcardKeys = {
@@ -40,7 +40,7 @@ export function useCreateFlashcardDeck() {
       queryClient.invalidateQueries({ queryKey: flashcardKeys.lists() });
       toast.success('Flashcard deck created successfully!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to create flashcard deck');
     },
   });
@@ -51,7 +51,7 @@ export function useGenerateFlashcards() {
   return useMutation({
     mutationFn: ({ content, userId }: { content: string; userId: string }) =>
       flashcardApi.generateFromContent(content, userId),
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to generate flashcards');
     },
   });

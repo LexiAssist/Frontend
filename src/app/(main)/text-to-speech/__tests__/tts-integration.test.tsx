@@ -3,11 +3,11 @@
  * Tests for Requirements 18.1-18.7
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTTSLanguages } from '@/hooks/useAI';
 import { audioApi } from '@/services/api';
+import { setupQueryTest } from '@/__tests__/test-utils';
 
 // Mock the API
 vi.mock('@/services/api', () => ({
@@ -36,21 +36,21 @@ vi.mock('sonner', () => ({
 }));
 
 describe('Text-to-Speech Integration', () => {
-  let queryClient: QueryClient;
+  let queryClient: any;
+  let wrapper: any;
+  let cleanup: () => Promise<void>;
 
   beforeEach(() => {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
+    const setup = setupQueryTest();
+    queryClient = setup.queryClient;
+    wrapper = setup.wrapper;
+    cleanup = setup.cleanup;
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  afterEach(async () => {
+    await cleanup();
+  });
 
   describe('Requirement 18.1: TTS API function', () => {
     it('should send POST request to /api/v1/ai/text-to-speech', async () => {

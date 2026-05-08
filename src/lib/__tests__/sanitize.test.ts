@@ -80,9 +80,8 @@ describe('validateFile', () => {
   });
 
   it('should reject file exceeding size limit', () => {
-    const largeContent = new Array(51 * 1024 * 1024).fill('a').join('');
-    const file = new File([largeContent], 'large.pdf', { type: 'application/pdf' });
-    const result = validateFile(file);
+    const file = new File(['content'], 'large.pdf', { type: 'application/pdf' });
+    const result = validateFile(file, { maxSizeBytes: 1 });
     expect(result.valid).toBe(false);
     expect(result.error).toContain('size exceeds');
   });
@@ -112,8 +111,7 @@ describe('validateFile', () => {
   it('should accept custom file size limit', () => {
     const file = new File(['content'], 'small.pdf', { type: 'application/pdf' });
     const result = validateFile(file, { maxSizeBytes: 100 });
-    expect(result.valid).toBe(false);
-    expect(result.error).toContain('size exceeds');
+    expect(result.valid).toBe(true);
   });
 });
 

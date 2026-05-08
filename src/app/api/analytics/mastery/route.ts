@@ -21,11 +21,13 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Get topic mastery error:', error);
+  } catch (error) {
+    console.error('Failed to fetch topic mastery', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch topic mastery';
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch topic mastery', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

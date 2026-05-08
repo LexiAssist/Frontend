@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const authHeader = request.headers.get('authorization');
     
-    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
+    const backendUrl = env.NEXT_PUBLIC_API_GATEWAY_URL;
     
     const headers: HeadersInit = {};
     if (authHeader) {
@@ -41,11 +41,13 @@ export async function POST(request: NextRequest) {
     console.log('[Reading Async API] Job started:', data.job_id);
     return NextResponse.json(data);
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading Async API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }
 }
+

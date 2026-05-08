@@ -287,7 +287,6 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
-      tabIndex={-1}
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
@@ -606,10 +605,11 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean;
 }) {
-  // Random width between 50 to 90%.
+  // Stable pseudo-random width between 50 to 90% based on className hash
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+    const hash = className?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) ?? 0;
+    return `${(hash % 40) + 50}%`;
+  }, [className]);
 
   return (
     <div

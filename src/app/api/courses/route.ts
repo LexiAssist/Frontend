@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Get courses error:', error);
+  } catch (error) {
+    console.error('Failed to fetch courses', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch courses';
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch courses', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
@@ -65,11 +66,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Create course error:', error);
+  } catch (error) {
+    console.error('Failed to create course', error);
+    const message = error instanceof Error ? error.message : 'Failed to create course';
     return NextResponse.json(
-      { message: error.message || 'Failed to create course', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

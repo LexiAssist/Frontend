@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "./utils";
 
-interface CardProps extends React.ComponentProps<"div"> {}
+type CardProps = React.ComponentProps<"div">;
 
 function Card({ className, ...props }: CardProps) {
   return (

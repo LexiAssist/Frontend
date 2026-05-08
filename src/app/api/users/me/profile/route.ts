@@ -25,11 +25,13 @@ export async function PUT(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Update profile error:', error);
+  } catch (error) {
+    console.error('Failed to update profile', error);
+    const message = error instanceof Error ? error.message : 'Failed to update profile';
     return NextResponse.json(
-      { message: error.message || 'Failed to update profile', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

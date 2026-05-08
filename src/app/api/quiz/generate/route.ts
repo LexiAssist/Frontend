@@ -30,11 +30,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Quiz generation error:', error);
+  } catch (error) {
+    console.error('Failed to generate quiz', error);
+    const message = error instanceof Error ? error.message : 'Failed to generate quiz';
     return NextResponse.json(
-      { message: error.message || 'Failed to generate quiz', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

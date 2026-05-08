@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
 import { useRef } from 'react';
@@ -245,7 +246,7 @@ export default function LandingPage() {
           >
             {/* Image */}
             <div className="absolute inset-0 bg-[#d9d9d9]">
-              <img alt="Student reading" className="h-full w-full object-cover" src={imgHeroStudent} />
+              <Image alt="Student reading" className="object-cover" fill src={imgHeroStudent} sizes="(max-width: 1024px) 100vw, 50vw" />
             </div>
             <div className="absolute inset-0 bg-gradient-to-r from-[#193722]/60 to-transparent" />
 
@@ -537,7 +538,7 @@ function StaticLandingPage() {
 
           <div className="relative h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] rounded-2xl overflow-hidden">
             <div className="absolute inset-0 bg-[#d9d9d9]">
-              <img alt="Student reading" className="h-full w-full object-cover" src={imgHeroStudent} />
+              <Image alt="Student reading" className="object-cover" fill src={imgHeroStudent} sizes="(max-width: 1024px) 100vw, 50vw" />
             </div>
             <div className="absolute inset-0 bg-gradient-to-r from-[#193722]/60 to-transparent" />
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] sm:w-[300px] lg:w-[320px]">
@@ -674,7 +675,7 @@ function StaticLandingPage() {
       {/* CTA Section - Static */}
       <section className="relative py-20 sm:py-24 lg:py-32 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-black from-[36%] to-[#011f0a] to-[88%]">
-          <img alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" src={imgCtaBackground} />
+          <Image alt="" className="object-cover opacity-20" fill src={imgCtaBackground} sizes="100vw" />
         </div>
         <div className="relative max-w-5xl mx-auto text-center space-y-8 sm:space-y-12 lg:space-y-16">
           <div className="space-y-4 sm:space-y-6">
@@ -830,7 +831,7 @@ function CTASection() {
         className="absolute inset-0 bg-gradient-to-b from-black from-[36%] to-[#011f0a] to-[88%]"
         style={{ y: backgroundY }}
       >
-        <img alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" src={imgCtaBackground} />
+        <Image alt="" className="object-cover opacity-20" fill src={imgCtaBackground} sizes="100vw" />
       </motion.div>
       <motion.div
         className="relative max-w-5xl mx-auto text-center space-y-8 sm:space-y-12 lg:space-y-16"

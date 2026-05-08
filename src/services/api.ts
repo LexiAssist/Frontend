@@ -4,6 +4,7 @@
  * Uses native fetch with automatic token refresh via TokenManager
  */
 
+import { env } from '@/env';
 import { useAuthStore } from '@/store/authStore';
 import { tokenManager } from './tokenManager';
 import { wsClient } from '@/services/websocket';
@@ -30,7 +31,6 @@ export function initTokenRefresh(): () => void {
   // Check token every minute for proactive refresh
   const intervalId = setInterval(() => {
     if (tokenManager.shouldRefreshToken()) {
-      console.log('[TokenRefresh] Proactive refresh triggered');
       tokenManager.performRefresh();
     }
   }, 60 * 1000);
@@ -39,7 +39,6 @@ export function initTokenRefresh(): () => void {
   const handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
       if (tokenManager.shouldRefreshToken()) {
-        console.log('[TokenRefresh] Proactive refresh on visibility change');
         tokenManager.performRefresh();
       }
     }
@@ -167,7 +166,6 @@ async function fetchFormData<T>(
   retryOn401 = true
 ): Promise<T> {
   const url = `/api/v1${path}`;
-  console.log('[fetchFormData] URL:', url);
   const token = await tokenManager.getValidToken();
   
   const headers: HeadersInit = {};
@@ -259,7 +257,7 @@ async function fetchFormData<T>(
 
 export interface ReadingStreamEvent {
   type: 'status' | 'summary_token' | 'vocab' | 'progress' | 'complete' | 'error';
-  data: any;
+  data: unknown;
 }
 
 /**
@@ -278,8 +276,6 @@ function parseSSEEvents(buffer: string): { parsed: ReadingStreamEvent[]; remaind
   // The last part might be incomplete (no trailing \n\n), so keep it as remainder
   const remainder = parts.pop() || '';
   
-  console.log(`[SSE Parser] Processing ${parts.length} events, remainder: ${remainder.length} chars`);
-  
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     if (!part.trim()) continue;
@@ -297,23 +293,16 @@ function parseSSEEvents(buffer: string): { parsed: ReadingStreamEvent[]; remaind
     }
     
     if (eventType && eventData !== null) {
-      let parsedData: any;
+      let parsedData: unknown;
       try {
-        parsedData = JSON.parse(eventData);
-      } catch (e) {
-        console.warn(`[SSE Parser] Failed to parse data for event "${eventType}":`, eventData.slice(0, 100));
+        parsedData = JSON.parse(eventData) as unknown;
+      } catch {
         parsedData = eventData;
       }
       
-      console.log(`[SSE Parser] Parsed event: ${eventType}`, 
-        eventType === 'complete' ? '(complete event with full data)' : 
-        eventType === 'summary_token' ? { token: parsedData.token?.slice(0, 20) + '...' } :
-        { keys: Object.keys(parsedData) }
-      );
-      
       events.push({ type: eventType as ReadingStreamEvent['type'], data: parsedData });
     } else {
-      console.warn('[SSE Parser] Missing event type or data:', { eventType, hasData: eventData !== null });
+      // Missing event type or data — skip
     }
   }
   
@@ -537,7 +526,7 @@ interface LanguagesResponse {
   supported_languages: Record<string, string>;
 }
 
-interface StudyStats {
+export interface StudyStats {
   current_streak: number;
   total_study_days: number;
   total_study_minutes: number;
@@ -546,13 +535,13 @@ interface StudyStats {
   last_study_date: string;
 }
 
-interface StudyStreak {
+export interface StudyStreak {
   current_streak: number;
   longest_streak: number;
   last_study_date: string;
 }
 
-interface TopicMastery {
+export interface TopicMastery {
   topic: string;
   mastery_score: number;
   last_reviewed: string;
@@ -571,9 +560,10 @@ export interface LearningGoal {
   title: string;
   description?: string;
   target_date?: string;
-  target_score?: number;
-  current_score?: number;
-  is_completed: boolean;
+  target_value: number;
+  current_value: number;
+  goal_type?: 'study_time' | 'quiz_score' | 'streak' | 'course_completion';
+  is_completed?: boolean;
   completed_at?: string;
   status?: 'in_progress' | 'completed' | 'failed';
   course_id?: string;
@@ -586,6 +576,8 @@ export interface CreateGoalData {
   description?: string;
   target_date?: string;
   target_score?: number;
+  target_value?: number;
+  goal_type?: 'study_time' | 'quiz_score' | 'streak' | 'course_completion';
   course_id?: string;
 }
 
@@ -839,7 +831,7 @@ export const flashcardApi = {
 export const quizApi = {
   getAll: async (limit = 20, offset = 0): Promise<Quiz[]> => {
     const headers = await getAuthHeaders();
-    const response = await fetch(`/api/quiz?limit=${limit}&offset=${offset}`, {
+    const response = await fetch(`/api/v1/quiz?limit=${limit}&offset=${offset}`, {
       headers,
     });
     
@@ -857,7 +849,7 @@ export const quizApi = {
   
   create: async (data: CreateQuizData): Promise<Quiz> => {
     const headers = await getAuthHeaders();
-    const response = await fetch('/api/quiz', {
+    const response = await fetch('/api/v1/quiz', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1116,10 +1108,7 @@ export const audioApi = {
     
     // Verify we got audio content
     const contentType = response.headers.get('content-type') || '';
-    console.log('[TTS] Response content-type:', contentType);
-    
     const blob = await response.blob();
-    console.log('[TTS] Response blob size:', blob.size, 'type:', blob.type);
     
     if (blob.size === 0) {
       throw new Error('TTS returned empty audio');
@@ -1211,13 +1200,11 @@ export const materialApi = {
     const material = unwrap(createRes) as Material;
 
     // Step 2: Get presigned URL
-    console.log('[Upload] Getting presigned URL for material:', material.id);
     const presignRes = await fetchApi<{ data: { url: string; material_id: string; expires_at: number } }>(`/materials/${material.id}/presign`, {
       method: 'POST',
       body: JSON.stringify({ action: 'upload' }),
     });
     const presignData = unwrap(presignRes) as { url: string; material_id: string; expires_at: number };
-    console.log('[Upload] Got presigned URL:', presignData.url);
 
     // Step 3: Upload file to MinIO
     let uploadUrl = presignData.url;
@@ -1230,9 +1217,6 @@ export const materialApi = {
       uploadUrl = uploadUrl.replace('minio:9000', 'localhost:9000');
     }
     
-    console.log('[Upload] Uploading to:', uploadUrl);
-    console.log('[Upload] File:', file.name, 'Size:', file.size, 'Type:', file.type);
-    
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       body: file,
@@ -1241,23 +1225,17 @@ export const materialApi = {
       },
     });
 
-    console.log('[Upload] Response status:', uploadResponse.status, uploadResponse.statusText);
-    
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text().catch(() => 'No error details');
       console.error('[Upload] Failed:', uploadResponse.status, errorText);
       throw new Error(`Failed to upload file to storage: ${uploadResponse.status} ${uploadResponse.statusText}`);
     }
     
-    console.log('[Upload] Success!');
-
     // Step 4: Trigger ingestion to process the file
-    console.log('[Upload] Triggering ingestion for material:', material.id);
     try {
       await materialApi.processFromStorage(material.id, material.title);
-      console.log('[Upload] Ingestion triggered successfully');
-    } catch (ingestionError: any) {
-      console.error('[Upload] Ingestion failed:', ingestionError);
+    } catch {
+      // Ingestion failed — file is uploaded, can be retried later
       // Don't throw here - file is uploaded, ingestion can be retried later
     }
 
@@ -1276,10 +1254,8 @@ export const materialApi = {
       .replace(/[^a-zA-Z0-9_.-]/g, '') // Remove special characters
       .replace(/^.*[\\\/]/, '');      // Get basename only
     
-    console.log('[Upload] Sanitized filename:', sanitizedFilename);
-    
     // Call ingestion service directly (not through gateway)
-    const response = await fetch('http://localhost:5002/process-from-storage', {
+    const response = await fetch(`${env.NEXT_PUBLIC_INGESTION_URL}/process-from-storage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1359,8 +1335,6 @@ export const readingApi = {
       return;
     }
     
-    console.log('[analyseStream] Starting stream...');
-    
     try {
       const response = await fetch('/api/v1/reading/analyse/stream', {
         method: 'POST',
@@ -1372,12 +1346,10 @@ export const readingApi = {
       
       // Handle 401 by refreshing and retrying once
       if (response.status === 401) {
-        console.log('[analyseStream] Got 401, attempting refresh...');
         const refreshed = await tokenManager.handleUnauthorized();
         
         if (refreshed) {
           const newToken = await tokenManager.getValidToken();
-          console.log('[analyseStream] Retrying with new token...');
           const retryResponse = await fetch('/api/v1/reading/analyse/stream', {
             method: 'POST',
             headers: {
@@ -1402,7 +1374,6 @@ export const readingApi = {
         throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
       
-      console.log('[analyseStream] Stream connected, starting to read...');
       await processStream(response, onEvent);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -1431,8 +1402,6 @@ export const readingApi = {
     formData.append('summary_type', summaryType);
     formData.append('voice', voice);
     formData.append('temperature', temperature.toString());
-    
-    console.log('[analyseAsync] Starting analysis with simulated progress...');
     
     // Start simulated progress updates
     let progress = 0;
@@ -1495,8 +1464,6 @@ async function processStream(
   let lastActivityTime = Date.now();
   let isComplete = false;
   
-  console.log('[processStream] Starting to read stream...');
-  
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -1506,7 +1473,7 @@ async function processStream(
         const decoded = decoder.decode(value, { stream: !done });
         buffer += decoded;
         
-        console.log(`[processStream] Received ${value.length} bytes, buffer now ${buffer.length} chars`);
+        // Data received
       }
       
       // Parse SSE events from buffer
@@ -1516,39 +1483,25 @@ async function processStream(
       // Process each parsed event
       for (const event of events.parsed) {
         eventCount++;
-        console.log(`[processStream] Event #${eventCount}: ${event.type}`, 
-          event.type === 'complete' ? { 
-            hasSummary: !!event.data.summary,
-            summaryLength: event.data.summary?.length,
-            vocabCount: event.data.vocab_terms?.length,
-            hasAudio: !!event.data.tts_audio_b64,
-            audioLength: event.data.tts_audio_b64?.length
-          } : ''
-        );
-        
         onEvent(event);
         
         // Stop reading on complete or error
         if (event.type === 'complete' || event.type === 'error') {
           isComplete = true;
-          console.log(`[processStream] Stream finished with ${event.type} event`);
           return;
         }
       }
       
       if (done) {
-        console.log('[processStream] Reader done');
         break;
       }
     }
     
     // Flush any remaining data in buffer
     if (buffer.trim()) {
-      console.log('[processStream] Flushing remaining buffer:', buffer.slice(0, 200));
       const finalEvents = parseSSEEvents(buffer + '\n\n');
       for (const event of finalEvents.parsed) {
         eventCount++;
-        console.log(`[processStream] Flushed event #${eventCount}: ${event.type}`);
         onEvent(event);
         if (event.type === 'complete' || event.type === 'error') {
           isComplete = true;
@@ -1558,11 +1511,9 @@ async function processStream(
     
     // If we never got a complete event, something went wrong
     if (!isComplete) {
-      console.error('[processStream] Stream ended without complete event');
       throw new Error('Stream ended unexpectedly. Please try again.');
     }
     
-    console.log(`[processStream] Total events processed: ${eventCount}`);
   } catch (error) {
     console.error('[processStream] Error:', error);
     throw error;
