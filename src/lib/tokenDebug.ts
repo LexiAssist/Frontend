@@ -2,19 +2,19 @@
  * Token Debugging Utilities
  */
 
-export function decodeToken(token: string): any {
+export function decodeToken(token: string): Record<string, unknown> | null {
   try {
     const base64 = token.split('.')[1];
     const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
-  } catch (e) {
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
     return null;
   }
 }
 
 export function isTokenExpired(token: string): boolean {
   const decoded = decodeToken(token);
-  if (!decoded || !decoded.exp) return true;
+  if (!decoded || typeof decoded.exp !== 'number') return true;
   
   const exp = decoded.exp * 1000; // Convert to milliseconds
   return Date.now() > exp;
@@ -25,11 +25,11 @@ export function getTokenInfo(token: string) {
   if (!decoded) return null;
   
   return {
-    userId: decoded.user_id || decoded.sub,
-    email: decoded.email,
-    tokenType: decoded.token_type,
-    issuedAt: decoded.iat ? new Date(decoded.iat * 1000).toLocaleString() : null,
-    expiresAt: decoded.exp ? new Date(decoded.exp * 1000).toLocaleString() : null,
+    userId: typeof decoded.user_id === 'string' ? decoded.user_id : typeof decoded.sub === 'string' ? decoded.sub : null,
+    email: typeof decoded.email === 'string' ? decoded.email : null,
+    tokenType: typeof decoded.token_type === 'string' ? decoded.token_type : null,
+    issuedAt: typeof decoded.iat === 'number' ? new Date(decoded.iat * 1000).toLocaleString() : null,
+    expiresAt: typeof decoded.exp === 'number' ? new Date(decoded.exp * 1000).toLocaleString() : null,
     isExpired: isTokenExpired(token),
   };
 }

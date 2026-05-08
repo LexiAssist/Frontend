@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://lexiassist.com';
   if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_APP_URL is required to generate sitemap');
+    // Graceful degradation: return empty sitemap if no URL configured
+    return [];
   }
 
   return [

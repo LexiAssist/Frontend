@@ -188,7 +188,7 @@ export const mockApi = {
   // Quizzes
   getQuizzes: () => mockQuizzes,
   getQuizById: (id: string) => mockQuizzes.find(q => q.id === id),
-  submitQuizAttempt: (quizId: string, answers: Record<string, any>) => ({
+  submitQuizAttempt: (quizId: string, answers: Record<string, string>) => ({
     score: 85,
     maxScore: 100,
     correctAnswers: 7,

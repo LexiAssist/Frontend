@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationApi, type NotificationSettings, type NotificationReminder, type NotificationHistoryItem } from '@/services/api';
 import { toast } from 'sonner';
+import type { ApiError } from '@/types/errors';
 
 // Query keys for notifications
 export const notificationKeys = {
@@ -36,7 +37,7 @@ export function useUpdateNotificationPreferences() {
       queryClient.invalidateQueries({ queryKey: notificationKeys.preferences() });
       toast.success('Notification preferences saved');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to save preferences');
     },
   });
@@ -66,7 +67,7 @@ export function useCreateReminder() {
       queryClient.invalidateQueries({ queryKey: notificationKeys.reminders() });
       toast.success('Reminder created');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to create reminder');
     },
   });
@@ -85,7 +86,7 @@ export function useUpdateReminder() {
       queryClient.invalidateQueries({ queryKey: notificationKeys.reminders() });
       toast.success('Reminder updated');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to update reminder');
     },
   });
@@ -103,7 +104,7 @@ export function useDeleteReminder() {
       queryClient.invalidateQueries({ queryKey: notificationKeys.reminders() });
       toast.success('Reminder deleted');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to delete reminder');
     },
   });
@@ -146,7 +147,7 @@ export function useMarkAllNotificationsAsRead() {
       queryClient.invalidateQueries({ queryKey: notificationKeys.history() });
       toast.success('All notifications marked as read');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to mark notifications as read');
     },
   });
@@ -162,7 +163,7 @@ export function useRegisterDevice() {
     onSuccess: () => {
       toast.success('Device registered for notifications');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to register device');
     },
   });

@@ -4,6 +4,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useAIChat, useConversation } from '@/hooks/useAI';
 import { aiApi } from '@/services/api';
@@ -37,7 +39,8 @@ vi.mock('sonner', () => ({
 }));
 
 describe('Chat Assistant Integration', () => {
-  let queryClient: any;
+  let queryClient: QueryClient;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let wrapper: any;
   let cleanup: () => Promise<void>;
 
@@ -155,7 +158,7 @@ describe('Chat Assistant Integration', () => {
   describe('Requirement 17.6: Streaming responses', () => {
     it('should handle streaming chat responses', async () => {
       const tokens: string[] = [];
-      let completeResponse: any = null;
+      let completeResponse: { response: string; conversation_id: string; tokens_used: number; model: string } | null = null;
 
       const mockStreamFn = vi.fn(async (query, userId, options, onToken, onComplete) => {
         // Simulate streaming tokens

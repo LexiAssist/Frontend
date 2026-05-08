@@ -63,7 +63,6 @@ const AudioWaveform = ({
   
   useEffect(() => {
     if (!isRecording || !analyserRef?.current) {
-      setFrequencies(Array(12).fill(20));
       if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;

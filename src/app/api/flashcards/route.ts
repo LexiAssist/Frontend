@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Get flashcards error:', error);
+  } catch (error) {
+    console.error('Failed to fetch flashcards', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch flashcards';
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch flashcards', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
@@ -90,11 +91,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Flashcard error:', error);
+  } catch (error) {
+    console.error('Failed to process request', error);
+    const message = error instanceof Error ? error.message : 'Failed to process request';
     return NextResponse.json(
-      { message: error.message || 'Failed to process request', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

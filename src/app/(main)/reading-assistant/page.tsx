@@ -537,7 +537,7 @@ export default function ReadingAssistantPage() {
                   <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                     <p className="text-sm text-amber-800 flex items-center gap-2">
                       <span>⏱️</span>
-                      <span>This is taking longer than usual. Please don't close this page.</span>
+                      <span>This is taking longer than usual. Please don&apos;t close this page.</span>
                     </p>
                   </div>
                 )}

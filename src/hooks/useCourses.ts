@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { courseApi } from '@/services/api';
 import { toast } from 'sonner';
+import type { ApiError } from '@/types/errors';
 
 // Keys for query caching
 export const courseKeys = {
@@ -38,7 +39,7 @@ export function useCreateCourse() {
       queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
       toast.success('Course created successfully!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to create course');
     },
   });
@@ -56,7 +57,7 @@ export function useUpdateCourse(id: string) {
       queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
       toast.success('Course updated successfully!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to update course');
     },
   });
@@ -72,7 +73,7 @@ export function useDeleteCourse() {
       queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
       toast.success('Course deleted successfully!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to delete course');
     },
   });

@@ -164,7 +164,7 @@ export function clearAuthEmergency() {
 
 // Attach to window for emergency access
 if (typeof window !== 'undefined') {
-  (window as any).clearAuth = clearAuthEmergency;
+  (window as unknown as Record<string, unknown>).clearAuth = clearAuthEmergency as unknown;
 }
 
 // Helper to check auth status on app load

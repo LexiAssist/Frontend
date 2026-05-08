@@ -51,10 +51,11 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading Status API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }

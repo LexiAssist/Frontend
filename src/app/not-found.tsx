@@ -18,7 +18,7 @@ export default function NotFound() {
         </h2>
         
         <p className="mt-3 max-w-md text-slate-600">
-          Sorry, we couldn't find the page you're looking for. It might have been
+          Sorry, we couldn&apos;t find the page you&apos;re looking for. It might have been
           moved, deleted, or never existed.
         </p>
 

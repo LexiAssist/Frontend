@@ -41,11 +41,13 @@ export async function POST(request: NextRequest) {
     console.log('[Reading Async API] Job started:', data.job_id);
     return NextResponse.json(data);
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading Async API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }
 }
+

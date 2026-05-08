@@ -76,7 +76,7 @@ function HeroBanner() {
         <div className="flex-1 max-w-md">
           <h2 className="text-2xl lg:text-[32px] font-bold text-white">Quizzes</h2>
           <p className="mt-3 text-sm lg:text-[15px] leading-relaxed text-white/95">
-            Upload a document or enter text and we'll automatically generate questions to test your understanding of the content.
+            Upload a document or enter text and we&apos;ll automatically generate questions to test your understanding of the content.
           </p>
         </div>
       </div>
@@ -274,7 +274,8 @@ function QuizTaker({
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const questionStartTimeRef = useRef<number>(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState<number>(() => Date.now());
 
   const question = quiz.questions[currentQuestion];
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
@@ -282,7 +283,7 @@ function QuizTaker({
   const handleAnswer = async () => {
     if (!selectedOption || !attemptId) return;
     
-    const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+    const timeTaken = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
     
     // Submit answer to backend (Requirement 14.4)
     try {
@@ -298,6 +299,7 @@ function QuizTaker({
     if (currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setSelectedOption(null);
+      questionStartTimeRef.current = Date.now();
       setQuestionStartTime(Date.now());
     } else {
       onComplete({ ...answers, [question.id]: selectedOption });

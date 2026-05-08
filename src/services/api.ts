@@ -257,7 +257,7 @@ async function fetchFormData<T>(
 
 export interface ReadingStreamEvent {
   type: 'status' | 'summary_token' | 'vocab' | 'progress' | 'complete' | 'error';
-  data: any;
+  data: unknown;
 }
 
 /**
@@ -293,10 +293,10 @@ function parseSSEEvents(buffer: string): { parsed: ReadingStreamEvent[]; remaind
     }
     
     if (eventType && eventData !== null) {
-      let parsedData: any;
+      let parsedData: unknown;
       try {
-        parsedData = JSON.parse(eventData);
-      } catch (e) {
+        parsedData = JSON.parse(eventData) as unknown;
+      } catch {
         parsedData = eventData;
       }
       
@@ -1234,7 +1234,7 @@ export const materialApi = {
     // Step 4: Trigger ingestion to process the file
     try {
       await materialApi.processFromStorage(material.id, material.title);
-    } catch (ingestionError: any) {
+    } catch {
       // Ingestion failed — file is uploaded, can be retried later
       // Don't throw here - file is uploaded, ingestion can be retried later
     }

@@ -43,8 +43,14 @@ export class ErrorBoundary extends Component<Props, State> {
     }
     
     // Log to error tracking service (e.g., Sentry) if available
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, { extra: errorInfo });
+    interface WindowWithSentry extends Window {
+      Sentry?: {
+        captureException: (error: Error, context: { extra: React.ErrorInfo }) => void;
+      };
+    }
+    const win = window as unknown as WindowWithSentry;
+    if (typeof window !== 'undefined' && win.Sentry) {
+      win.Sentry.captureException(error, { extra: errorInfo });
     }
   }
 
@@ -90,7 +96,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </h2>
             
             <p className="mb-6 text-center text-gray-600">
-              We're sorry, but something unexpected happened. Please try again.
+              We&apos;re sorry, but something unexpected happened. Please try again.
             </p>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (

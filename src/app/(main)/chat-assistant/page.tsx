@@ -95,14 +95,14 @@ export default function ChatAssistantPage() {
   
   useEffect(() => {
     if (conversationData && typeof conversationData === 'object' && 'messages' in conversationData) {
-      const data = conversationData as any;
+      const data = conversationData as { messages: Array<Record<string, unknown>> };
       if (data.messages && Array.isArray(data.messages)) {
-        const loadedMessages: Message[] = data.messages.map((msg: any, idx: number) => ({
-          id: msg.id || `loaded-${Date.now()}-${idx}`,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.timestamp),
-          sources: msg.sources,
+        const loadedMessages: Message[] = data.messages.map((msg, idx) => ({
+          id: typeof msg.id === 'string' ? msg.id : `loaded-${Date.now()}-${idx}`,
+          role: (typeof msg.role === 'string' ? msg.role : 'user') as 'user' | 'assistant',
+          content: typeof msg.content === 'string' ? msg.content : '',
+          timestamp: typeof msg.timestamp === 'string' || typeof msg.timestamp === 'number' ? new Date(msg.timestamp) : new Date(),
+          sources: Array.isArray(msg.sources) ? msg.sources : undefined,
         }));
         setMessages(loadedMessages);
       }
@@ -129,7 +129,7 @@ export default function ChatAssistantPage() {
       const material = await materialApi.upload(file);
       toast.success(`Uploaded ${file.name}`);
       return material.id;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload error:', error);
       throw error;
     }
@@ -159,9 +159,10 @@ export default function ChatAssistantPage() {
             prev.map(f => f.id === tempId ? { ...f, id: materialId, status: 'processing' } : f)
           );
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
-        toast.error(`Failed to upload ${file.name}: ${error.message}`);
+        const errorMsg = error instanceof Error ? error.message : 'Upload failed';
+        toast.error(`Failed to upload ${file.name}: ${errorMsg}`);
         setUploadedFiles(prev => prev.filter(f => f.id !== tempId));
       }
     }
@@ -201,9 +202,10 @@ export default function ChatAssistantPage() {
             prev.map(f => f.id === tempId ? { ...f, id: materialId, status: 'processing' } : f)
           );
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
-        toast.error(`Failed to upload ${file.name}: ${error.message}`);
+        const errorMsg = error instanceof Error ? error.message : 'Upload failed';
+        toast.error(`Failed to upload ${file.name}: ${errorMsg}`);
         setUploadedFiles(prev => prev.filter(f => f.id !== tempId));
       }
     }
@@ -240,7 +242,7 @@ export default function ChatAssistantPage() {
             user.id,
             5 // top_k
           );
-          contextChunks = retrievalResult.results?.map((c: any) => c.chunk_text) || [];
+          contextChunks = retrievalResult.results?.map((c: { chunk_text?: string }) => c.chunk_text).filter((t): t is string => typeof t === 'string') || [];
         } catch (err) {
           console.warn('Failed to retrieve context:', err);
         }

@@ -21,11 +21,13 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Get settings error:', error);
+  } catch (error) {
+    console.error('Failed to fetch settings', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch settings';
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch settings', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

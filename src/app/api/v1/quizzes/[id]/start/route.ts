@@ -27,10 +27,11 @@ export async function POST(
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Start quiz attempt error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to start quiz attempt';
     return NextResponse.json(
-      { message: error.message || 'Failed to start quiz attempt', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }

@@ -73,12 +73,13 @@ export function useSync(): SyncState {
       wsClient.connect();
     } else {
       wsClient.disconnect();
-      setIsConnected(false);
       wasConnectedRef.current = false;
     }
 
     return () => {
       unsubscribe();
+      wsClient.disconnect();
+      setIsConnected(false);
     };
   }, [accessToken, isTokenExpired, queryClient]);
 

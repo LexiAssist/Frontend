@@ -60,7 +60,14 @@ export default function LoginPage() {
   const errorParam = searchParams.get("error");
 
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState("");
+  const [serverError, setServerError] = useState(() => {
+    if (errorParam === "session_expired") {
+      return "Your session has expired. Please log in again.";
+    } else if (errorParam === "cleared") {
+      return "Authentication was reset. Please log in again.";
+    }
+    return "";
+  });
 
   const { login } = useAuth(redirectUrl || undefined);
 
@@ -71,14 +78,6 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
-
-  useEffect(() => {
-    if (errorParam === "session_expired") {
-      setServerError("Your session has expired. Please log in again.");
-    } else if (errorParam === "cleared") {
-      setServerError("Authentication was reset. Please log in again.");
-    }
-  }, [errorParam]);
 
   const onSubmit = async (data: LoginFormData) => {
     setServerError("");

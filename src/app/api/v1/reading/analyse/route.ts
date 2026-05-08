@@ -93,11 +93,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Reading API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error', message },
       { status: 500 }
     );
   }
 }
+

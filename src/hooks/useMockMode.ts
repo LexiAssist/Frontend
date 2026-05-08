@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 
 const MOCK_MODE_KEY = "lexiassist-settings-mock-mode";
 
@@ -17,17 +17,12 @@ interface UseMockModeReturn {
  * This mock mode ONLY affects Settings page forms.
  */
 export function useMockMode(): UseMockModeReturn {
-  const [isMockModeEnabled, setIsMockModeEnabled] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // Load mock mode preference from localStorage on mount
-  useEffect(() => {
+  const [isMockModeEnabled, setIsMockModeEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
     const stored = localStorage.getItem(MOCK_MODE_KEY);
-    if (stored !== null) {
-      setIsMockModeEnabled(stored === "true");
-    }
-    setIsLoading(false);
-  }, []);
+    return stored === "true";
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Persist to localStorage whenever mock mode changes
   const setMockMode = useCallback((enabled: boolean) => {

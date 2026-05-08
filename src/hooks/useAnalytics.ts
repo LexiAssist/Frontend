@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { analyticsApi } from '@/services/api';
 import { toast } from 'sonner';
+import type { ApiError } from '@/types/errors';
 
 // Keys for query caching
 export const analyticsKeys = {
@@ -45,7 +46,7 @@ export function useRecordStudySession() {
       queryClient.invalidateQueries({ queryKey: analyticsKeys.stats() });
       queryClient.invalidateQueries({ queryKey: analyticsKeys.streak() });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to record study session');
     },
   });
@@ -69,7 +70,7 @@ export function useCreateGoal() {
       queryClient.invalidateQueries({ queryKey: analyticsKeys.goals() });
       toast.success('Learning goal created successfully!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to create goal');
     },
   });
@@ -85,7 +86,7 @@ export function useCompleteGoal() {
       queryClient.invalidateQueries({ queryKey: analyticsKeys.goals() });
       toast.success('Goal marked as completed!');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.message || 'Failed to complete goal');
     },
   });

@@ -30,11 +30,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Summary generation error:', error);
+  } catch (error) {
+    console.error('Failed to generate summary', error);
+    const message = error instanceof Error ? error.message : 'Failed to generate summary';
     return NextResponse.json(
-      { message: error.message || 'Failed to generate summary', success: false },
+      { message, success: false },
       { status: 500 }
     );
   }
 }
+

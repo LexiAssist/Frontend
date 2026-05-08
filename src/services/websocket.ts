@@ -4,8 +4,8 @@ export type WebSocketEvent =
   | { type: 'quiz_completed'; data: { quiz_id: string; score: number; user_id: string } }
   | { type: 'goal_progress'; data: { goal_id: string; progress: number; user_id: string } }
   | { type: 'material_uploaded'; data: { material_id: string; name: string; user_id: string } }
-  | { type: 'sync'; data: any }
-  | { type: 'update'; data: any }
+  | { type: 'sync'; data: unknown }
+  | { type: 'update'; data: unknown }
   | { type: 'connection'; data: { status: 'connected' | 'disconnected' | 'error' } };
 
 export type EventHandler = (event: WebSocketEvent) => void;

@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import { authApi, sessionApi } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+import type { ApiError } from '@/types/errors';
 
 // Keys for query caching
 export const authKeys = {
@@ -45,7 +46,7 @@ export function useLogin(redirectUrl?: string) {
       const destination = redirectUrl || '/dashboard';
       router.push(destination);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       // Don't show toast here - let the component handle specific error messages
       throw error;
     },
@@ -87,7 +88,7 @@ export function useRegister() {
         router.push(`/verify-email?userId=${user.id}`);
       }
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       // Don't show toast here - let the component handle specific error messages (Requirements 7.4, 7.5)
       throw error;
     },
@@ -105,7 +106,7 @@ export function useVerifyEmail() {
       toast.success('Email verified! Please log in.');
       router.push('/login');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Verification failed');
     },
   });
@@ -118,7 +119,7 @@ export function useResendVerification(userId: string) {
     onSuccess: () => {
       toast.success('Verification code resent! Check your email.');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Failed to resend verification code');
     },
   });
@@ -147,7 +148,7 @@ export function useForgotPassword() {
     onSuccess: () => {
       toast.success('If an account exists, a password reset link has been sent to your email.');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Failed to send reset link. Please try again.');
     },
   });
@@ -164,7 +165,7 @@ export function useResetPassword() {
       toast.success('Password reset successful! Please log in with your new password.');
       router.push('/login');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Failed to reset password. The link may have expired.');
     },
   });
@@ -178,7 +179,7 @@ export function useChangePassword() {
     onSuccess: () => {
       toast.success('Password changed successfully. Please log in again with your new password.');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Failed to change password. Please check your current password.');
     },
   });
@@ -209,7 +210,7 @@ export function useRevokeSession() {
       toast.success('Session revoked successfully');
       queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Failed to revoke session');
     },
   });
@@ -229,7 +230,7 @@ export function useLogoutAll() {
       queryClient.clear();
       router.push('/login');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error(error.response?.data?.message || 'Failed to logout from all devices');
     },
   });

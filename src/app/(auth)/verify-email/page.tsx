@@ -22,12 +22,16 @@ export default function VerifyEmailPage() {
   const resendMutation = useResendVerification(userId || '');
 
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
-    }
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setCanResend(true);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   const handleChange = (index: number, value: string) => {
