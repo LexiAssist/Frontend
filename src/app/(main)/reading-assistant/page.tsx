@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal, BookOpenText, Sparkles, Volume2, X, Focus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { FeatureHeader } from '@/components/FeatureHeader';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import dynamic from 'next/dynamic';
 import { readingApi } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
@@ -135,9 +136,9 @@ export default function ReadingAssistantPage() {
   }, []);
 
   const handleFileUpload = (file: File) => {
-    const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-    if (!allowed.includes(file.type) && !file.type.startsWith('image/')) {
-      toast.error('Please upload PDF, DOC, TXT, or image');
+    const allowed = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    if (!allowed.includes(file.type)) {
+      toast.error('Please upload PDF, TXT, or DOCX');
       return;
     }
     if (file.size > 25 * 1024 * 1024) {
@@ -356,6 +357,8 @@ export default function ReadingAssistantPage() {
                 <span>Generating {difficulty} version...</span>
               </div>
             </div>
+          ) : textMode === 'summarized' ? (
+            <MarkdownRenderer content={displayText} />
           ) : (
             <DimmedText content={displayText} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
           )}
@@ -430,11 +433,11 @@ export default function ReadingAssistantPage() {
                 <span className="font-bold">Click to upload</span> or drag and drop
               </p>
               <p className="text-slate-500 text-xs sm:text-sm mt-2">
-                PDF, DOC, TXT, or Image files (max 25MB)
+                PDF, TXT, or DOCX files (max 25MB)
               </p>
             </div>
           </motion.button>
-          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
+          <input ref={fileRef} type="file" accept=".pdf,.txt,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
         </motion.div>
       )}
 
@@ -636,6 +639,8 @@ export default function ReadingAssistantPage() {
                       <span>Generating {difficulty} version...</span>
                     </div>
                   </div>
+                ) : textMode === 'summarized' ? (
+                  <MarkdownRenderer content={getCurrentText()} />
                 ) : (
                   <DimmedText content={getCurrentText()} dimmed={dimSurrounding} fontFamily={getFontFamily()} letterSpacing={letterSpacing} wordSpacing={wordSpacing} lineHeight={lineHeight} vocabList={vocabList} onWordClick={handleWordClick} />
                 )}

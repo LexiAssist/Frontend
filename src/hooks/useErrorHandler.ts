@@ -8,7 +8,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { handleAPIError, isNetworkError, shouldRetry } from '@/lib/errorHandler';
+import { handleAPIError, isNetworkError, isRateLimitError, shouldRetry } from '@/lib/errorHandler';
 import { Toast } from '@/components/Toast';
 
 interface UseErrorHandlerOptions {
@@ -24,6 +24,11 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
 
     // Show toast notification if enabled
     if (shouldShowToast) {
+      if (isRateLimitError(apiError)) {
+        // Rate limit toast is shown by the HTTP client (http.ts) with a live countdown.
+        // Skip the generic error toast to avoid duplicate notifications.
+        return apiError;
+      }
       if (isNetworkError(apiError) && onRetry) {
         // Show error with retry button for network errors
         Toast.error(apiError.message, { duration: 5000 });

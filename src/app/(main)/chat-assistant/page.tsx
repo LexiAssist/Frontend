@@ -174,7 +174,7 @@ export default function ChatAssistantPage() {
 
     const validFiles = files.filter(f => 
       f.type.includes('pdf') || f.type.includes('text') || f.type.includes('document') ||
-      f.name.endsWith('.pdf') || f.name.endsWith('.txt') || f.name.endsWith('.doc') || f.name.endsWith('.docx')
+      f.name.endsWith('.pdf') || f.name.endsWith('.txt') || f.name.endsWith('.docx')
     );
 
     if (validFiles.length === 0) {
@@ -353,7 +353,7 @@ export default function ChatAssistantPage() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.txt,.doc,.docx,.md"
+        accept=".pdf,.txt,.docx"
         className="hidden"
         onChange={handleFileSelection}
       />

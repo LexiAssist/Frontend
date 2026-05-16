@@ -238,7 +238,7 @@ async function fetchFormData<T>(
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed: ${response.status}`);
+      throw new Error(errorData.message || errorData.error || `Request failed: ${response.status}`);
     }
     
     return response.json();
@@ -799,6 +799,9 @@ export const courseApi = {
   
   delete: (id: string) =>
     fetchApi<void>(`/courses/${id}`, { method: 'DELETE' }),
+  
+  getMaterials: (id: string) =>
+    fetchApi<{ data: Material[] }>(`/courses/${id}/materials`).then(r => unwrap(r) as Material[]),
 };
 
 // Flashcard Services
@@ -811,6 +814,15 @@ export const flashcardApi = {
   
   createDeck: (data: CreateDeckData) =>
     fetchApi<{ data: FlashcardDeck }>('/flashcard-decks', { method: 'POST', body: JSON.stringify(data) }).then(r => unwrap(r) as FlashcardDeck),
+  
+  updateDeck: (id: string, data: Partial<CreateDeckData>) =>
+    fetchApi<{ data: FlashcardDeck }>(`/flashcard-decks/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(r => unwrap(r) as FlashcardDeck),
+  
+  deleteDeck: (id: string) =>
+    fetchApi<void>(`/flashcard-decks/${id}`, { method: 'DELETE' }),
+  
+  addCardsToDeck: (id: string, cards: Array<{ front: string; back: string; topic?: string }>) =>
+    fetchApi<{ data: FlashcardDeck }>(`/flashcard-decks/${id}/cards`, { method: 'POST', body: JSON.stringify({ cards }) }).then(r => unwrap(r) as FlashcardDeck),
   
   generateFromContent: async (content: string, userId: string): Promise<GenerateFlashcardsResponse> => {
     // Create a text file from the content
@@ -831,7 +843,7 @@ export const flashcardApi = {
 export const quizApi = {
   getAll: async (limit = 20, offset = 0): Promise<Quiz[]> => {
     const headers = await getAuthHeaders();
-    const response = await fetch(`/api/v1/quiz?limit=${limit}&offset=${offset}`, {
+    const response = await fetch(`/api/v1/quizzes?limit=${limit}&offset=${offset}`, {
       headers,
     });
     
@@ -847,9 +859,15 @@ export const quizApi = {
   getById: (id: string) =>
     fetchApi<{ data: Quiz }>(`/quizzes/${id}`).then(r => unwrap(r) as Quiz),
   
+  update: (id: string, data: Partial<CreateQuizData>) =>
+    fetchApi<{ data: Quiz }>(`/quizzes/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(r => unwrap(r) as Quiz),
+  
+  delete: (id: string) =>
+    fetchApi<void>(`/quizzes/${id}`, { method: 'DELETE' }),
+  
   create: async (data: CreateQuizData): Promise<Quiz> => {
     const headers = await getAuthHeaders();
-    const response = await fetch('/api/v1/quiz', {
+    const response = await fetch('/api/v1/quizzes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -949,6 +967,24 @@ export const aiApi = {
   // Load previous conversation by ID (Requirement 17.4)
   getConversation: (conversationId: string) =>
     fetchApi<ConversationDetail>(`/ai/conversation/${conversationId}`),
+  
+  // Delete a conversation (Requirement 17.5)
+  deleteConversation: (conversationId: string) =>
+    fetchApi<void>(`/ai/conversation/${conversationId}`, { method: 'DELETE' }),
+  
+  // Generate quiz from pasted text (not file)
+  generateQuizFromText: (content: string, userId: string, numQuestions: number = 5, difficulty: 'easy' | 'medium' | 'hard' = 'medium') =>
+    fetchApi<{ quiz: string; type: 'quiz' }>('/ai/generate/quiz', {
+      method: 'POST',
+      body: JSON.stringify({ query: content, user_id: userId, num_questions: numQuestions, difficulty }),
+    }),
+  
+  // Generate flashcards from pasted text (not file)
+  generateFlashcardsFromText: (content: string, userId: string, numCards: number = 10) =>
+    fetchApi<{ flashcards: string; type: 'flashcards' }>('/ai/generate/flashcards', {
+      method: 'POST',
+      body: JSON.stringify({ query: content, user_id: userId, num_cards: numCards }),
+    }),
   
   // Stream chat responses for real-time display (Requirement 17.6)
   chatStream: async (
@@ -1152,6 +1188,9 @@ export const analyticsApi = {
   getTopicMastery: () =>
     fetchApi<{ data: TopicMastery[] }>('/analytics/topic-mastery').then(r => unwrap(r) as TopicMastery[]),
   
+  getAIUsage: (days = 30) =>
+    fetchApi<{ data: { total_requests: number; total_tokens: number; daily_usage: Array<{ date: string; requests: number; tokens: number }> } }>(`/analytics/ai-usage?days=${days}`).then(r => unwrap(r)),
+  
   recordStudySession: (data: StudySessionData) =>
     fetchApi<void>('/analytics/study-sessions', { method: 'POST', body: JSON.stringify(data) }),
     
@@ -1275,6 +1314,9 @@ export const materialApi = {
   
   create: (data: CreateMaterialData) =>
     fetchApi<{ data: Material }>('/materials', { method: 'POST', body: JSON.stringify(data) }).then(r => unwrap(r) as Material),
+  
+  update: (id: string, data: Partial<CreateMaterialData>) =>
+    fetchApi<{ data: Material }>(`/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(r => unwrap(r) as Material),
   
   delete: (id: string) =>
     fetchApi<void>(`/materials/${id}`, { method: 'DELETE' }),
@@ -1588,6 +1630,9 @@ export const writingApi = {
   
   getHistory: (userId: string, limit: number = 20, offset: number = 0) =>
     fetchApi<{ data: WritingSession[] }>(`/writing/history?user_id=${userId}&limit=${limit}&offset=${offset}`).then(r => unwrap(r) as WritingSession[]),
+  
+  getNotesSession: (sessionId: string, userId: string) =>
+    fetchApi<NotesResponse>(`/writing/notes/${sessionId}?user_id=${userId}`),
 };
 
 export const notificationApi = {
@@ -1634,4 +1679,34 @@ export const notificationApi = {
   
   markAllAsRead: () =>
     fetchApi<void>('/notifications/history/read-all', { method: 'POST' }),
+};
+
+// Study Buddy Services
+export const studyApi = {
+  getHistory: (userId: string, limit = 20, offset = 0) =>
+    fetchApi<{ data: Array<{ session_id: string; type: 'flashcards' | 'quiz'; filename: string; created_at: string }> }>(`/study/history?user_id=${userId}&limit=${limit}&offset=${offset}`).then(r => unwrap(r)),
+  
+  getFlashcardSession: (sessionId: string, userId: string) =>
+    fetchApi<GenerateFlashcardsResponse>(`/study/flashcards/${sessionId}?user_id=${userId}`),
+  
+  getQuizSession: (sessionId: string, userId: string) =>
+    fetchApi<GenerateQuizResponse>(`/study/quiz/${sessionId}?user_id=${userId}`),
+};
+
+// Sync Services
+export const syncApi = {
+  getState: (deviceId: string) =>
+    fetchApi<{ data: { last_sync: string; pending_events: number } }>(`/sync/state?device_id=${deviceId}`).then(r => unwrap(r)),
+  
+  ack: (eventIds: string[]) =>
+    fetchApi<void>('/sync/ack', { method: 'POST', body: JSON.stringify({ event_ids: eventIds }) }),
+  
+  getEvents: (since: string) =>
+    fetchApi<{ data: Array<{ id: string; type: string; data: unknown; created_at: string }> }>(`/sync/events?since=${encodeURIComponent(since)}`).then(r => unwrap(r)),
+};
+
+// Presence Services
+export const presenceApi = {
+  update: (status: 'online' | 'away' | 'busy' | 'offline' = 'online') =>
+    fetchApi<void>('/presence', { method: 'PUT', body: JSON.stringify({ status }) }),
 };

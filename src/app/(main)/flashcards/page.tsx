@@ -110,7 +110,7 @@ function UploadDropzone({ onChooseFile, onTextInput }: { onChooseFile: () => voi
           Click to upload or drag and drop
         </p>
         <p className="pt-2 text-[14px] sm:text-[16px] lg:text-[18px] leading-[1.45] text-black/60">
-          PDF, DOC, TXT (max 25MB)
+          PDF, TXT, or DOCX (max 25MB)
         </p>
       </button>
       
@@ -527,7 +527,7 @@ export default function FlashcardsPage() {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.doc,.docx,.txt"
+        accept=".pdf,.txt,.docx"
         onChange={handleFileChange}
       />
 

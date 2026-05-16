@@ -9,6 +9,7 @@ import { env } from '@/env';
 import { useAuthStore } from '@/store/authStore';
 import { tokenManager } from '@/services/tokenManager';
 import { APIError, getUserFriendlyMessage } from '@/lib/errorHandler';
+import { showRateLimitToast } from '@/components/RateLimitToast';
 
 // Types for API responses
 export interface ApiResponse<T> {
@@ -119,9 +120,16 @@ class APIClient {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           const retryAfter = response.headers.get('retry-after');
-          const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : undefined;
+          const rateLimitReset = response.headers.get('x-ratelimit-reset');
+          const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : 
+                                    rateLimitReset ? parseInt(rateLimitReset) : undefined;
           const errorMessage = errorData.message || errorData.error ||
                                getUserFriendlyMessage(response.status, retryAfterSeconds);
+
+          // Show live countdown toast for rate limit errors
+          if (response.status === 429 && retryAfterSeconds) {
+            showRateLimitToast(retryAfterSeconds);
+          }
 
           throw new APIError(errorMessage, response.status, errorData.code, errorData.errors, retryAfterSeconds);
         }
@@ -140,6 +148,10 @@ class APIClient {
         }
 
         if (error instanceof APIError && error.statusCode && error.statusCode >= 400 && error.statusCode < 500 && error.statusCode !== 401) {
+          // 503: Circuit breaker open — retry logic will wait and retry
+          if (error.statusCode === 503) {
+            error.message = 'Service temporarily unavailable. Please wait a moment and try again.';
+          }
           throw error;
         }
 

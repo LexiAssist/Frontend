@@ -52,11 +52,24 @@ export {
   courseKeys,
 } from './useCourses';
 
+// Material hooks
+export {
+  useMaterials,
+  useMaterial,
+  useCourseMaterials,
+  useUploadMaterial,
+  useDeleteMaterial,
+  materialKeys,
+} from './useMaterials';
+
 // Flashcard hooks
 export {
   useFlashcardDecks,
   useFlashcardDeck,
   useCreateFlashcardDeck,
+  useUpdateFlashcardDeck,
+  useDeleteFlashcardDeck,
+  useAddCardsToDeck,
   useGenerateFlashcards,
   flashcardKeys,
 } from './useFlashcards';
@@ -66,12 +79,41 @@ export {
   useQuizzes,
   useQuiz,
   useCreateQuiz,
+  useUpdateQuiz,
+  useDeleteQuiz,
   useGenerateQuiz,
   useStartQuizAttempt,
   useSubmitAnswer,
   useCompleteQuizAttempt,
   quizKeys,
 } from './useQuizzes';
+
+// Writing hooks
+export {
+  useGenerateNotes,
+  useWritingHistory,
+  useWritingSession,
+  writingKeys,
+} from './useWriting';
+
+// Reading hooks
+export {
+  useAnalyseDocument,
+  useAnalyseDocumentStream,
+  useReadingSession,
+  useSimplifyText,
+  readingKeys,
+} from './useReading';
+
+// Study hooks
+export {
+  useGenerateStudyFlashcards,
+  useGenerateStudyQuiz,
+  useStudyHistory,
+  useStudyFlashcardSession,
+  useStudyQuizSession,
+  studyKeys,
+} from './useStudy';
 
 // Analytics hooks
 export {

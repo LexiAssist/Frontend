@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FeatureHeader } from '@/components/FeatureHeader';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { writingApi } from '@/services/api';
@@ -475,28 +476,7 @@ export default function WritingAssistantPage() {
       );
     }
     
-    const lines = transcript.split('\n');
-    return (
-      <div className="space-y-2">
-        {lines.map((line, idx) => {
-          if (line.startsWith('# ')) return <h1 key={idx} className="text-2xl font-bold mt-4 mb-2 text-slate-900">{line.substring(2)}</h1>;
-          if (line.startsWith('## ')) return <h2 key={idx} className="text-xl font-bold mt-3 mb-2 text-slate-900">{line.substring(3)}</h2>;
-          if (line.startsWith('### ')) return <h3 key={idx} className="text-lg font-semibold mt-2 mb-1 text-slate-900">{line.substring(4)}</h3>;
-          if (line.startsWith('- ') || line.startsWith('* ')) return <li key={idx} className="ml-4 text-slate-800">{line.substring(2)}</li>;
-          if (/^\d+\.\s/.test(line)) return <li key={idx} className="ml-4 text-slate-800">{line.replace(/^\d+\.\s/, '')}</li>;
-          if (line.includes('**')) {
-            const parts = line.split('**');
-            return (
-              <p key={idx} className="text-slate-800">
-                {parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold text-slate-900">{part}</strong> : part)}
-              </p>
-            );
-          }
-          if (line.trim()) return <p key={idx} className="text-slate-800">{line}</p>;
-          return <br key={idx} />;
-        })}
-      </div>
-    );
+    return <MarkdownRenderer content={transcript} />;
   };
 
   return (

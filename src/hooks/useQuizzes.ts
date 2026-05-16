@@ -47,6 +47,40 @@ export function useCreateQuiz() {
   });
 }
 
+// Hook to update a quiz
+export function useUpdateQuiz(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Parameters<typeof quizApi.update>[1]) =>
+      quizApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: quizKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: quizKeys.lists() });
+      toast.success('Quiz updated successfully!');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Failed to update quiz');
+    },
+  });
+}
+
+// Hook to delete a quiz
+export function useDeleteQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: quizApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: quizKeys.lists() });
+      toast.success('Quiz deleted successfully!');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Failed to delete quiz');
+    },
+  });
+}
+
 // Hook to generate a quiz from content
 export function useGenerateQuiz() {
   return useMutation({

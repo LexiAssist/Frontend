@@ -141,6 +141,13 @@ export function isTimeoutError(error: APIError): boolean {
 }
 
 /**
+ * Check if an error is a rate limit (429) error
+ */
+export function isRateLimitError(error: APIError): boolean {
+  return error.statusCode === 429;
+}
+
+/**
  * Check if an error should trigger a retry
  */
 export function shouldRetry(error: APIError): boolean {

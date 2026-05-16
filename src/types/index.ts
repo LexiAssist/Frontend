@@ -363,3 +363,64 @@ export interface LearningGoal {
   completed_at?: string;
   created_at: string;
 }
+
+// AI-Generated Quiz Types (from backend integration doc)
+export interface MCQOptions {
+  A: string;
+  B: string;
+  C: string;
+  D: string;
+}
+
+export interface MultipleChoiceQuestion {
+  question: string;
+  options: MCQOptions;
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  explanation: string;
+  topic: string;
+}
+
+export interface TheoryQuestion {
+  question: string;
+  model_answer: string;
+  marking_guide: string[];
+  marks: number;
+  topic: string;
+}
+
+// Analytics Types
+export interface AIUsageStats {
+  total_requests: number;
+  total_tokens: number;
+  daily_usage: Array<{
+    date: string;
+    requests: number;
+    tokens: number;
+  }>;
+}
+
+// Sync Types
+export interface SyncState {
+  last_sync: string;
+  pending_events: number;
+}
+
+export interface SyncEvent {
+  id: string;
+  type: string;
+  data: unknown;
+  created_at: string;
+}
+
+// Study Session History
+export interface StudySessionHistory {
+  session_id: string;
+  type: 'flashcards' | 'quiz';
+  filename: string;
+  created_at: string;
+}
+
+// Presence Types
+export interface PresenceUpdate {
+  status: 'online' | 'away' | 'busy' | 'offline';
+}

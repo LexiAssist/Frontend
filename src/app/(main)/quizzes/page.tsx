@@ -102,7 +102,7 @@ function UploadSection({
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold text-slate-900">Click to upload a document</p>
-          <p className="text-sm text-slate-500 mt-1">PDF, DOC, TXT (max 25MB)</p>
+          <p className="text-sm text-slate-500 mt-1">PDF, TXT, or DOCX (max 25MB)</p>
         </div>
       </button>
       
@@ -719,7 +719,7 @@ export default function QuizzesPage() {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.doc,.docx,.txt"
+        accept=".pdf,.txt,.docx"
         onChange={handleFileChange}
       />
 

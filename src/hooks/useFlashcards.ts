@@ -46,6 +46,57 @@ export function useCreateFlashcardDeck() {
   });
 }
 
+// Hook to update a flashcard deck
+export function useUpdateFlashcardDeck(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Parameters<typeof flashcardApi.updateDeck>[1]) =>
+      flashcardApi.updateDeck(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: flashcardKeys.lists() });
+      toast.success('Flashcard deck updated successfully!');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Failed to update flashcard deck');
+    },
+  });
+}
+
+// Hook to delete a flashcard deck
+export function useDeleteFlashcardDeck() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: flashcardApi.deleteDeck,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardKeys.lists() });
+      toast.success('Flashcard deck deleted successfully!');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Failed to delete flashcard deck');
+    },
+  });
+}
+
+// Hook to add cards to a deck
+export function useAddCardsToDeck(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (cards: Parameters<typeof flashcardApi.addCardsToDeck>[1]) =>
+      flashcardApi.addCardsToDeck(id, cards),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardKeys.detail(id) });
+      toast.success('Cards added to deck successfully!');
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.message || 'Failed to add cards to deck');
+    },
+  });
+}
+
 // Hook to generate flashcards from content
 export function useGenerateFlashcards() {
   return useMutation({

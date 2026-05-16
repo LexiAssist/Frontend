@@ -97,15 +97,14 @@ export default function MaterialsPage() {
       return;
     }
 
-    // Validate file type (PDF, DOCX, TXT, MD as per requirements)
+    // Validate file type (PDF, DOCX, TXT only)
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'text/plain',
-      'text/markdown',
     ];
-    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.md')) {
-      toast.error("Invalid file type. Only PDF, DOCX, TXT, and MD files are allowed.");
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only PDF, DOCX, and TXT files are allowed.");
       return;
     }
 
@@ -210,7 +209,7 @@ export default function MaterialsPage() {
             ref={fileInputRef}
             onChange={handleFileUpload}
             className="hidden" 
-            accept=".pdf,.txt,.md,.docx"
+            accept=".pdf,.txt,.docx"
           />
           <button
             onClick={() => fileInputRef.current?.click()}

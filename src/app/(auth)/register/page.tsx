@@ -16,6 +16,10 @@ const registerSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters long"),
+  school: z.string().min(1, "School is required"),
+  department: z.string().min(1, "Department is required"),
+  academic_level: z.enum(["undergraduate", "postgraduate", "doctoral", "staff"])
+    .refine((val) => val !== undefined, { message: "Please select your academic level" }),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -76,16 +80,17 @@ export default function RegisterPage() {
     try {
       await registerUser(data);
     } catch (err) {
-      if (err instanceof APIError) {
-        if (err.statusCode === 409) {
-          setServerError("An account with this email already exists.");
-        } else if (err.statusCode === 400) {
-          setServerError(err.message || "Please check your details and try again.");
-        } else {
-          setServerError(err.message || "Registration failed. Please try again.");
-        }
+      // authApi.register throws plain Error, not APIError
+      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      
+      if (message.includes("409")) {
+        setServerError("An account with this email already exists.");
+      } else if (message.includes("400")) {
+        setServerError(message.replace("HTTP 400: ", "") || "Please check your details and try again.");
+      } else if (message.includes("500")) {
+        setServerError("Server error. Please try again later or contact support.");
       } else {
-        setServerError("Registration failed. Please try again.");
+        setServerError(message.replace(/HTTP \d+: /, "") || "Registration failed. Please try again.");
       }
     }
   };
@@ -189,6 +194,95 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {/* School */}
+            <div className="space-y-2">
+              <label
+                htmlFor="school"
+                className="block text-sm font-medium text-[#101928]"
+              >
+                School / Institution
+              </label>
+              <input
+                id="school"
+                type="text"
+                {...register("school")}
+                placeholder="e.g. University of Lagos"
+                className={`w-full h-12 px-4 rounded-full border ${
+                  errors.school ? "border-red-500" : "border-[#D0D5DD]"
+                } bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 ${
+                  errors.school
+                    ? "focus:ring-red-500/20 focus:border-red-500"
+                    : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                } transition-all duration-200 md:text-sm`}
+              />
+              {errors.school && (
+                <p className="text-sm text-red-600 mt-1">{errors.school.message}</p>
+              )}
+            </div>
+
+            {/* Department */}
+            <div className="space-y-2">
+              <label
+                htmlFor="department"
+                className="block text-sm font-medium text-[#101928]"
+              >
+                Department
+              </label>
+              <input
+                id="department"
+                type="text"
+                {...register("department")}
+                placeholder="e.g. Computer Science"
+                className={`w-full h-12 px-4 rounded-full border ${
+                  errors.department ? "border-red-500" : "border-[#D0D5DD]"
+                } bg-white text-base text-[#101928] placeholder:text-[#98A2B3] focus:outline-none focus:ring-2 ${
+                  errors.department
+                    ? "focus:ring-red-500/20 focus:border-red-500"
+                    : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                } transition-all duration-200 md:text-sm`}
+              />
+              {errors.department && (
+                <p className="text-sm text-red-600 mt-1">{errors.department.message}</p>
+              )}
+            </div>
+
+            {/* Academic Level */}
+            <div className="space-y-2">
+              <label
+                htmlFor="academic_level"
+                className="block text-sm font-medium text-[#101928]"
+              >
+                Academic Level
+              </label>
+              <div className="relative">
+                <select
+                  id="academic_level"
+                  {...register("academic_level")}
+                  className={`w-full h-12 px-4 pr-10 rounded-full border ${
+                    errors.academic_level ? "border-red-500" : "border-[#D0D5DD]"
+                  } bg-white text-base text-[#101928] focus:outline-none focus:ring-2 ${
+                    errors.academic_level
+                      ? "focus:ring-red-500/20 focus:border-red-500"
+                      : "focus:ring-[#377749]/20 focus:border-[#377749]"
+                  } transition-all duration-200 md:text-sm appearance-none cursor-pointer`}
+                >
+                  <option value="">Select your level</option>
+                  <option value="undergraduate">Undergraduate</option>
+                  <option value="postgraduate">Postgraduate</option>
+                  <option value="doctoral">Doctoral</option>
+                  <option value="staff">Staff</option>
+                </select>
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#374151]">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
+                </div>
+              </div>
+              {errors.academic_level && (
+                <p className="text-sm text-red-600 mt-1">{errors.academic_level.message}</p>
+              )}
+            </div>
+
             {/* Password */}
             <div className="space-y-2">
               <label
@@ -214,13 +308,13 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-[#667185] hover:text-[#101928] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full text-[#374151] hover:text-[#101928] hover:bg-gray-100 active:bg-gray-200 transition-all duration-200"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
-                    <Icon name="eye-off" size={18} />
+                    <Icon name="eye-off" size={20} />
                   ) : (
-                    <Icon name="eye" size={18} />
+                    <Icon name="eye" size={20} />
                   )}
                 </button>
               </div>

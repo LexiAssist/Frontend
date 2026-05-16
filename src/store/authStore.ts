@@ -6,6 +6,13 @@ import { wsClient } from '@/services/websocket';
 
 export interface AuthState {
   // State
+  // SECURITY ARCHITECTURE:
+  // - accessToken: MEMORY ONLY (excluded from Zustand persist). Survives
+  //   only for the current session/tab. On reload, initializeAuth() uses
+  //   the persisted refreshToken to acquire a new accessToken.
+  // - refreshToken: Persisted in localStorage via Zustand. True security
+  //   requires backend httpOnly cookie support (see TODO below).
+  // - user: Persisted. Includes id needed for AI endpoints.
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -100,6 +107,10 @@ export const useAuthStore = create<AuthState>()(
           return false;
         }
 
+        // TODO: When backend supports httpOnly cookies for refresh_token,
+        // remove refreshToken from partialize above and update this call
+        // to not send the token in the request body. The browser will
+        // automatically include the httpOnly cookie.
         try {
           const response = await authApi.refreshToken(refreshToken);
           
@@ -142,7 +153,8 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        accessToken: state.accessToken,
+        // accessToken is MEMORY ONLY — excluded from persistence.
+        // On reload, initializeAuth() uses refreshToken to get a new one.
         refreshToken: state.refreshToken,
         tokenExpiresAt: state.tokenExpiresAt,
       }),

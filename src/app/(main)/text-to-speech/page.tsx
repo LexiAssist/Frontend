@@ -355,10 +355,8 @@ export default function TextToSpeechPage() {
     }
     const isSupported =
       file.type === 'application/pdf' ||
-      file.type === 'application/msword' ||
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.name.endsWith('.pdf') ||
-      file.name.endsWith('.doc') ||
       file.name.endsWith('.docx');
 
     if (isSupported) {
@@ -366,22 +364,20 @@ export default function TextToSpeechPage() {
       return result.text;
     }
 
-    throw new Error('Unsupported file type. Accepted: .pdf, .doc, .docx, .txt');
+    throw new Error('Unsupported file type. Accepted: .pdf, .docx, .txt');
   };
 
   const handleFileUpload = async (file: File) => {
     const isSupported =
       file.type === 'text/plain' ||
       file.type === 'application/pdf' ||
-      file.type === 'application/msword' ||
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.name.endsWith('.txt') ||
       file.name.endsWith('.pdf') ||
-      file.name.endsWith('.doc') ||
       file.name.endsWith('.docx');
 
     if (!isSupported) {
-      toast.error('Please upload a .txt, .pdf, .doc, or .docx file');
+      toast.error('Please upload a .txt, .pdf, or .docx file');
       return;
     }
     if (file.size > 25 * 1024 * 1024) {
@@ -631,7 +627,7 @@ export default function TextToSpeechPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,.txt"
+              accept=".pdf,.txt,.docx"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -645,7 +641,7 @@ export default function TextToSpeechPage() {
               <p className="text-[#3D6E4E] font-semibold text-sm sm:text-base">
                 <span className="font-bold">Click to upload</span> or drag and drop
               </p>
-              <p className="text-slate-500 text-xs sm:text-sm mt-2">PDF, DOC, DOCX, or TXT (max 25MB)</p>
+              <p className="text-slate-500 text-xs sm:text-sm mt-2">PDF, TXT, or DOCX (max 25MB)</p>
             </div>
           </motion.div>
 

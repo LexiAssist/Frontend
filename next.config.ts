@@ -49,11 +49,11 @@ const nextConfig: NextConfig = {
             value: isDevelopment
               ? [
                   "default-src 'self'",
-                  "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // unsafe-eval needed for dev
+                  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://va.vercel-scripts.com", 
                   "style-src 'self' 'unsafe-inline'",
                   "img-src 'self' data: blob: https:",
                   "font-src 'self' data:",
-                  "connect-src 'self' http://localhost:* ws://localhost:* wss://localhost:*",
+                  "connect-src 'self' http://localhost:* ws://localhost:* wss://localhost:* https://staging.lexiassist.app wss://staging.lexiassist.app",
                   "media-src 'self' blob: data:",
                   "object-src 'none'",
                   "base-uri 'self'",
@@ -63,11 +63,11 @@ const nextConfig: NextConfig = {
                 ].join('; ')
               : [
                   "default-src 'self'",
-                  "script-src 'self' 'unsafe-inline'", // unsafe-inline for Next.js inline scripts
+                  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com", 
                   "style-src 'self' 'unsafe-inline'",
                   "img-src 'self' data: blob: https:",
                   "font-src 'self' data:",
-                  "connect-src 'self' https://*.lexiassist.com wss://*.lexiassist.com",
+                  "connect-src 'self' https://*.lexiassist.app wss://*.lexiassist.app https://*.lexiassist.com wss://*.lexiassist.com",
                   "media-src 'self' blob: data:",
                   "object-src 'none'",
                   "base-uri 'self'",
