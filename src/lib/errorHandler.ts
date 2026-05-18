@@ -13,7 +13,8 @@ export class APIError extends Error {
     public statusCode?: number,
     public code?: string,
     public errors?: Record<string, string[]>,
-    public retryAfter?: number
+    public retryAfter?: number,
+    public data?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'APIError';

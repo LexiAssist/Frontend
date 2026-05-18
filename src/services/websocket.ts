@@ -42,7 +42,7 @@ class WebSocketClient {
     }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
-    return `${protocol}//${window.location.hostname}:${wsPort}/api/v1/sync`;
+    return `${protocol}//${window.location.hostname}:${wsPort}/api/v1/ws`;
   }
 
   connect() {

@@ -8,6 +8,7 @@ import { env } from '@/env';
 import { useAuthStore } from '@/store/authStore';
 import { tokenManager } from './tokenManager';
 import { wsClient } from '@/services/websocket';
+import { APIError } from '@/lib/errorHandler';
 import type { 
   User, 
   Quiz, 
@@ -691,6 +692,60 @@ export interface NotificationHistoryItem {
   created_at: string;
 }
 
+// Quiz History
+export interface QuizHistoryItem {
+  attempt_id: string;
+  quiz_id: string;
+  quiz_title: string;
+  score: number;
+  total_points: number;
+  correct_answers: number;
+  total_questions: number;
+  completed_at: string;
+}
+
+// AI Usage Stats
+export interface AIUsageStats {
+  total_requests: number;
+  total_tokens_used: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  by_model: Record<string, { requests: number; tokens: number }>;
+  by_endpoint: Record<string, { requests: number; tokens: number }>;
+}
+
+// Study History
+export interface StudyHistoryItem {
+  session_id: string;
+  session_type: 'flashcard' | 'quiz';
+  filename?: string;
+  created_at: string;
+  quiz_type?: 'multiple_choice' | 'theory' | null;
+  num_cards?: number | null;
+  num_questions?: number | null;
+}
+
+// Sync & Presence
+export interface SyncState {
+  device_id: string;
+  last_sync_at: string;
+  pending_events: number;
+}
+
+export interface SyncEvent {
+  id: string;
+  event_type: string;
+  data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PresenceData {
+  user_id: string;
+  status: 'online' | 'away' | 'offline';
+  last_seen_at: string;
+  current_activity?: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API Services
 // ─────────────────────────────────────────────────────────────────────────────
@@ -705,7 +760,18 @@ export const authApi = {
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Login failed');
+      const message = error.message || error.error || 'Login failed';
+      if (response.status === 403 && error.code === 'EMAIL_NOT_VERIFIED') {
+        throw new APIError(
+          message,
+          403,
+          'EMAIL_NOT_VERIFIED',
+          undefined,
+          undefined,
+          { user_id: error.user_id }
+        );
+      }
+      throw new Error(message);
     }
     const data = await response.json();
     return data.data || data;
@@ -799,6 +865,9 @@ export const courseApi = {
   
   delete: (id: string) =>
     fetchApi<void>(`/courses/${id}`, { method: 'DELETE' }),
+  
+  getMaterials: (id: string) =>
+    fetchApi<{ data: Material[] }>(`/courses/${id}/materials`).then(r => unwrap(r) as Material[]),
 };
 
 // Flashcard Services
@@ -1047,6 +1116,33 @@ export const aiApi = {
       method: 'POST',
       body: JSON.stringify({ query, user_id: userId, top_k: topK }),
     }),
+  
+  // Generate quiz from pasted text (not file)
+  generateQuiz: (content: string, userId: string, quizType: 'multiple_choice' | 'theory' = 'multiple_choice', numQuestions: number = 5) =>
+    fetchApi<GenerateQuizResponse>('/ai/generate/quiz', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: content,
+        user_id: userId,
+        quiz_type: quizType,
+        num_questions: numQuestions,
+      }),
+    }),
+  
+  // Generate flashcards from pasted text (not file)
+  generateFlashcards: (content: string, userId: string, numCards: number = 10) =>
+    fetchApi<GenerateFlashcardsResponse>('/ai/generate/flashcards', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: content,
+        user_id: userId,
+        num_cards: numCards,
+      }),
+    }),
+  
+  // Delete a conversation
+  deleteConversation: (conversationId: string) =>
+    fetchApi<void>(`/ai/conversation/${conversationId}`, { method: 'DELETE' }),
 };
 
 // Audio Services
@@ -1163,6 +1259,12 @@ export const analyticsApi = {
     
   completeGoal: (id: string) =>
     fetchApi<{ data: LearningGoal }>(`/analytics/goals/${id}/complete`, { method: 'POST' }).then(r => unwrap(r) as LearningGoal),
+  
+  getQuizHistory: (limit = 20, offset = 0) =>
+    fetchApi<{ data: QuizHistoryItem[] }>(`/analytics/quiz-history?limit=${limit}&offset=${offset}`).then(r => unwrap(r) as QuizHistoryItem[]),
+  
+  getAIUsage: (days = 30) =>
+    fetchApi<{ data: AIUsageStats }>(`/analytics/ai-usage?days=${days}`).then(r => unwrap(r) as AIUsageStats),
 };
 
 // Session Services
@@ -1634,4 +1736,54 @@ export const notificationApi = {
   
   markAllAsRead: () =>
     fetchApi<void>('/notifications/history/read-all', { method: 'POST' }),
+};
+
+// Study Buddy — History & Retrieval
+export const studyApi = {
+  getHistory: (limit = 20, offset = 0) =>
+    fetchApi<{ data: StudyHistoryItem[] }>(`/study/history?limit=${limit}&offset=${offset}`)
+      .then(r => unwrap(r) as StudyHistoryItem[]),
+  
+  getFlashcardSession: (sessionId: string) =>
+    fetchApi<{ data: GenerateFlashcardsResponse }>(`/study/flashcards/${sessionId}`)
+      .then(r => unwrap(r) as GenerateFlashcardsResponse),
+  
+  getQuizSession: (sessionId: string) =>
+    fetchApi<{ data: GenerateQuizResponse }>(`/study/quiz/${sessionId}`)
+      .then(r => unwrap(r) as GenerateQuizResponse),
+};
+
+// Sync & Presence
+export const syncApi = {
+  getState: (deviceId: string) =>
+    fetchApi<SyncState>(`/sync/state?device_id=${deviceId}`),
+  
+  acknowledge: (deviceId: string, lastSyncAt: string) =>
+    fetchApi<void>('/sync/ack', {
+      method: 'POST',
+      body: JSON.stringify({ device_id: deviceId, last_sync_at: lastSyncAt }),
+    }),
+  
+  getEvents: (since: string) =>
+    fetchApi<{ data: SyncEvent[] }>(`/sync/events?since=${encodeURIComponent(since)}`)
+      .then(r => unwrap(r) as SyncEvent[]),
+  
+  createEvent: (eventType: string, data: Record<string, unknown>) =>
+    fetchApi<void>('/sync/events', {
+      method: 'POST',
+      body: JSON.stringify({ event_type: eventType, data }),
+    }),
+  
+  getPresence: () =>
+    fetchApi<PresenceData>('/presence'),
+  
+  updatePresence: (status: 'online' | 'away' | 'offline', activity?: string) =>
+    fetchApi<void>('/presence', {
+      method: 'PUT',
+      body: JSON.stringify({ status, current_activity: activity }),
+    }),
+  
+  getOnlineUsers: () =>
+    fetchApi<{ data: PresenceData[] }>('/presence/online')
+      .then(r => unwrap(r) as PresenceData[]),
 };

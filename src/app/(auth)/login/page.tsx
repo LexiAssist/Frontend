@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
 import { APIError } from "@/lib/errorHandler";
 import { Icon } from "@/components/Icon";
+import { useRouter } from "next/navigation";
 import Logo from "@/components/auth/Logo";
 import Image from "next/image";
 
@@ -55,6 +56,7 @@ function SocialLoginButton({
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect");
   const errorParam = searchParams.get("error");
@@ -85,15 +87,26 @@ export default function LoginPage() {
       await login(data);
     } catch (err) {
       if (err instanceof APIError) {
-        if (err.statusCode === 401) {
+        if (err.code === "EMAIL_NOT_VERIFIED") {
+          const userId = err.data?.user_id as string | undefined;
+          if (userId) {
+            router.push(`/verify-email?userId=${userId}`);
+            return;
+          }
+          setServerError(
+            "Email verification required. Please check your email for the verification code."
+          );
+        } else if (err.statusCode === 401) {
           setServerError("Invalid email or password. Please try again.");
         } else if (err.statusCode === 403) {
           setServerError(
-            "Email verification required. Please check your email for the verification code."
+            "Access denied. Please contact support if you believe this is an error."
           );
         } else {
           setServerError(err.message || "Login failed. Please try again.");
         }
+      } else if (err instanceof Error) {
+        setServerError(err.message || "Login failed. Please try again.");
       } else {
         setServerError("Login failed. Please try again.");
       }
